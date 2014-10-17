@@ -214,7 +214,7 @@ EOS
             print {$h} encode_json($stashedFolders);
         }
     }
-    my @command = @{ $self->{parseCommand} }, @foldersToDo;
+    my @command = ( @{ $self->{parseCommand} }, @foldersToDo );
     warn "@command";
     system @command;
     delete @{$self}{@folders};
