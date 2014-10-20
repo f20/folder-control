@@ -55,7 +55,7 @@ sub normaliseHash {
     if ($keyFilter) {
         delete $hr->{$_} foreach grep { !$keyFilter->($_); } keys %$hr;
     }
-    my @original   = keys %$hr;
+    my @original   = sort keys %$hr;
     my @normalised = map { $normaliser->($_); } @original;
     my @unique     = map { lc($_); } @normalised;
     my %map;
