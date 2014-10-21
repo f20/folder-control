@@ -284,8 +284,13 @@ foreach (@ARGV) {
         my $target;
         $target = FileMgt106::Tools::parseText( $root . $ext )
           if $ext =~ /txt|yml/i;
-        $target ||= FileMgt106::Tools::loadJbz( $root . $ext,
-            $filter ? undef : sub { $_[0] !~ /^~WRL[0-9]+\.tmp$/s; } );
+        $target ||= FileMgt106::Tools::loadJbz(
+            $root . $ext,
+            $filter ? undef : sub {
+                $_[0] !~ /^~WRL[0-9]+\.tmp$/s
+                  and $_[0] !~ /^\.dta$/s;
+            }
+        );
         if ( $filterFlag && $filterFlag eq 'split' ) {
             FileMgt106::Tools::saveJbzPretty( "$root.$_.jbz",
                 ref $target->{$_} ? $target->{$_} : { $_ => $target->{$_} } )
