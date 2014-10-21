@@ -288,7 +288,7 @@ foreach (@ARGV) {
             $root . $ext,
             $filter ? undef : sub {
                 $_[0] !~ /^~WRL[0-9]+\.tmp$/s
-                  and $_[0] !~ /^\.dta$/s;
+                  and $_[0] !~ /\.dta$/s;
             }
         );
         if ( $filterFlag && $filterFlag eq 'split' ) {
