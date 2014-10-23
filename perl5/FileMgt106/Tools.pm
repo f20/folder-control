@@ -431,32 +431,39 @@ sub normaliseFileNames {
 }
 
 sub datemarkFolder {
-    my ($path) = @_;
-    my $maxt = 0;
-    my $dh;
-    opendir $dh, $path or return;
-    my @list = map { decode_utf8 $_; } grep { !/^\./s } readdir $dh;
-    foreach (@list) {
-        my $p2    = "$path/$_";
-        my $mtime = ( lstat $p2 )[9];
-        if ( -d _ ) {
-            $mtime = datemarkFolder($p2);
+    my $prefix = defined $_[0] && length $_[0] ? "$_[0]" : '.';
+    my $datemarker;
+    $datemarker = sub {
+        my ($path) = @_;
+        my $maxt = 0;
+        my $dh;
+        opendir $dh, $prefix . $path or return;
+        my @list = map { decode_utf8 $_; } grep { !/^\./s } readdir $dh;
+        foreach (@list) {
+            my $p2    = "$path/$_";
+            my $mtime = ( lstat $prefix . $p2 )[9];
+            if ( -d _ ) {
+                $mtime = $datemarker->($p2);
+            }
+            elsif ( !-f _ ) {
+                $mtime = 0;
+            }
+            $maxt = $mtime if $mtime > $maxt;
         }
-        elsif ( !-f _ ) {
-            $mtime = 0;
+        my $np = $path;
+        if ( $maxt && length $path ) {
+            my $date = POSIX::strftime( '%Y-%m-%d', localtime($maxt) );
+            $np =~ s#(?:[() XY_]|$date)*([^/]*)$#Y_$date $1#s;
+            $np =~ s/ +$//s;
+            if ( $np ne $path ) {
+                $np .= '_' while -e $np;
+                rename $prefix . $path, $prefix . $np;
+            }
         }
-        $maxt = $mtime if $mtime > $maxt;
-    }
-    my $date = POSIX::strftime( '%Y-%m-%d', localtime($maxt) );
-    my $np = $path;
-    $np =~ s#(?:[() XY_]|$date)*([^/]*)$#Y_$date $1#s;
-    $np =~ s/ +$//s;
-    if ( $np ne $path ) {
-        $np .= '_' while -e $np;
-        rename $path, $np;
-    }
-    utime time, $maxt, $np;    # only works if folder owner
-    $maxt;
+        utime time, $maxt, $prefix . $np;    # only works if folder owner
+        $maxt;
+    };
+    $datemarker->('');
 }
 
 sub categoriseByDay {
