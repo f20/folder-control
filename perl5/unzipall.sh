@@ -23,6 +23,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+if [[ "$ZIP_FOLDER_NAME" == "" ]]; then ZIP_FOLDER_NAME=Z_Zip; fi
 shopt -s nocasematch
 l1=("$@")
 while [[ "${l1[@]}" != "" ]]
@@ -42,8 +43,8 @@ do
                     then
                         cd "$y"
                         l2+=("`pwd`")
-                        unzip -o  "$x"
-                        z=`dirname "$x"`/Z_Zip
+                        unzip -o "$x"
+                        z=`dirname "$x"`/"$ZIP_FOLDER_NAME"
                         if [ ! -e "$z" ]; then mkdir "$z"; fi
                         mv -n "$x" "$z"
                     fi
