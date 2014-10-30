@@ -136,19 +136,30 @@ sub makeCsvWriter {
 sub makeSpreadsheetWriter {
     my ( $format, $fileName ) = @_;
     my $module;
-    if ( $format =~ /^xls$/s && eval { require Spreadsheet::WriteExcel; } ) {
-        $fileName .= '.xls';
-        $module = 'Spreadsheet::WriteExcel';
+    if ( $format =~ /^xls$/s ) {
+        if ( eval { require Spreadsheet::WriteExcel; } ) {
+            $fileName .= '.xls';
+            $module = 'Spreadsheet::WriteExcel';
+        }
+        else {
+            warn "Could not load Spreadsheet::WriteExcel: $@";
+        }
     }
-    if ( !$module && eval { require Excel::Writer::XLSX; } ) {
-        $fileName .= '.xlsx';
-        $module = 'Excel::Writer::XLSX';
+    if ( !$module ) {
+        if ( eval { require Excel::Writer::XLSX; } ) {
+            $fileName .= '.xlsx';
+            $module = 'Excel::Writer::XLSX';
+        }
+        else {
+            warn "Could not load Excel::Writer::XLSX: $@";
+        }
     }
     if ( !$module && eval { require Spreadsheet::WriteExcel; } ) {
         $fileName .= '.xls';
         $module = 'Spreadsheet::WriteExcel';
     }
     if ($module) {
+        warn "Using $module";
         my $wb = $module->new( $fileName . $$ );
         my $ws = $wb->add_worksheet('Extracted');
         $ws->set_paper(9);
@@ -188,6 +199,7 @@ sub makeSpreadsheetWriter {
             }
         };
     }
+    warn 'Using CSV';
     makeCsvWriter($fileName);
 }
 
