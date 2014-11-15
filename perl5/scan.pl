@@ -81,8 +81,12 @@ foreach (@ARGV) {
         $cleaningFlag = $1;
         next;
     }
-    elsif (/^-+((?:filter|split|explode).*)$/) {
+    elsif (/^-+((?:filter).*)$/) {
         $filterFlag = $1;
+        next;
+    }
+    elsif (/^-+((?:split|explode).*)$/) {
+        $filterFlag = $1 . 'nodb';
         next;
     }
     elsif (/^-+(datemark.*)$/) {
@@ -291,13 +295,16 @@ foreach (@ARGV) {
                   and $_[0] !~ /\.dta$/s;
             }
         );
-        if ( $filterFlag && $filterFlag eq 'split' ) {
-            FileMgt106::Tools::saveJbzPretty( "$root.$_.jbz",
-                ref $target->{$_} ? $target->{$_} : { $_ => $target->{$_} } )
-              foreach keys %$target;
+        if ( $filterFlag && $filterFlag =~ /split/ ) {
+            while ( my ( $k, $v ) = each %$target ) {
+                local $_ = $k;
+                s#/#..#g;
+                FileMgt106::Tools::saveJbzPretty( "$root.$_.jbz",
+                    ref $v ? $v : { $k => $v } );
+            }
             next;
         }
-        elsif ( $filterFlag && $filterFlag eq 'explode' ) {
+        elsif ( $filterFlag && $filterFlag =~ /explode/ ) {
             FileMgt106::Tools::saveJbzPretty( "$root.exploded.jbz",
                 FileMgt106::Tools::explodeByType($target) );
             next;
