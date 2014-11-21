@@ -67,7 +67,7 @@ sub run {
     if ( !( $logging ||= '' ) ) {
         require POSIX;
         $SIG{'__WARN__'} = sub {
-            return if $_[0] =~ /^Subroutine .* redefined at/;
+            return if $_[0] =~ /^Subroutine .+ redefined at/;
             warn "[$$] " . POSIX::strftime( '%r: ', localtime ), @_;
         };
     }
@@ -84,6 +84,7 @@ sub run {
             }
             Sys::Syslog::openlog( $nickName, "pid", "local5" );
             $SIG{'__WARN__'} = sub {
+                return if $_[0] =~ /^Subroutine .+ redefined at/;
                 Sys::Syslog::syslog( "info", join ' ', @_ );
             };
         }
@@ -93,7 +94,7 @@ sub run {
             my $nickPid = " $nickName\[$$]: ";
             require POSIX;
             $SIG{'__WARN__'} = sub {
-                return if $_[0] =~ /^Subroutine .* redefined at/;
+                return if $_[0] =~ /^Subroutine .+ redefined at/;
                 warn POSIX::strftime( '%b %e %H:%M:%S', localtime ) . $nickPid,
                   @_;
             };
