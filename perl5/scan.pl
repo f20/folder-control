@@ -166,7 +166,8 @@ foreach (@ARGV) {
         last;
     }
     elsif (/^-+migrate(?:=(.+))?/) {
-        my $oldFileName = $1;
+        my $oldFileName;
+        $oldFileName = rel2abs( $1, $startDir ) if $1;
         chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
         unless ( $oldFileName && -f $oldFileName ) {
             $hints->{dbHandle}->do('begin exclusive transaction')
