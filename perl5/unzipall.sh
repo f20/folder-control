@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-# Copyright 2014 Franck Latrémolière, Reckon LLP.
+# Copyright 2014-2015 Franck Latrémolière, Reckon LLP.
 # 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -23,37 +23,28 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if [[ "$ZIP_FOLDER_NAME" == "" ]]; then ZIP_FOLDER_NAME=Z_Zip; fi
-shopt -s nocasematch
-l1=("$@")
-while [[ "${l1[@]}" != "" ]]
-do
-    l2=()
-    for r in "${l1[@]}"
+if [ "$ZIP_FOLDER_NAME" == "" ]; then ZIP_FOLDER_NAME=Z_Zip; fi
+
+unzipper ( ) {
+    find "$1" -iname \*.zip | while read -r x
     do
-        if pushd "$r"
+        if [ "`echo "$x" | egrep '/(^|\/)(Z_|~\$)'`" == "" ]
         then
-            while read -r -u3 x
-            do
-                if [[ ! "$x" =~ /(Z_|~\$) ]]
-                then
-                    y=${x/\.zip/}
-                    while [ -e "$y" ]; do y="$y"_; done
-                    if mkdir "$y"
-                    then
-                        cd "$y"
-                        l2+=("`pwd`")
-                        unzip -o "$x"
-                        z=`dirname "$x"`/"$ZIP_FOLDER_NAME"
-                        if [ ! -e "$z" ]; then mkdir "$z"; fi
-                        mv -n "$x" "$z"
-                    fi
-                fi
-            done 3< <(find "`pwd`" -iname \*.zip)
-            popd
-        else
-            echo "Cannot pushd: $r"
+            y=`echo "$x" | sed 's/\.zip$//i'`
+            while [ -e "$y" ]; do y="$y"_; done
+            if mkdir "$y"
+            then
+                unzip -d "$y" -o "$x"
+                z=`dirname "$x"`/"$ZIP_FOLDER_NAME"
+                if [ ! -e "$z" ]; then mkdir "$z"; fi
+                mv -n "$x" "$z"
+                unzipper "$y"
+            fi
         fi
     done
-    l1=("${l2[@]}")
+}
+
+for r in "$@"
+do
+    unzipper "$r"
 done
