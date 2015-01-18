@@ -28,7 +28,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =cut
 
 # To test by hand:
-# perl -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage("test.eml")'
+# perl -I/path/to/perl5/folder -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage($_) foreach "1."'
 
 use strict;
 use warnings;
@@ -73,11 +73,11 @@ sub getRawBody {
 
 sub parseMessage {
     my ( $emailFile, $destination ) = @_;
-    my @warnings;
-    my $savewarn = $SIG{__WARN__};
-    $SIG{__WARN__} = sub { push @warnings, @_; };
-    my $mtime = ( stat $emailFile )[STAT_MTIME]
-      or warn "Cannot stat $emailFile";
+    my $mtime = ( stat $emailFile )[STAT_MTIME];
+    unless ( defined $mtime ) {
+        warn "Cannot stat $emailFile";
+        return;
+    }
     my $folder;
     unless ($destination) {
         my @localtime = localtime $mtime;
@@ -88,8 +88,11 @@ sub parseMessage {
     open my $mfh, '<', $emailFile or die "Cannot open $emailFile: $!";
     binmode $mfh, ':raw';
     local undef $/;
-    my $email = new Email::MIME(<$mfh>)
-      or die "Cannot parse $emailFile";
+    my $email = new Email::MIME(<$mfh>);
+    unless ($email) {
+        warn "Cannot parse $emailFile";
+        return;
+    }
     close $mfh or warn $!;
     if ($destination) {
         $folder = $destination;
@@ -120,8 +123,13 @@ sub parseMessage {
             $folder .= $counter;
         }
     }
-    mkdir "$folder.tmp"
-      or die "Cannot make $folder.tmp for $emailFile: $!";
+    unless ( mkdir "$folder.tmp" ) {
+        warn "Cannot make $folder.tmp for $emailFile: $!";
+        return;
+    }
+    my $savewarn = $SIG{__WARN__};
+    my @warnings;
+    $SIG{__WARN__} = sub { push @warnings, @_; };
     eval {
         my $fn0   = 'Email.txt';
         my @files = ($fn0);
@@ -135,7 +143,7 @@ sub parseMessage {
           ),
           '';
         my $partEater;
-        my %eaten;    # to avoid a weird infinite loop on some messages
+        my %eaten;    # to avoid a weird infinite loop on some messages
         $partEater = sub {
             my ($item) = @_;
             return if $eaten{ 0 + $item } || $item->subparts;
@@ -181,24 +189,29 @@ sub parseMessage {
                 $fn .= $ext;
             }
             if ( $fn eq 'winmail.dat' ) {
-                eval {
-                    pipe my $r, my $w or die $!;
-                    if ( my $pid = fork ) {
+                pipe my $r, my $w;
+                my $pid = fork;
+                if ( defined $pid ) {
+                    if ($pid) {
                         close $r;
-                        print {$w} getRawBody($item) or die $!;
+                        print {$w} getRawBody($item);
                         close $w;
                         waitpid $pid, 0;
                         _unzipfolder("$folder.tmp/winmail");
+                        return;
                     }
-                    else {
+                    elsif ( defined $pid ) {
                         close $w;
                         open \*STDIN, '<&', fileno($r);
-                        mkdir "$folder.tmp/winmail" or die $!;
-                        chdir "$folder.tmp/winmail" or die $!;
-                        exec 'tnef'                 or exec '/bin/test';
+                        mkdir "$folder.tmp/winmail"
+                          and chdir "$folder.tmp/winmail"
+                          and exec 'tnuf';
+                        local undef $/;
+                        <$r>;
+                        close $r;
+                        exec '/bin/test';
                     }
-                };
-                return unless $@;
+                }
             }
             unshift @files, $fn;
             eval {
@@ -214,16 +227,6 @@ sub parseMessage {
                 }
                 if ( $fn =~ /(.*)\.zip$/is ) {
                     _unzipfile( "$folder.tmp", $fn, $1 );
-                }
-                if ( $fn =~ /^(winmail)\.dat$/is ) {
-                    mkdir "$folder.tmp/winmail";
-                    unless ( system qw(tnef -f),
-                        "$folder.tmp/$fn", '-C', "$folder.tmp/winmail" )
-                    {
-                        _unzipfolder("$folder.tmp/winmail");
-                        mkdir "$folder.tmp/Z_Unpacked";
-                        rename "$folder.tmp/$fn", "$folder.tmp/Z_Unpacked/$fn";
-                    }
                 }
             };
             warn "$fn: $@" if $@;
@@ -246,7 +249,7 @@ sub parseMessage {
           @warnings;
         close $fh;
     }
-    rename "$folder.tmp", $folder or die "rename $folder.tmp: $!";
+    rename "$folder.tmp", $folder or warn "rename $folder.tmp: $!";
     $folder;
 }
 
@@ -275,3 +278,4 @@ sub _unzipfolder {
 }
 
 1;
+
