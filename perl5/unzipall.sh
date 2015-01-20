@@ -30,7 +30,7 @@ unzipper ( ) {
     do
         if [ "`echo "$x" | egrep '/(^|\/)(Z_|~\$)'`" == "" ]
         then
-            y=`echo "$x" | sed 's/\.zip$//i'`
+            y=`echo "$x" | sed -E 's/\.[zZ][iI][pP]$//'`
             while [ -e "$y" ]; do y="$y"_; done
             if mkdir "$y"
             then
