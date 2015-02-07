@@ -108,6 +108,12 @@ foreach (@ARGV) {
         $grabFrom = $1 || '';
         next;
     }
+    elsif (/^-+read-?only/) {
+        push @applyScanMasterConfig, sub {
+            $_[0]->setFrotl(2_000_000_000);
+        };
+        next;
+    }
     elsif (/^-+cat/) {
         push @applyScanMasterConfig, sub {
             $_[0]->setScalarTaker(
@@ -129,7 +135,7 @@ foreach (@ARGV) {
                     && $dir !~ m#/\~\$#
                     && substr( $dir, 0, length($repoDir) ) ne $repoDir )
                 {
-                    if ( $dir =~ m#(?:Stor|/Y_|/\.Trash)# ) {
+                    if ( $dir =~ m#/(?:Y_|\.Trash)# ) {
                         $scanner->setJsonTaker(
                             catfile( $perl5dir, 'jsontaker.sh' ),
                             $hints->{repositoryPath}->( $dir, $repoDir )
