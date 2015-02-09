@@ -2,7 +2,7 @@ package FileMgt106::ScanAperture;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière.
+Copyright 2011-2015 Franck Latrémolière.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,6 @@ use Cwd;
 use Encode qw(decode_utf8 encode_utf8);
 use FileMgt106::Scanner;
 use FileMgt106::FileSystem;
-use FileMgt106::Permissions;
 
 use constant {
     LIB_DIR           => 0,
@@ -141,7 +140,7 @@ sub repairPermissions {
 
 sub scan {
     my ( $lib, $hints ) = @_;
-    my $stat = statFromGid( $lib->[LIB_RGID] );
+    my $stat = $hints->statFromGid( $lib->[LIB_RGID] );
     $hints->beginInteractive;
     warn "Scanning $lib->[LIB_DIR]/Masters";
     FileMgt106::Scanner->new( "$lib->[LIB_DIR]/Masters", $hints, $stat )

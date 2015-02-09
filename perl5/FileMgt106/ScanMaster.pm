@@ -2,7 +2,7 @@ package FileMgt106::ScanMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -42,7 +42,6 @@ require POSIX;
 use FileMgt106::Scanner;
 use FileMgt106::Tools;
 use FileMgt106::FileSystem;
-use FileMgt106::Permissions;
 use JSON;
 
 use constant {
@@ -57,10 +56,8 @@ use constant {
     RESCANTIME  => 8,
     ROOTLOCID   => 9,
     SHA1        => 10,
-    JSONTAKER   => 11,
-    JSONFOLDER  => 12,
-    FROTL       => 13,
-    SCALARTAKER => 14,
+    FROTL       => 11,
+    SCALARTAKER => 12,
 };
 
 sub new {
@@ -77,7 +74,6 @@ sub setRepo {
         }
         if ( -d $repository && -w _ ) {
             $self->[REPO] = [ $repository, 'No date' ];
-            $self->[JSONFOLDER] ||= $repository;
         }
     }
     else {
@@ -86,29 +82,88 @@ sub setRepo {
     $self;
 }
 
-sub setJsonTaker {
-    my ( $self, $jsonTaker, $jsonFolder ) = @_;
-    if ($jsonFolder) {
-        mkdir $jsonFolder unless -e $jsonFolder;
-        if ( -d $jsonFolder && -w _ ) {
-            $self->[JSONFOLDER] = $jsonFolder;
+sub setJbzLocation {
+    my ( $self, $folder ) = @_;
+    unless ($folder) {
+        delete $self->[SCALARTAKER];
+        return $self;
+    }
+    my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
+    $name ||= 'No name';
+    $name                = "_$name" if $name =~ /^\./s;
+    $name                = "$folder/$name.jbz";
+    $self->[SCALARTAKER] = sub {
+        FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
+        if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
+            $mtime =
+              POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
+            my $njbz = $name;
+            $njbz =~ s/.jbz$/ $mtime.jbz/;
+            $njbz = '~$stash/' . $njbz if -e '~$stash';
+            link $name, $njbz;
         }
+        rename $name . $$, $name;
+    };
+    $self;
+}
+
+sub setGitLocation {
+    my ( $self, $folder ) = @_;
+    unless ($folder) {
+        delete $self->[SCALARTAKER];
+        return $self;
     }
-    if ( $jsonTaker
-        and ref $jsonTaker || -x $jsonTaker )
-    {
-        $self->[JSONTAKER] = ref $jsonTaker ? $jsonTaker : [$jsonTaker];
-        $self->[JSONFOLDER] ||= $self->[DIR];
-    }
-    else {
-        delete $self->[JSONTAKER];
-    }
+    $self->[SCALARTAKER] = sub {
+        my ( $scalar, $blobref, $runner ) = @_;
+        my $run = sub {
+            my ($hints) = @_;
+            my $result =
+              $hints->{updateSha1if}->( $self->[SHA1], $self->[ROOTLOCID] );
+            $hints->commit;
+            return if defined $result && $result == 0;
+            my $pid = fork;
+            return if $pid;
+            POSIX::setsid() if defined $pid;
+            if ( chdir $folder ) {
+                warn "Catalogue update for $self";
+                my ($name) = ( $folder =~ m#([^/]+)/*$#s );
+                $name ||= 'No name';
+                open my $f, '>', "$name.txt.$$";
+                binmode $f;
+                print {$f} $$blobref;
+                close $f;
+                rename "$name.txt.$$", "$name.txt";
+                $ENV{PATH} =
+'/usr/local/bin:/usr/local/git/bin:/usr/bin:/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
+                system qw(git init) unless -e '.git';
+                system qw(git add),             "$name.txt";
+                system qw(git commit -a -q -m), "$name.txt";
+
+                if ( -d '../%jbz' ) {
+                    system qw(bzip2), "$name.txt";
+                    rename "$name.txt.bz2", "../%jbz/$name.jbz";
+                }
+            }
+            else {
+                warn "Cannot chdir to $folder: $!";
+            }
+            exec '/bin/test' if defined $pid;
+            die 'This should not happen';
+        };
+        if ($runner) {
+            delete $self->[SCALAR] unless $self->[WATCHING];
+            $self->[HINTS]->enqueue( $runner->{pq}, $run );
+        }
+        else {
+            $run->( $self->[HINTS] );
+        }
+    };
     $self;
 }
 
 sub setWatch {
     my $self = shift;
-    if ( defined $_[0] ) {
+    if (@_) {
         $self->[WATCHING] = \@_;
     }
     else {
@@ -134,10 +189,12 @@ sub setToRescan {
 }
 
 sub dequeued {
+
     my ( $self, $runner ) = @_;
     delete $self->[QID];
     my $time         = time;
     my @refLocaltime = localtime( $time - 17_000 );
+
     unless ( $self->[SCALAR]
         && $self->[RESCANTIME]
         && $self->[RESCANTIME] > $time )
@@ -159,7 +216,7 @@ sub dequeued {
             my ($hints) = @_;
             @{$self}[ SCALAR, ROOTLOCID ] =
               FileMgt106::Scanner->new( $self->[DIR], $hints,
-                statFromGid($rgid) )
+                $hints->statFromGid($rgid) )
               ->scan( $frotl, undef, $self->[REPO],
                 $self->[WATCHING] ? $self : undef );
             $self->schedule( $time, $runner->{qu} ) if $runner;
@@ -181,71 +238,7 @@ sub dequeued {
             $self->[HINTS]->commit;
         }
     }
-    return $self
-      unless $self->[SCALARTAKER]
-      or $self->[JSONFOLDER] && -d $self->[JSONFOLDER] && -w _ ;
-    my $blob = JSON->new->canonical(1)->utf8->pretty;
-    $blob = $blob->encode( $self->[SCALAR] );
-    my $newSha1 = sha1($blob);
-    unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
-        $self->[SCALARTAKER]->( $self->[SCALAR] ) if $self->[SCALARTAKER];
-        return $self
-          unless $self->[JSONFOLDER] && -d $self->[JSONFOLDER] && -w _ ;
-        my $run = sub {
-            my ($hints) = @_;
-            my $result =
-              $hints->{updateSha1if}
-              ->( $self->[SHA1] = $newSha1, $self->[ROOTLOCID] );
-            $hints->commit;
-            return if defined $result && $result == 0;
-            warn "Catalogue update for $self";
-            chdir $self->[JSONFOLDER]
-              or die "Cannot chdir to $self->[JSONFOLDER]: $!";
-            my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
-            $name ||= 'No name';
-            $name = "_$name" if $name =~ /^\./s;
 
-            if ( $self->[JSONTAKER] ) {
-                open my $f, '>', "$name.txt.$$";
-                binmode $f;
-                print {$f} $blob;
-                close $f;
-                rename "$name.txt.$$", "$name.txt";
-                system @{ $self->[JSONTAKER] }, $name;
-                return;
-            }
-            FileMgt106::Tools::saveBzOctets( 'tmp.jbz', $blob );
-            if ( $self->[REPO] ) {
-                my $jbz0 = $name .= '.jbz';
-                $name =~
-s/.jbz$/POSIX::strftime( ' %Y-%m-%d %H-%M-%S %Z', localtime).'.jbz'/e;
-                mkdir $self->[REPO][1] unless -e $self->[REPO][1];
-                $name = "$self->[REPO][1]/$name";
-                rename 'tmp.jbz', $name;
-                link $name, 'tmp.jbz';
-                rename 'tmp.jbz', $jbz0;
-            }
-            else {
-                $name = $name . '.jbz';
-                if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
-                    $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z',
-                        localtime($mtime) );
-                    my $njbz = $name;
-                    $njbz =~ s/.jbz$/ $mtime.jbz/;
-                    $njbz = '~$stash/' . $njbz if -e '~$stash';
-                    link $name, $njbz;
-                }
-                rename 'tmp.jbz', $name;
-            }
-        };
-        if ($runner) {
-            delete $self->[SCALAR] unless $self->[WATCHING];
-            $self->[HINTS]->enqueue( $runner->{pq}, $run );
-        }
-        else {
-            $run->( $self->[HINTS] );
-        }
-    }
     $self->schedule(
         $time - int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) + 3_600 * (
             $self->[WATCHING]
@@ -259,7 +252,19 @@ s/.jbz$/POSIX::strftime( ' %Y-%m-%d %H-%M-%S %Z', localtime).'.jbz'/e;
         ),
         $runner->{qu}
     ) if $runner;
+
+    if ( $self->[SCALARTAKER] ) {
+        my $blob =
+          JSON->new->canonical(1)->utf8->pretty->encode( $self->[SCALAR] );
+        my $newSha1 = sha1($blob);
+        unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
+            $self->[SHA1] = $newSha1;
+            $self->[SCALARTAKER]->( $self->[SCALAR], \$blob, $runner );
+        }
+    }
+
     $self;
+
 }
 
 sub schedule {

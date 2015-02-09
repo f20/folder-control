@@ -2,7 +2,7 @@
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -58,9 +58,6 @@ use FileMgt106::Scanner;
 use FileMgt106::Tools;
 use FileMgt106::ScanMaster;
 use FileMgt106::FileSystem;
-use FileMgt106::Permissions;
-
-FileMgt106::Tools::setNormalisation(<$perl5dir/~\$*>);
 
 my (
     $hints,                 $filter,       @baseScalars,
@@ -118,8 +115,8 @@ foreach (@ARGV) {
         push @applyScanMasterConfig, sub {
             $_[0]->setScalarTaker(
                 sub {
-                    binmode STDOUT, ':utf8';
-                    print JSON->new->canonical(1)->pretty->encode( $_[0] );
+                    binmode STDOUT;
+                    print ${ $_[1] };
                 }
             );
         };
@@ -135,25 +132,17 @@ foreach (@ARGV) {
                     && $dir !~ m#/\~\$#
                     && substr( $dir, 0, length($repoDir) ) ne $repoDir )
                 {
-                    if ( $dir =~ m#/(?:Y_|\.Trash)# ) {
-                        $scanner->setJsonTaker(
-                            catfile( $perl5dir, 'jsontaker.sh' ),
-                            $hints->{repositoryPath}->( $dir, $repoDir )
-                        );
-                    }
-                    else {
-                        $scanner->setRepo(
-                            $hints->{repositoryPath}->( $dir, $repoDir ) )
-                          ->setJsonTaker(
-                            catfile( $perl5dir, 'jsontaker.sh' ) );
-                    }
+                    my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
+                    $scanner->setGitLocation($repo);
+                    $scanner->setRepo($repo)
+                      unless $dir =~ m#/(?:Y_|\.Trash)#;
                 }
             };
         }
         else {
             my $repoDir = !$_ ? $startDir : m#^/#s ? $_ : "$startDir/$_";
             push @applyScanMasterConfig,
-              sub { $_[0]->setJsonTaker( undef, $repoDir ); };
+              sub { $_[0]->setJbzLocation($repoDir); };
         }
         next;
     }
@@ -338,7 +327,7 @@ foreach (@ARGV) {
                 $target = (
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints,
-                        statFromGid( ( stat $dir )[STAT_GID] )
+                        $hints->statFromGid( ( stat $dir )[STAT_GID] )
                     )
                 )->infill($target);
             };
@@ -357,7 +346,7 @@ foreach (@ARGV) {
             eval {
                 (
                     $scanners{$dir} = FileMgt106::Scanner->new(
-                        $dir, $hints, statFromGid($rgid)
+                        $dir, $hints, $hints->statFromGid($rgid)
                     )
                 )->scan( 0, $target );
             };
@@ -384,7 +373,7 @@ foreach (@ARGV) {
             mkdir $destination;
             my ($s) = FileMgt106::Scanner->new( $dir, $hints )->scan;
             FileMgt106::Scanner->new( $destination, $hints,
-                statFromGid(666666) )->scan( 0, $s );
+                FileMgt106::FileSystem::noInodeStat() )->scan( 0, $s );
             $hints->commit;
             next;
         }
@@ -468,7 +457,8 @@ if ($missing) {
         my $stillMissing = eval {
             (
                 $scanners{$dir} || FileMgt106::Scanner->new(
-                    $dir, $hints, statFromGid( ( stat $dir )[STAT_GID] )
+                    $dir, $hints,
+                    $hints->statFromGid( ( stat $dir )[STAT_GID] )
                 )
             )->infill($scalar);
         };

@@ -2,7 +2,7 @@ package EmailMgt108::EmailMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -33,22 +33,8 @@ use utf8;
 use JSON;
 
 sub new {
-    my ( $class, $runner, $parseCommand ) = @_;
-    bless {
-        queue        => $runner->{pq},
-        parseCommand => $parseCommand,
-    }, $class;
-}
-
-sub addImapScanMaster {
-    my ( $self, $imapScanMaster, $imapFolder, $emailFolder ) = @_;
-    $imapScanMaster->setScalarTaker(
-        sub {
-            $self->{$emailFolder}{$imapFolder} = $_[0];
-            $self->schedule;
-        }
-    );
-    $self->schedule;
+    my ( $class, $runner ) = @_;
+    bless { queue => $runner->{pq}, }, $class;
 }
 
 sub schedule {
@@ -214,10 +200,16 @@ EOS
             print {$h} encode_json($stashedFolders);
         }
     }
-    my @command = ( @{ $self->{parseCommand} }, @foldersToDo );
-    warn "@command";
-    system @command;
-    delete @{$self}{@folders};
+    my $pid = fork;
+    warn "Cannot fork for @foldersToDo" unless defined $pid;
+    if ($pid) {
+        warn "Forked $pid for $foldersToDo";
+        delete @{$self}{@folders};
+    }
+    else {
+        require EmailMgt108::EmailController;
+        EmailMgt108::EmailController->runParser(@foldersToDo);
+    }
 }
 
 1;

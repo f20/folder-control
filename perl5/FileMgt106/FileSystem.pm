@@ -2,7 +2,7 @@ package FileMgt106::FileSystem;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -73,7 +73,6 @@ sub noInodeStat {
     sub {
         my @stat = lstat $_[0] or return;
         $stat[STAT_CHMODDED] = 0;
-        $stat[STAT_INO]      = 666666;
         $stat[STAT_MODE] &= 0555;
         @stat;
     };

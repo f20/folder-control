@@ -2,7 +2,7 @@ package Daemon112::TopMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -59,11 +59,11 @@ sub activate {
         }
         else {
             my $dir = decode_utf8 getcwd();
+            ny $repo= $hints->{repositoryPath}->( $dir, $repoDir );
             $runner->{qu}->enqueue( ++$$timeref,
                 $self->{$_} =
-                  FileMgt106::ScanMaster->new( $hints, $dir )
-                  ->setRepo( $hints->{repositoryPath}->( $dir, $repoDir ) )
-                  ->setJsonTaker($jsonTaker) );
+                  FileMgt106::ScanMaster->new( $hints, $dir )->setRepo($repo)
+                  ->setGitLocation($repo) );
         }
         chdir $root or die "Cannot chdir $root: $!";
     }

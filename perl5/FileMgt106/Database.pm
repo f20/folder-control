@@ -2,7 +2,7 @@ package FileMgt106::Database;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -82,6 +82,81 @@ use constant {
     STAT_SIZE  => 7,
     STAT_MTIME => 9,
 };
+
+sub gidInfo {
+    my ($self) = @_;
+    return $self->{gidInfo} if $self->{gidInfo};
+    my $file = $self->{sqliteFile} . '-gidInfo.txt';
+    my $fh;
+    if ( open $fh, '<', $file ) {
+        binmode $fh, ':utf8';
+        local $/ = "\n";
+        while (<$fh>) {
+            next unless my ( $k, $v ) = /(\S+):(.+)/;
+            $self->{gidInfo}{$k} = $v =~ /^([0-9,]+)\s*$/s ? [ split /,/, $1 ] : $v;
+        }
+        close $fh;
+    }
+    unless ( $self->{gidInfo} ) {
+        $self->{gidInfo} = {
+            6    => 'imap',
+            1037 => 'mgt',
+            1030 => 'world',
+            1025 => [qw(1026 1028 1029 1032 1034 1037 1038)],
+            1026 => [qw(1028 1029 1032 1034 1037)],
+            1066 => [qw(1028)],
+            1069 => [qw(1028 1066)],
+        };
+        if ( open $fh, '>', $file . $$ ) {
+            binmode $fh, ':utf8';
+            print $fh "$_:"
+              . (
+                ref $self->{gidInfo}{$_}
+                ? join( ',', @{ $self->{gidInfo}{$_} } )
+                : $self->{gidInfo}{$_}
+              )
+              . "\n"
+              foreach sort { $a <=> $b } keys %{ $self->{gidInfo} };
+            close $fh;
+            rename $file . $$, $file;
+        }
+    }
+    $self->{gidInfo};
+}
+
+sub statFromGid {
+    my ( $self, $rgid ) = @_;
+    my $gidInfo = $self->gidInfo;
+
+    return unless $rgid;
+    my $myInfo = $gidInfo->{$rgid} || '';
+    return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
+    return FileMgt106::FileSystem::imapStat($rgid)       if $myInfo eq 'imap';
+    return FileMgt106::FileSystem::publishedStat($rgid)  if $myInfo eq 'world';
+
+    # Categorisation system for gids:
+    # 775 = files with this gid are world readable.
+    # 431 = we can read files with this gid.
+    # 279 = we may take over files with this gid.
+    # otherwise we know nothing about this gid.
+    my %map = ( $rgid => 431 );
+    if ( ref $myInfo eq 'ARRAY' ) {
+        $map{$_} = 279 foreach @$myInfo;
+    }
+    while ( my ( $gid, $info ) = each %$gidInfo ) {
+        if ( ref $info eq 'ARRAY' ) {
+            $map{$gid} = 431 if grep { $rgid == $_ } @$info;
+        }
+        elsif ( $info eq 'mgt' ) {
+            $map{$gid} = 279;
+        }
+        elsif ( $info eq 'world' ) {
+            $map{$gid} = 775;
+        }
+    }
+
+    FileMgt106::FileSystem::statFromGidAndMapping( $rgid, \%map );
+}
 
 sub new {
     my ( $self, $sqliteFile, $readOnly ) = @_;
