@@ -133,7 +133,7 @@ foreach (@ARGV) {
                     && substr( $dir, 0, length($repoDir) ) ne $repoDir )
                 {
                     my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
-                    $scanner->setGitLocation($repo);
+                    $scanner->setCatalogue($repo);
                     $scanner->setRepo($repo)
                       unless $dir =~ m#/(?:Y_|\.Trash)#;
                 }
@@ -142,7 +142,7 @@ foreach (@ARGV) {
         else {
             my $repoDir = !$_ ? $startDir : m#^/#s ? $_ : "$startDir/$_";
             push @applyScanMasterConfig,
-              sub { $_[0]->setJbzLocation($repoDir); };
+              sub { $_[0]->setCatalogue( undef, $repoDir ); };
         }
         next;
     }
@@ -306,7 +306,6 @@ foreach (@ARGV) {
             next;
         }
         my $dir = $root;
-        $dir =~ s#/%jbz/#/#g;
         if ($filterFlag) {
             unless ($filter) {
                 $filter =

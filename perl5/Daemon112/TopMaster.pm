@@ -63,7 +63,7 @@ sub activate {
             $runner->{qu}->enqueue( ++$$timeref,
                 $self->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )->setRepo($repo)
-                  ->setGitLocation($repo) );
+                  ->setCatalogue( $repo, '../%jbz' ) );
         }
         chdir $root or die "Cannot chdir $root: $!";
     }

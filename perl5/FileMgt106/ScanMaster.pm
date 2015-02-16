@@ -82,35 +82,29 @@ sub setRepo {
     $self;
 }
 
-sub setJbzLocation {
-    my ( $self, $folder ) = @_;
-    unless ($folder) {
-        delete $self->[SCALARTAKER];
-        return $self;
-    }
-    my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
-    $name ||= 'No name';
-    $name                = "_$name" if $name =~ /^\./s;
-    $name                = "$folder/$name.jbz";
-    $self->[SCALARTAKER] = sub {
-        FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
-        if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
-            $mtime =
-              POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
-            my $njbz = $name;
-            $njbz =~ s/.jbz$/ $mtime.jbz/;
-            $njbz = '~$stash/' . $njbz if -e '~$stash';
-            link $name, $njbz;
+sub setCatalogue {
+    my ( $self, $gitFolder, $jbzFolder ) = @_;
+    unless ( $gitFolder && -d $gitFolder ) {
+        unless ( $jbzFolder && -d $jbzFolder ) {
+            delete $self->[SCALARTAKER];
+            return $self;
         }
-        rename $name . $$, $name;
-    };
-    $self;
-}
-
-sub setGitLocation {
-    my ( $self, $folder ) = @_;
-    unless ($folder) {
-        delete $self->[SCALARTAKER];
+        my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
+        $name ||= 'No name';
+        $name                = "_$name" if $name =~ /^\./s;
+        $name                = "$jbzFolder/$name.jbz";
+        $self->[SCALARTAKER] = sub {
+            FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
+            if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
+                $mtime =
+                  POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
+                my $njbz = $name;
+                $njbz =~ s/.jbz$/ $mtime.jbz/;
+                $njbz = '~$stash/' . $njbz if -e '~$stash';
+                link $name, $njbz;
+            }
+            rename $name . $$, $name;
+        };
         return $self;
     }
     $self->[SCALARTAKER] = sub {
@@ -124,9 +118,9 @@ sub setGitLocation {
             my $pid = fork;
             return if $pid;
             POSIX::setsid() if defined $pid;
-            if ( chdir $folder ) {
+            if ( chdir $gitFolder ) {
                 warn "Catalogue update for $self";
-                my ($name) = ( $folder =~ m#([^/]+)/*$#s );
+                my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
                 $name ||= 'No name';
                 open my $f, '>', "$name.txt.$$";
                 binmode $f;
@@ -139,13 +133,13 @@ sub setGitLocation {
                 system qw(git add),             "$name.txt";
                 system qw(git commit -a -q -m), "$name.txt";
 
-                if ( -d '../%jbz' ) {
+                if ( -d $jbzFolder ) {
                     system qw(bzip2), "$name.txt";
-                    rename "$name.txt.bz2", "../%jbz/$name.jbz";
+                    rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
                 }
             }
             else {
-                warn "Cannot chdir to $folder: $!";
+                warn "Cannot chdir to $gitFolder: $!";
             }
             exec '/bin/test' if defined $pid;
             die 'This should not happen';
