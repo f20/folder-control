@@ -84,8 +84,8 @@ sub setRepo {
 
 sub setCatalogue {
     my ( $self, $gitFolder, $jbzFolder ) = @_;
-    unless ( $gitFolder && -d $gitFolder ) {
-        unless ( $jbzFolder && -d $jbzFolder ) {
+    unless ( defined $gitFolder && -d $gitFolder ) {
+        unless ( defined $jbzFolder && -d $jbzFolder ) {
             delete $self->[SCALARTAKER];
             return $self;
         }
@@ -133,7 +133,7 @@ sub setCatalogue {
                 system qw(git add),             "$name.txt";
                 system qw(git commit -a -q -m), "$name.txt";
 
-                if ( -d $jbzFolder ) {
+                if ( defined $jbzFolder && -d $jbzFolder ) {
                     system qw(bzip2), "$name.txt";
                     rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
                 }
