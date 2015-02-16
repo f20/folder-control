@@ -240,18 +240,16 @@ sub new {
           = @_;
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > 1_999_999_999;
-        my $runningUnderWatcher = $hashref && $watchMaster;
         my $oldChildrenHashref = $children->($locid);
+        my $runningUnderWatcher = $hashref && $watchMaster;
         if ($runningUnderWatcher) {
             $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
         }
-        else {
-            $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
-                $forceReadOnlyTimeLimit, $stasher, $backuper )
-              if $watchMaster;
-        }
         my $target = !defined $watchMaster && $hashref;
         $hashref = {} if $target || !$hashref;
+        $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
+            $forceReadOnlyTimeLimit, $stasher, $backuper )
+          if $watchMaster && !$runningUnderWatcher;
         my %targetHasBeenApplied;
         my @list;
         {
