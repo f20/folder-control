@@ -241,12 +241,17 @@ sub new {
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > 1_999_999_999;
         my $runningUnderWatcher = $hashref && $watchMaster;
+        my $oldChildrenHashref = $children->($locid);
+        if ($runningUnderWatcher) {
+            $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
+        }
+        else {
+            $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
+                $forceReadOnlyTimeLimit, $stasher, $backuper )
+              if $watchMaster;
+        }
         my $target = !defined $watchMaster && $hashref;
         $hashref = {} if $target || !$hashref;
-        $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
-            $forceReadOnlyTimeLimit, $stasher, $backuper )
-          if $watchMaster && !$runningUnderWatcher;
-        my $oldChildrenHashref = $children->($locid);
         my %targetHasBeenApplied;
         my @list;
         {
@@ -593,8 +598,8 @@ sub new {
         }
 
         while ( my ( $kname, $klocid ) = each %$oldChildrenHashref ) {
-            delete $hashref->{$kname} if defined $watchMaster;
-            $uproot->($klocid);
+            delete $hashref->{$kname} if $runningUnderWatcher;
+            $uproot->($klocid) if $klocid;
         }
 
         if ( keys %binned ) {
