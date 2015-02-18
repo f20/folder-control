@@ -127,16 +127,22 @@ sub setCatalogue {
                 print {$f} $$blobref;
                 close $f;
                 rename "$name.txt.$$", "$name.txt";
+
                 $ENV{PATH} =
-'/usr/local/bin:/usr/local/git/bin:/usr/bin:/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
-                system qw(git init) unless -e '.git';
-                system qw(git add),             "$name.txt";
-                system qw(git commit -a -q -m), "$name.txt";
+                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+                  . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
+                if ( `git rev-parse --is-inside-work-tree` =~ /true/
+                    || !system qw(git init) )
+                {
+                    system qw(git add),             "$name.txt";
+                    system qw(git commit -a -q -m), "$name.txt";
+                }
 
                 if ( defined $jbzFolder && -d $jbzFolder ) {
                     system qw(bzip2), "$name.txt";
                     rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
                 }
+
             }
             else {
                 warn "Cannot chdir to $gitFolder: $!";
