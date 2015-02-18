@@ -131,7 +131,7 @@ sub setCatalogue {
                 $ENV{PATH} =
                     '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                   . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
-                if ( `git rev-parse --is-inside-work-tree` =~ /true/
+                if ( `git rev-parse --show-prefix` =~ /^[^~]/s
                     || !system qw(git init) )
                 {
                     system qw(git add),             "$name.txt";
