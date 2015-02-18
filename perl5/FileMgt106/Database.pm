@@ -93,7 +93,8 @@ sub gidInfo {
         local $/ = "\n";
         while (<$fh>) {
             next unless my ( $k, $v ) = /(\S+):(.+)/;
-            $self->{gidInfo}{$k} = $v =~ /^([0-9,]+)\s*$/s ? [ split /,/, $1 ] : $v;
+            $self->{gidInfo}{$k} =
+              $v =~ /^([0-9,]+)\s*$/s ? [ split /,/, $1 ] : $v;
         }
         close $fh;
     }
@@ -378,6 +379,7 @@ EOL
             if ( $sqlitePath eq $sqliteFile ) {
                 my $dev = ( stat( $mountPointPath ||= '/' ) )[STAT_DEV];
                 $self->{repositoryPath} = sub {
+
                     my ( $dir, $repoDir ) = @_;
                     return unless $repoDir;
                     my @stat = stat $dir;
@@ -388,16 +390,21 @@ EOL
                     );
                     map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @dirs;
                     my $name = pop @dirs;
-                    my $repository =
+                    my $repoCat =
                       catdir( $repoDir, join '.',
                         map { length $_ ? $_ : '_' } @dirs );
-                    unless ( -d $repository ) {
-                        mkdir $repository or return;
-                        chown -1, ( stat( dirname($dir) ) )[STAT_GID],
-                          $repository;
-                        chmod 02750, $repository;
+                    my $repoFolder = catdir( $repoCat, $name || 'No name' );
+
+                    foreach ( $repoCat, $repoFolder ) {
+                        unless ( -d $_ ) {
+                            mkdir $_ or return;
+                            chown -1, ( stat( dirname($dir) ) )[STAT_GID], $_;
+                            chmod 02750, $_;
+                        }
                     }
-                    catdir( $repository, $name || 'No name' );
+
+                    $repoFolder;
+
                 };
                 last;
             }
