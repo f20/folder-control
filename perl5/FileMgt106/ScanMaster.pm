@@ -115,9 +115,9 @@ sub setCatalogue {
               $hints->{updateSha1if}->( $self->[SHA1], $self->[ROOTLOCID] );
             $hints->commit;
             return if defined $result && $result == 0;
-            my $pid = fork;
-            return if $pid;
-            POSIX::setsid() if defined $pid;
+            # my $pid = fork;
+            # return if $pid;
+            # POSIX::setsid() if defined $pid;
             if ( chdir $gitFolder ) {
                 warn "Catalogue update for $self";
                 my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
@@ -147,8 +147,8 @@ sub setCatalogue {
             else {
                 warn "Cannot chdir to $gitFolder: $!";
             }
-            exec '/bin/test' if defined $pid;
-            die 'This should not happen';
+            # exec '/bin/test' if defined $pid;
+            # die 'This should not happen';
         };
         if ($runner) {
             delete $self->[SCALAR] unless $self->[WATCHING];
