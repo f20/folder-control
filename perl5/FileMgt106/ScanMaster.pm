@@ -135,7 +135,7 @@ sub setCatalogue {
                     || !system qw(git init) )
                 {
                     system qw(git add),             "$name.txt";
-                    system qw(git commit -a -q -m), "$name.txt";
+                    system qw(git commit -a -q -m), $self->[DIR];
                 }
 
                 if ( defined $jbzFolder && -d $jbzFolder ) {
