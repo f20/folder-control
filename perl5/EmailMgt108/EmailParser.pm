@@ -209,7 +209,8 @@ sub parseMessage {
                         local undef $/;
                         <$r>;
                         close $r;
-                        exec '/bin/test';
+                        require POSIX and POSIX::_exit(0);
+                        die 'This should not happen';
                     }
                 }
             }

@@ -122,7 +122,8 @@ sub run {
             }
             if ( $sig{TERM} ) {
                 warn 'SIGTERM: Terminating ' . __PACKAGE__ . ' with ' . $module;
-                exec '/bin/test';
+                require POSIX and POSIX::_exit(0);
+                die 'This should not happen';
             }
             if ( $sig{HUP} ) {
                 warn 'SIGHUP: Reloading ' . __PACKAGE__ . ' with ' . $module;

@@ -76,8 +76,8 @@ sub runParser {
         rename '~$ email index $~/scanning', '~$ email index $~/unstashed.json';
         unlink '~$ email index $~/toscan.json';
     }
-    exec '/bin/test';
-    die;
+    require POSIX and POSIX::_exit(0);
+    die 'This should not happen';
 }
 
 1;
