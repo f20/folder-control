@@ -370,9 +370,15 @@ foreach (@ARGV) {
         if ($syncDestination) {
             my $destination = catdir( $syncDestination, basename($dir) );
             mkdir $destination;
-            my ($s) = FileMgt106::Scanner->new( $dir, $hints )->scan;
-            FileMgt106::Scanner->new( $destination, $hints,
-                FileMgt106::FileSystem::noInodeStat() )->scan( 0, $s );
+            my ( @extrasSource, @extrasDestination );
+            push @extrasDestination, FileMgt106::FileSystem::noInodeStat()
+              if $destination =~ m#^/Volumes/#;
+            push @extrasSource, FileMgt106::FileSystem::noInodeStat()
+              if $dir =~ m#^/Volumes/#;
+            my ($s) =
+              FileMgt106::Scanner->new( $dir, $hints, @extrasSource )->scan;
+            FileMgt106::Scanner->new( $destination, $hints, @extrasDestination )
+              ->scan( 0, $s );
             $hints->commit;
             next;
         }
