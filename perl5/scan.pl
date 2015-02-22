@@ -278,19 +278,22 @@ foreach (@ARGV) {
         }
         @stat = stat;
     }
-    if ( -f _
-        && ( my ( $root, $ext ) = /(.*)(\.jbz|\.json\.bz2|\.txt|\.yml)$/si ) )
+    if (
+        -f _
+        && ( my ( $root, $ext ) =
+            /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
+      )
     {
         my $target;
-        $target = FileMgt106::Tools::parseText( $root . $ext )
-          if $ext =~ /txt|yml/i;
-        $target ||= FileMgt106::Tools::loadJbz(
+        $target = FileMgt106::Tools::loadJbz(
             $root . $ext,
             $filter ? undef : sub {
                 $_[0] !~ /^~WRL[0-9]+\.tmp$/s
                   and $_[0] !~ /\.dta$/s;
             }
         );
+        $target = FileMgt106::Tools::parseText( $root . $ext )
+          if !$target && $ext =~ /txt|yml/i;
         if ( $filterFlag && $filterFlag =~ /split/ ) {
             while ( my ( $k, $v ) = each %$target ) {
                 local $_ = $k;

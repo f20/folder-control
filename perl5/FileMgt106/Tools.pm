@@ -110,11 +110,21 @@ sub parseText {
 
 sub loadJbz {
     ( local $_, my $keyFilter ) = @_;
-    s/'/'"'"'/g;
-    open my $fh, "bzcat '$_'|";
-    local undef $/;
-    binmode $fh;
-    normaliseHash( decode_json(<$fh>), $keyFilter );
+    my $obj;
+    eval {
+        my $fh;
+        if (/\.(?:jbz|bz2)$/i) {
+            s/'/'"'"'/g;
+            open $fh, "bzcat '$_'|";
+        }
+        else {
+            open $fh, '<', $_;
+        }
+        local undef $/;
+        binmode $fh;
+        $obj = decode_json(<$fh>);
+    };
+    $obj ? normaliseHash( $obj, $keyFilter ) : undef;
 }
 
 sub saveBzOctets {
