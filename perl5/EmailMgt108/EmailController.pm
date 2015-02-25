@@ -31,7 +31,6 @@ use warnings;
 use strict;
 use utf8;
 use JSON;
-require POSIX;
 
 sub runParser {
     my ($self) = shift;
@@ -40,13 +39,11 @@ sub runParser {
         opendir( $h, $_ ) ? $h : ();
     } @_;
 
+    require POSIX;
     POSIX::setgid(6);
     POSIX::setuid(60);
     POSIX::setsid();
 
-    use File::Spec::Functions qw(catfile catdir rel2abs);
-    use File::Basename 'dirname';
-    use lib dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     require EmailMgt108::EmailParser;
 
     foreach (@dirHandles) {
