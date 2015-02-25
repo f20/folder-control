@@ -59,7 +59,7 @@ sub activate {
         }
         else {
             my $dir = decode_utf8 getcwd();
-            ny $repo= $hints->{repositoryPath}->( $dir, $repoDir );
+            my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
             $runner->{qu}->enqueue( ++$$timeref,
                 $self->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )->setRepo($repo)
