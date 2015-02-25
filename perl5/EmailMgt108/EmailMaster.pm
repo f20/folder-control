@@ -203,7 +203,7 @@ EOS
     my $pid = fork;
     warn "Cannot fork for @foldersToDo" unless defined $pid;
     if ($pid) {
-        warn "Forked $pid for $foldersToDo";
+        warn "Forked $pid for @foldersToDo";
         delete @{$self}{@folders};
     }
     else {
