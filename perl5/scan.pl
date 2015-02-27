@@ -88,12 +88,10 @@ foreach (@ARGV) {
     }
     elsif (/^-+(datemark.*)$/) {
         $cleaningFlag = $1;
-        $filterFlag   = 'nodb';
         next;
     }
     elsif (/^-+(dayfolder.*)$/) {
         $cleaningFlag = $1;
-        $filterFlag   = 'nodb';
         next;
     }
     elsif (/^-+base=(.*)/) {
