@@ -465,7 +465,7 @@ sub datemarkFolder {
             $np =~ s#(?:[() XY_]|$date)*([^/]*)$#Y_$date $1#s;
             $np =~ s/ +$//s;
             if ( $np ne $path ) {
-                $np .= '_' while -e $np;
+                $np .= '_' while -e $prefix . $np;
                 rename $prefix . $path, $prefix . $np;
             }
         }

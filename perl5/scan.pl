@@ -389,12 +389,10 @@ foreach (@ARGV) {
             if ( $cleaningFlag =~ /dayfolder/i ) {
                 warn "One folder per day for files in $dir";
                 FileMgt106::Tools::categoriseByDay($dir);
-                next;
             }
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
                 FileMgt106::Tools::datemarkFolder($dir);
-                next;
             }
             if ( $cleaningFlag =~ /flat/i ) {
                 warn "Flattening $dir";
