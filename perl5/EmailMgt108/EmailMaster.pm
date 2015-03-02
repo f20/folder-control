@@ -54,6 +54,7 @@ sub schedule {
 }
 
 sub dequeued {
+
     my ( $self, $runner ) = @_;
     delete $self->{qid};
     if ( $self->{pid} ) {
@@ -68,7 +69,8 @@ sub dequeued {
         }
     }
     return unless my @folders = grep { m#^/#s } %$self;
-    my @foldersToDo;
+
+    my @todo;
     foreach (@folders) {
         chdir $_ or next;
         mkdir '~$ email index $~' unless -e '~$ email index $~';
@@ -99,22 +101,12 @@ create table if not exists map (
     primary key (id, sha1hex)
 );    
 EOS
-        my $unstashedFolders = {};
-        my $stashedFolders   = {};
-        my $toScan           = {};
+        my $folders = {};
+        my $toScan  = {};
         local undef $/;
-
         if ( open my $h, '<', '~$ email index $~/unstashed.json' ) {
             binmode $h;
-            $unstashedFolders = decode_json(<$h>) || {};
-        }
-        if ( open my $h, '<', '~$ email index $~/stashed.json' ) {
-            binmode $h;
-            $stashedFolders = decode_json(<$h>) || {};
-        }
-        if ( open my $h, '<', '~$ email index $~/toscan.json' ) {
-            binmode $h;
-            $toScan = decode_json(<$h>) || {};
+            $folders = decode_json(<$h>) || {};
         }
 
         my $insertIgnoreRepoName =
@@ -152,16 +144,7 @@ EOS
                 }
                 $addToMap->bind_param( 2, $scalar );
                 $addToMap->execute;
-                return if $unstashedFolders->{$scalar};
-                if ( my $folder = $stashedFolders->{$scalar} ) {
-                    my $container = substr( $folder, 2, 7 );
-                    -e $container or mkdir $container or die;
-                    rename '~$ email index $~/' . $folder, "$container/$folder"
-                      or die;
-                    $unstashedFolders->{$scalar} = "$container/$folder";
-                    delete $stashedFolders->{$scalar};
-                    return;
-                }
+                return if $folders->{$scalar};
                 $toScan->{$scalar} = $location->();
             };
             $run->( $scalar, sub { $imapRepo; } );
@@ -169,15 +152,9 @@ EOS
         while ( my ( $imapRepo, $scalar ) = each %{ $self->{$_} } ) {
             $addScalarToMap->( $imapRepo, $scalar );
         }
-        if ( keys %$toScan ) {
-            open my $h, '>', '~$ email index $~/toscan.json';
-            binmode $h;
-            print {$h} encode_json($toScan);
-            push @foldersToDo, $_;
-        }
         my $keep = $dbh->prepare('select sha1hex from map group by sha1hex');
         $keep->execute;
-        my %tos = %$unstashedFolders;
+        my %tos = %$folders;
         while ( my ($sha1hex) = $keep->fetchrow_array ) {
             delete $tos{$sha1hex};
         }
@@ -187,29 +164,60 @@ EOS
         while ( my ( $sha1hex, $folder ) = each %tos ) {
             my $folder2 = $folder;
             $folder2 =~ s#^.*/##s;
-            rename $folder, '~$ email index $~/' . $folder2 or next;
-            $stashedFolders->{$sha1hex} = $folder2;
-            delete $unstashedFolders->{$sha1hex};
+            $folder2 =~ s#^Y?_?#Z_#s;
+            rename $folder, $folder2 or next;
+            delete $folders->{$sha1hex};
         }
-        if ( open my $h, '>', '~$ email index $~/unstashed.json' ) {
-            binmode $h;
-            print {$h} encode_json($unstashedFolders);
+        if ( keys %$toScan ) {
+            push @todo, [ $_, $toScan, $folders ];
         }
-        if ( open my $h, '>', '~$ email index $~/stashed.json' ) {
+        elsif ( open my $h, '>', '~$ email index $~/unstashed.json' ) {
             binmode $h;
-            print {$h} encode_json($stashedFolders);
+            print {$h} encode_json($folders);
         }
     }
+    return unless @todo;
     my $pid = fork;
-    warn "Cannot fork for @foldersToDo" unless defined $pid;
+    warn 'Cannot fork for email parsing' unless defined $pid;
     if ($pid) {
-        warn "Forked $pid for @foldersToDo";
-        delete @{$self}{@folders};
+        warn "Forked $pid for email parsing";
+        delete $self->{ $_->[0] } foreach @todo;
+        return;
     }
-    else {
-        require EmailMgt108::EmailController;
-        EmailMgt108::EmailController->runParser(@foldersToDo);
+
+    foreach (@todo) {
+        my $h;
+        opendir $h, $_->[0];
+        $_->[0] = $h;
     }
+
+    require POSIX;
+    POSIX::setgid(6);
+    POSIX::setuid(60);
+    POSIX::setsid();
+
+    require EmailMgt108::EmailParser;
+
+    foreach (@todo) {
+        my ( $dirHandle, $toScan, $folders ) = @$_;
+        chdir $dirHandle or next;
+        open my $scanningHandle, '>', '~$ email index $~/scanning' or next;
+        while ( my ( $sha1hex, $emailFile ) = each %$toScan ) {
+            eval {
+                $folders->{$sha1hex} =
+                  EmailMgt108::EmailParser::parseMessage($emailFile);
+            };
+            warn "$emailFile: $@" if $@;
+        }
+        binmode $scanningHandle;
+        print {$scanningHandle} encode_json($folders);
+        close $scanningHandle;
+        rename '~$ email index $~/scanning', '~$ email index $~/unstashed.json';
+        unlink '~$ email index $~/toscan.json';
+    }
+    require POSIX and POSIX::_exit(0);
+    die 'This should not happen';
+
 }
 
 1;
