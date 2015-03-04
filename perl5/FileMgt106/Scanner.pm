@@ -39,7 +39,7 @@ sub new {
 
     my ( $className, $dir, $hints, $rstat ) = @_;
     my $allowActions = $rstat;
-    $rstat = FileMgt106::FileSystem->readOnlyStat
+    $rstat = FileMgt106::FileSystem->justLookingStat
       unless $allowActions;
     my $self = bless {}, $className;
     my $regexIgnoreEntirely = qr/^(?:

@@ -61,7 +61,7 @@ sub filesDiffer($$) {
     ( system $diff, '--brief', '--', @_ ) >> 8;
 }
 
-sub readOnlyStat {
+sub justLookingStat {
     sub {
         my @stat = lstat $_[0] or return;
         $stat[STAT_CHMODDED] = 0;
@@ -105,10 +105,15 @@ sub imapStat {
         my ( $name, $force ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat
-          unless defined $force && -f _ && $force > $stat[STAT_MTIME];
+        if ( !$> && $stat[STAT_UID] != 60 ) {
+            chown( 60, -1, $name ) or return @stat;
+            $stat[STAT_UID]      = 60;
+            $stat[STAT_CHMODDED] = 1;
+
+            # $stat[STAT_GID]      = 6;
+        }
         my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 = 0555 & $stat[STAT_MODE];
+        my $rwx2 = 0755 & $stat[STAT_MODE];
         if ( $rwx2 != $rwx1 ) {
             chmod $rwx2, $name or return @stat;
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );

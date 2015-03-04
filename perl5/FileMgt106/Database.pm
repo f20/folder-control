@@ -126,10 +126,11 @@ sub gidInfo {
 }
 
 sub statFromGid {
+
     my ( $self, $rgid ) = @_;
+    return unless $rgid;
     my $gidInfo = $self->gidInfo;
 
-    return unless $rgid;
     my $myInfo = $gidInfo->{$rgid} || '';
     return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
     return FileMgt106::FileSystem::imapStat($rgid)       if $myInfo eq 'imap';
@@ -157,9 +158,11 @@ sub statFromGid {
     }
 
     FileMgt106::FileSystem::statFromGidAndMapping( $rgid, \%map );
+
 }
 
 sub new {
+
     my ( $self, $sqliteFile, $readOnly ) = @_;
     $self = bless {}, $self unless ref $self;
     $self->{sqliteFile} = $sqliteFile;
@@ -588,6 +591,7 @@ EOL
     };
 
     $self;
+
 }
 
 sub _setupTables {
