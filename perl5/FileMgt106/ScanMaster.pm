@@ -135,8 +135,8 @@ sub setCatalogue {
                 if ( `git rev-parse --show-prefix` =~ /^[^~]/s
                     || !system qw(git init) )
                 {
-                    system qw(git add),             "$name.txt";
-                    system qw(git commit -a -q -m), $self->[DIR];
+                    system qw(git add),          "$name.txt";
+                    system qw(git commit -q -m), $self->[DIR];
                 }
 
                 if ( defined $jbzFolder && -d $jbzFolder ) {
