@@ -132,13 +132,9 @@ sub setCatalogue {
                 $ENV{PATH} =
                     '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                   . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
-                if ( `git rev-parse --show-prefix` =~ /^[^~]/s
-                    || !system qw(git init) )
-                {
-                    system qw(git add),          "$name.txt";
-                    system qw(git commit -q -m), $self->[DIR];
-                }
-
+                system qw(git commit -q -m), $self->[DIR]
+                  if !system qw(git add),    "$name.txt"
+                  or !system qw(git init) and !system qw(git add), "$name.txt";
                 if ( defined $jbzFolder && -d $jbzFolder ) {
                     system qw(bzip2), "$name.txt";
                     rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
