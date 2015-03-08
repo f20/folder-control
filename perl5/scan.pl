@@ -131,9 +131,7 @@ foreach (@ARGV) {
                     && substr( $dir, 0, length($repoDir) ) ne $repoDir )
                 {
                     my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
-                    $scanner->setCatalogue( $repo,, '../%jbz' );
-                    $scanner->setRepo($repo)
-                      unless $dir =~ m#/(?:Y_|\.Trash)#;
+                    $scanner->setRepo($repo)->setCatalogue( $repo, '../%jbz' );
                 }
             };
         }
