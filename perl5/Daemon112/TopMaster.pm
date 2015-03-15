@@ -35,38 +35,127 @@ use File::Spec::Functions qw(catdir);
 use Encode qw(decode_utf8);
 use FileMgt106::ScanMaster;
 
+use constant {
+    STAT_DEV => 0,
+    STAT_INO => 1,
+};
+
+sub new {
+    my $class = shift;
+    bless {@_}, $class;
+}
+
 sub activate {
-    my ( $self, $hints, $runner, $repoDir, $jsonTaker, $timeref ) = @_;
-    $timeref ||= \( 5 + time );
-    my @list;
+    my ( $master, $hints, $runner, $repoDir, $timeref ) = @_;
     my $root = getcwd();
+    my $pq   = delete $master->{'/pq'} || $runner->{pq} || $runner->{qu};
+    my $kq   = delete $master->{'/kq'};
+
+    if ($kq) {
+        if ( my $taker = delete $master->{'/taker'} )
+        {    # watch ourselves with custom catalogue taker
+            my $repo = $hints->{repositoryPath}->( $root, $repoDir );
+            $pq->enqueue(
+                time + 1,
+                FileMgt106::ScanMaster->new( $hints, $root )->setRepo($repo)
+                  ->setCatalogue($repo)->setWatch( 'Daemon112::Watcher', $kq )
+                  ->setToRescan->setScalarTaker($taker)
+            );
+            return;
+        }
+
+        # else watch each of our children
+        my $controller = Daemon112::Watcher->new(
+            sub {
+                my ($runner) = @_;
+                my $time = time;
+                my $dh;
+                opendir $dh, $root;
+                my @list = readdir $dh;
+                closedir $dh;
+                @list = $master->{'/filter'}->(@list) if $master->{'/filter'};
+                my %list =
+                  map { ( $_ => 1 ); }
+                  grep { !/^\.\.?$/s && -d "$root/$_"; } @list;
+
+                foreach (
+                    grep {
+                        !exists $list{$_}
+                          && UNIVERSAL::isa( $master->{$_},
+                            'FileMgt106::ScanMaster' );
+                    } keys %$master
+                  )
+                {
+                    $master->{$_}->unwatchAll;
+                    delete $master->{$_};
+                }
+                $hints->enqueue(
+                    $runner->{qu},
+                    sub {
+                        my ($hints) = @_;
+                        my $doclocid =
+                          $hints->{topFolder}
+                          ->( $root, ( stat $root )[ STAT_DEV, STAT_INO ] );
+                        die unless $doclocid;
+                        my $oldChildrenHashref =
+                          $hints->{children}->($doclocid);
+                        $hints->{uproot}->( $oldChildrenHashref->{$_} )
+                          foreach grep { !exists $list{$_} }
+                          keys %$oldChildrenHashref;
+                    }
+                );
+                foreach ( grep { !exists $master->{$_} } keys %list ) {
+                    my $repo =
+                      $hints->{repositoryPath}
+                      ->( catdir( $root, $_ ), $repoDir );
+                    $runner->{qu}->enqueue(
+                        ++$time,
+                        $master->{$_} =
+                          FileMgt106::ScanMaster->new( $hints,
+                            catdir( $root, $_ ) )->setRepo($repo)
+                          ->setCatalogue( $repo, '../%jbz' )
+                          ->setWatch( 'Daemon112::Watcher', $kq )
+                    );
+                }
+            },
+            "Watcher: $root"
+
+        );
+        $controller->startWatching( $kq, $root );
+    }
+
+    # delegate to lower-level TopMaster or ScanMaster objects
+    $timeref ||= \( time + 2 );
+    my @list;
     {
         my $handle;
         opendir $handle, '.' or return;
         @list =
           map { decode_utf8 $_; }
           grep { !/^\.\.?$/s && !-l $_ && -d _ } readdir $handle;
+        @list = $master->{'/filter'}->(@list) if $master->{'/filter'};
     }
     foreach (@list) {
         chdir $_ or do {
             warn "Cannot chdir to $_ in $root: $!";
             next;
         };
-        if ( $self->{$_} ) {
-            $self->{$_}
-              ->activate( $hints, $runner, $repoDir, $jsonTaker, $timeref )
-              if UNIVERSAL::isa( $self->{$_}, __PACKAGE__ );
+        if ( $master->{$_} ) {
+            $master->{$_}->activate( $hints, $runner, $repoDir, $timeref )
+              if UNIVERSAL::isa( $master->{$_}, __PACKAGE__ );
         }
         else {
             my $dir = decode_utf8 getcwd();
             my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
-            $runner->{qu}->enqueue( ++$$timeref,
-                $self->{$_} =
+            $pq->enqueue( ++$$timeref,
+                $master->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )->setRepo($repo)
-                  ->setCatalogue( $repo, '../%jbz' ) );
+                  ->setCatalogue( $repo, '../%jbz' )
+                  ->setWatch( 'Daemon112::Watcher', $kq ) );
         }
         chdir $root or die "Cannot chdir $root: $!";
     }
+
 }
 
 1;

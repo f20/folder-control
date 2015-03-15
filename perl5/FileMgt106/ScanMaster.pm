@@ -162,7 +162,7 @@ sub setCatalogue {
 
 sub setWatch {
     my $self = shift;
-    if (@_) {
+    if ( $_[0] && $_[1] ) {
         $self->[WATCHING] = \@_;
     }
     else {
