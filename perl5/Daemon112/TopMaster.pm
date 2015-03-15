@@ -116,6 +116,8 @@ sub activate {
                           ->setCatalogue( $repo, '../%jbz' )
                           ->setWatch( 'Daemon112::Watcher', $kq )
                     );
+                    $master->{'/postwatch'}->( $master->{$_}, $_ )
+                      if $master->{'/postwatch'};
                 }
             },
             "Watcher: $root"
@@ -152,6 +154,8 @@ sub activate {
                   FileMgt106::ScanMaster->new( $hints, $dir )->setRepo($repo)
                   ->setCatalogue( $repo, '../%jbz' )
                   ->setWatch( 'Daemon112::Watcher', $kq ) );
+            $master->{'/postwatch'}->( $master->{$_}, $_ )
+              if $master->{'/postwatch'};
         }
         chdir $root or die "Cannot chdir $root: $!";
     }
