@@ -59,7 +59,7 @@ sub activate {
                 time + 1,
                 FileMgt106::ScanMaster->new( $hints, $root )->setRepo($repo)
                   ->setCatalogue($repo)->setWatch( 'Daemon112::Watcher', $kq )
-                  ->setToRescan->setScalarTaker($taker)
+                  ->setToRescan->addScalarTaker($taker)
             );
             return;
         }

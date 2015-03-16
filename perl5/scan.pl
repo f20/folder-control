@@ -111,7 +111,7 @@ foreach (@ARGV) {
     }
     elsif (/^-+cat/) {
         push @applyScanMasterConfig, sub {
-            $_[0]->setScalarTaker(
+            $_[0]->addScalarTaker(
                 sub {
                     binmode STDOUT;
                     print ${ $_[1] };

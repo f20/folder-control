@@ -86,77 +86,80 @@ sub setCatalogue {
     my ( $self, $gitFolder, $jbzFolder ) = @_;
     unless ( defined $gitFolder && -d $gitFolder ) {
         unless ( defined $jbzFolder && -d $jbzFolder ) {
-            delete $self->[SCALARTAKER];
             return $self;
         }
         my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
         $name ||= 'No name';
-        $name                = "_$name" if $name =~ /^\./s;
-        $name                = "$jbzFolder/$name.jbz";
-        $self->[SCALARTAKER] = sub {
-            FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
-            if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
-                $mtime =
-                  POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
-                my $njbz = $name;
-                $njbz =~ s/.jbz$/ $mtime.jbz/;
-                $njbz = '~$stash/' . $njbz if -e '~$stash';
-                link $name, $njbz;
+        $name = "_$name" if $name =~ /^\./s;
+        $name = "$jbzFolder/$name.jbz";
+        return $self->addScalarTaker(
+            sub {
+                FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
+                if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
+                    $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z',
+                        localtime($mtime) );
+                    my $njbz = $name;
+                    $njbz =~ s/.jbz$/ $mtime.jbz/;
+                    $njbz = '~$stash/' . $njbz if -e '~$stash';
+                    link $name, $njbz;
+                }
+                rename $name . $$, $name;
             }
-            rename $name . $$, $name;
-        };
-        return $self;
+        );
     }
-    $self->[SCALARTAKER] = sub {
-        my ( $scalar, $blobref, $runner ) = @_;
-        my $run = sub {
-            my ($hints) = @_;
-            my $result =
-              $hints->{updateSha1if}->( $self->[SHA1], $self->[ROOTLOCID] );
-            $hints->commit;
-            return if defined $result && $result == 0;
+    $self->addScalarTaker(
+        sub {
+            my ( $scalar, $blobref, $runner ) = @_;
+            my $run = sub {
+                my ($hints) = @_;
+                my $result =
+                  $hints->{updateSha1if}->( $self->[SHA1], $self->[ROOTLOCID] );
+                $hints->commit;
+                return if defined $result && $result == 0;
 
-            # my $pid = fork;
-            # return if $pid;
-            # POSIX::setsid() if defined $pid;
-            if ( chdir $gitFolder ) {
-                warn "Catalogue update for $self";
-                my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
-                $name ||= 'No name';
-                open my $f, '>', "$name.txt.$$";
-                binmode $f;
-                print {$f} $$blobref;
-                close $f;
-                rename "$name.txt.$$", "$name.txt";
+                # my $pid = fork;
+                # return if $pid;
+                # POSIX::setsid() if defined $pid;
+                if ( chdir $gitFolder ) {
+                    warn "Catalogue update for $self";
+                    my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
+                    $name ||= 'No name';
+                    open my $f, '>', "$name.txt.$$";
+                    binmode $f;
+                    print {$f} $$blobref;
+                    close $f;
+                    rename "$name.txt.$$", "$name.txt";
 
-                $ENV{PATH} =
-                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
-                  . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
-                system qw(git commit -q -m), $self->[DIR]
-                  if !system qw(git add),    "$name.txt"
-                  or !system qw(git init) and !system qw(git add), "$name.txt";
-                if ( defined $jbzFolder && -d $jbzFolder ) {
-                    system qw(bzip2), "$name.txt";
-                    rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
+                    $ENV{PATH} =
+                        '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+                      . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
+                    system qw(git commit -q -m), $self->[DIR]
+                      if !system qw(git add),    "$name.txt"
+                      or !system qw(git init)
+                      and !system qw(git add), "$name.txt";
+                    if ( defined $jbzFolder && -d $jbzFolder ) {
+                        system qw(bzip2), "$name.txt";
+                        rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
+                    }
+
+                }
+                else {
+                    warn "Cannot chdir to $gitFolder: $!";
                 }
 
+                # require POSIX and POSIX::_exit(0);
+                # die 'This should not happen';
+
+            };
+            if ($runner) {
+                delete $self->[SCALAR] unless $self->[WATCHING];
+                $self->[HINTS]->enqueue( $runner->{pq}, $run );
             }
             else {
-                warn "Cannot chdir to $gitFolder: $!";
+                $run->( $self->[HINTS] );
             }
-
-            # require POSIX and POSIX::_exit(0);
-            # die 'This should not happen';
-
-        };
-        if ($runner) {
-            delete $self->[SCALAR] unless $self->[WATCHING];
-            $self->[HINTS]->enqueue( $runner->{pq}, $run );
         }
-        else {
-            $run->( $self->[HINTS] );
-        }
-    };
+    );
     $self;
 }
 
@@ -176,10 +179,11 @@ sub setFrotl {
     $_[0];
 }
 
-sub setScalarTaker {
-    $_[0][SCALARTAKER] = $_[1];
-    delete $_[0][SHA1];
-    $_[0];
+sub addScalarTaker {
+    my $self = shift;
+    push @{ $self->[SCALARTAKER] }, @_;
+    delete $self->[SHA1];
+    $self;
 }
 
 sub setToRescan {
@@ -258,7 +262,8 @@ sub dequeued {
         my $newSha1 = sha1($blob);
         unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
             $self->[SHA1] = $newSha1;
-            $self->[SCALARTAKER]->( $self->[SCALAR], \$blob, $runner );
+            $_->( $self->[SCALAR], \$blob, $runner )
+              foreach @{ $self->[SCALARTAKER] };
         }
     }
 
