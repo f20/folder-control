@@ -96,25 +96,19 @@ sub new {
             return unless $sha1 = $whatYouWant;
         }
         my $iterator = $searchSha1->( $sha1, $devNo );
-        my ( @stat, @candidates, @reservelist );
+        my ( @stat, @wouldNeedToCopy );
         while ( !@stat
             && ( my ( $path, $statref, $locid ) = $iterator->() ) )
         {
             next unless -f _;
-            if (
-                !$locid
-                || ( $statref->[STAT_UID]
-                    && ( $statref->[STAT_MODE] & 0200 ) )
-                || ( $statref->[STAT_MODE] & 022 )
-              )
+            if (  !$locid
+                or $statref->[STAT_DEV] != $devNo
+                or $statref->[STAT_MODE] & 0022
+                or $statref->[STAT_UID]
+                and $statref->[STAT_UID] < 500
+                || ( $statref->[STAT_MODE] & 0200 ) )
             {
-                push @reservelist, $path;
-                next;
-            }
-            if (   $statref->[STAT_DEV] != $devNo
-                || $statref->[STAT_UID] && $statref->[STAT_UID] > 500 )
-            {
-                push @candidates, $path;
+                push @wouldNeedToCopy, $path;
                 next;
             }
             if ( $path =~ m#/Y_Cellar#i and rename( $path, $fileName ) ) {
@@ -129,9 +123,8 @@ sub new {
                 next;
             }
         }
-        push @reservelist, @candidates;
-        while ( !@stat && @reservelist ) {
-            _copyFile( pop @reservelist, $fileName );
+        while ( !@stat && @wouldNeedToCopy ) {
+            _copyFile( pop @wouldNeedToCopy, $fileName );
             @stat = $rstat->( $fileName, time + 9_999 );
             unless ( $sha1 eq _sha1File($fileName) ) {
                 warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
