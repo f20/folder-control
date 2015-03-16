@@ -256,11 +256,12 @@ sub parseMessage {
 
 sub _unzipfile {
     my ( $container, $zipfile, $folder ) = @_;
-    unless ( system qw(unzip -q -n -d), "$container/$folder",
-        "$container/$zipfile" )
+    chdir $container or return;
+    unless ( system qw(unzip -q -n -d), $folder,
+        $zipfile )
     {
-        mkdir "$container/Z_Unpacked";
-        rename "$container/$zipfile", "$container/Z_Unpacked/$zipfile";
+        mkdir "Z_Unpacked";
+        rename $zipfile, "Z_Unpacked/$zipfile";
     }
     _unzipfolder("$container/$folder");
 }
