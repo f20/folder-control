@@ -191,27 +191,25 @@ sub parseMessage {
             if ( $fn eq 'winmail.dat' ) {
                 pipe my $r, my $w;
                 my $pid = fork;
-                if ( defined $pid ) {
-                    if ($pid) {
-                        close $r;
-                        print {$w} getRawBody($item);
-                        close $w;
-                        waitpid $pid, 0;
-                        _unzipfolder("$folder.tmp/winmail");
-                        return;
-                    }
-                    elsif ( defined $pid ) {
-                        close $w;
-                        open \*STDIN, '<&', fileno($r);
-                        mkdir "$folder.tmp/winmail"
-                          and chdir "$folder.tmp/winmail"
-                          and exec 'tnef';
-                        local undef $/;
-                        <$r>;
-                        close $r;
-                        require POSIX and POSIX::_exit(0);
-                        die 'This should not happen';
-                    }
+                if ($pid) {
+                    close $r;
+                    print {$w} getRawBody($item);
+                    close $w;
+                    waitpid $pid, 0;
+                    _unzipfolder("$folder.tmp/winmail");
+                    return;
+                }
+                elsif ( defined $pid ) {
+                    close $w;
+                    open \*STDIN, '<&', fileno($r);
+                    mkdir "$folder.tmp/winmail"
+                      and chdir "$folder.tmp/winmail"
+                      and exec 'tnef';
+                    local undef $/;
+                    <$r>;
+                    close $r;
+                    require POSIX and POSIX::_exit(0);
+                    die 'This should not happen';
                 }
             }
             unshift @files, $fn;
@@ -256,14 +254,20 @@ sub parseMessage {
 
 sub _unzipfile {
     my ( $container, $zipfile, $folder ) = @_;
-    chdir $container or return;
-    unless ( system qw(unzip -q -n -d), $folder,
-        $zipfile )
-    {
-        mkdir "Z_Unpacked";
-        rename $zipfile, "Z_Unpacked/$zipfile";
+    my $pid = fork;
+    if ($pid) {
+        my $result = waitpid $pid, 0;
+        unless ( $? >> 8 ) {
+            mkdir "$container/Z_Unpacked";
+            rename "$container/$zipfile", "$container/Z_Unpacked/$zipfile";
+            _unzipfolder("$container/$folder");
+        }
     }
-    _unzipfolder("$container/$folder");
+    elsif ( defined $pid ) {
+        exec qw(unzip -q -n -d), $folder, $zipfile if chdir $container;
+        require POSIX and POSIX::_exit(0);
+        die 'This should not happen';
+    }
 }
 
 sub _unzipfolder {
