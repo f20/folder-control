@@ -112,7 +112,7 @@ sub new {
                 next;
             }
             if (   $statref->[STAT_DEV] != $devNo
-                || $statref->[STAT_UID] && $statref->[STAT_UID] < 500 )
+                || $statref->[STAT_UID] && $statref->[STAT_UID] > 500 )
             {
                 push @candidates, $path;
                 next;
