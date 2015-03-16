@@ -162,11 +162,13 @@ EOS
         sleep 2 while !( $status = $dbh->commit );
         $dbh->disconnect;
         while ( my ( $sha1hex, $folder ) = each %tos ) {
-            my $folder2 = $folder;
-            $folder2 =~ s#^.*/##s;
-            $folder2 =~ s#^Y?_?#Z_#s;
-            rename $folder, $folder2 or next;
-            delete $folders->{$sha1hex};
+            if ( defined $folder ) {
+                my $folder2 = $folder;
+                $folder2 =~ s#^.*/##s;
+                $folder2 =~ s#^Y?_?#Z_#s;
+                rename $folder, $folder2 or next;
+                delete $folders->{$sha1hex};
+            }
         }
         if ( keys %$toScan ) {
             push @todo, [ $_, $toScan, $folders ];
