@@ -27,7 +27,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =cut
 
-# To test by hand:
+# To test:
 # perl -I/path/to/perl5/folder -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage($_) foreach "1."'
 
 use strict;
@@ -276,7 +276,9 @@ sub _unzipfolder {
     opendir $dh, $container or return;
     foreach ( readdir $dh ) {
         next if /^\.\.?$/s;
-        if ( -d $_ ) { _unzipfolder("$container/$_"); }
+        if ( -d "$container/$_" ) {
+            _unzipfolder("$container/$_");
+        }
         elsif (/(.*)\.zip$/is) {
             _unzipfile( $container, $_, $1 );
         }
