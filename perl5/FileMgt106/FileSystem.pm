@@ -113,7 +113,7 @@ sub imapStat {
             $stat[STAT_CHMODDED] = 1;
         }
         my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 = 0555 & $stat[STAT_MODE];
+        my $rwx2 = 0550 & $stat[STAT_MODE];
         if ( $rwx2 != $rwx1 ) {
             chmod $rwx2, $name or return @stat;
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
