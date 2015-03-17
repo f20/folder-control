@@ -101,11 +101,9 @@ sub new {
             && ( my ( $path, $statref, $locid ) = $iterator->() ) )
         {
             next unless -f _;
-            if (  !$locid
-                or $statref->[STAT_DEV] != $devNo
-                or $statref->[STAT_MODE] & 0022
-                or $statref->[STAT_UID]
-                and $statref->[STAT_MODE] & 0240 != 0040 )
+            unless ( $locid
+                && $statref->[STAT_DEV] == $devNo
+                && _isReadOnlyMergeable($statref) )
             {
                 push @wouldNeedToCopy, $path;
                 next;
@@ -319,24 +317,27 @@ sub new {
             }
 
             if ( -f _ ) {
+
                 my ( $fileLocid, $sha1, $rehash ) = $file->(
                     $locid, $_,
                     @stat[ STAT_DEV, STAT_INO, STAT_SIZE, STAT_MTIME ]
                 );
-                my $readOnly = !$stat[STAT_UID] && !( $stat[STAT_MODE] & 020 )
-                  || !( $stat[STAT_MODE] & 0200 );
+
+                my $readOnly = _isReadOnlyMergeable( \@stat );
+
                 $rehash = 1
                   if !$rehash
                   and $allowActions
                   and $stat[STAT_CHMODDED]
                   || !$runningUnderWatcher && !$readOnly && $_ =~ $suspectRegex;
+
                 my $mergeCandidate =
                      $forceReadOnlyTimeLimit
                   && $allowActions
                   && $stat[STAT_SIZE]
                   && ( $mergeEveryone || $rehash || $stat[STAT_CHMODDED] )
-                  && $readOnly
-                  && !( $stat[STAT_UID] && $stat[STAT_UID] < 500 );
+                  && $readOnly;
+
                 if ($rehash) {
 
                     my $newsha1 = _sha1File($_);
@@ -375,20 +376,17 @@ sub new {
                       )
                     {
                         next
-                          unless $mergelocid
-                          && !( $statref->[STAT_UID]
-                            && ( $statref->[STAT_MODE] & 0200 ) )
-                          && !( $statref->[STAT_MODE] & 022 )
-                          && -f _;
-                        next
-                          if $statref->[STAT_DEV] != $dev
-                          || $statref->[STAT_UID] && $statref->[STAT_UID] < 500;
+                          unless -f _
+                          && $mergelocid
+                          && $statref->[STAT_DEV] == $dev
+                          && _isReadOnlyMergeable($statref);
                         my $tfile;
                         do { $tfile = '~$ temporary merge file ' . rand(); }
                           while -e $tfile;
                         next unless link $ipath, $tfile;
                         warn $_ . ' <= ' . decode_utf8($ipath) . "\n";
                         my @stat2 = $rstat->($tfile);
+
                         if ( FileMgt106::FileSystem::filesDiffer( $_, $tfile ) )
                         {
                             warn unpack( 'H*', $sha1 )
@@ -761,6 +759,11 @@ sub _listDirectory {
     my $handle;
     opendir $handle, $_[0] || '.' or return;
     map { decode_utf8 $_; } grep { !/^\.\.?$/s; } readdir $handle;
+}
+
+sub _isReadOnlyMergeable {
+    $_[0][STAT_MODE] &
+      ( !$_[0][STAT_UID] || $_[0][STAT_UID] == 60 ? 0060 : 0260 ) == 0040;
 }
 
 sub _copyFile {
