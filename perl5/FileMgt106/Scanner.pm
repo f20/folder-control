@@ -103,7 +103,7 @@ sub new {
             next unless -f _;
             unless ( $locid
                 && $statref->[STAT_DEV] == $devNo
-                && _isReadOnlyMergeable($statref) )
+                && _isMergeable($statref) )
             {
                 push @wouldNeedToCopy, $path;
                 next;
@@ -323,7 +323,7 @@ sub new {
                     @stat[ STAT_DEV, STAT_INO, STAT_SIZE, STAT_MTIME ]
                 );
 
-                my $readOnly = _isReadOnlyMergeable( \@stat );
+                my $readOnly = _isReadOnly( \@stat );
 
                 $rehash = 1
                   if !$rehash
@@ -332,11 +332,12 @@ sub new {
                   || !$runningUnderWatcher && !$readOnly && $_ =~ $suspectRegex;
 
                 my $mergeCandidate =
-                     $forceReadOnlyTimeLimit
+                     $readOnly
+                  && $forceReadOnlyTimeLimit
                   && $allowActions
                   && $stat[STAT_SIZE]
                   && ( $mergeEveryone || $rehash || $stat[STAT_CHMODDED] )
-                  && $readOnly;
+                  && _isMergeable( \@stat );
 
                 if ($rehash) {
 
@@ -379,7 +380,7 @@ sub new {
                           unless -f _
                           && $mergelocid
                           && $statref->[STAT_DEV] == $dev
-                          && _isReadOnlyMergeable($statref);
+                          && _isMergeable($statref);
                         my $tfile;
                         do { $tfile = '~$ temporary merge file ' . rand(); }
                           while -e $tfile;
@@ -761,7 +762,17 @@ sub _listDirectory {
     map { decode_utf8 $_; } grep { !/^\.\.?$/s; } readdir $handle;
 }
 
-sub _isReadOnlyMergeable {
+sub _isReadOnly {
+    !(
+        $_[0][STAT_MODE] & (
+            !$_[0][STAT_UID] || $_[0][STAT_UID] == 60
+            ? 0020
+            : 0220
+        )
+    );
+}
+
+sub _isMergeable {
     (
         $_[0][STAT_MODE] & (
             !$_[0][STAT_UID] || $_[0][STAT_UID] == 60
