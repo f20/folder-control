@@ -762,8 +762,13 @@ sub _listDirectory {
 }
 
 sub _isReadOnlyMergeable {
-    $_[0][STAT_MODE] &
-      ( !$_[0][STAT_UID] || $_[0][STAT_UID] == 60 ? 0060 : 0260 ) == 0040;
+    (
+        $_[0][STAT_MODE] & (
+            !$_[0][STAT_UID] || $_[0][STAT_UID] == 60
+            ? 0060
+            : 0260
+        )
+    ) == 0040;
 }
 
 sub _copyFile {
