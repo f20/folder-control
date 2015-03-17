@@ -2,7 +2,7 @@ package FileMgt106::Scanner;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -105,8 +105,7 @@ sub new {
                 or $statref->[STAT_DEV] != $devNo
                 or $statref->[STAT_MODE] & 0022
                 or $statref->[STAT_UID]
-                and $statref->[STAT_UID] < 500
-                || ( $statref->[STAT_MODE] & 0200 ) )
+                and $statref->[STAT_MODE] & 0240 != 0040 )
             {
                 push @wouldNeedToCopy, $path;
                 next;
