@@ -157,7 +157,7 @@ sub new {
                 );
             }
             mkdir $path;
-            @stat = $rstat->($path);
+            die "mkdir $path: $!" unless @stat = $rstat->($path);
         }
         ( $folder->( $parentLocid, $name, @stat[ STAT_DEV, STAT_INO ] ),
             $path );
