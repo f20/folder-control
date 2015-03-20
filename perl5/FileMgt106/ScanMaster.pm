@@ -120,6 +120,7 @@ sub setCatalogue {
                 # my $pid = fork;
                 # return if $pid;
                 # POSIX::setsid() if defined $pid;
+
                 if ( chdir $gitFolder ) {
                     warn "Catalogue update for $self";
                     my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
@@ -132,7 +133,7 @@ sub setCatalogue {
 
                     $ENV{PATH} =
                         '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
-                      . '/bin:/usr/sbin:/sbin::/opt/sbin:/opt/bin';
+                      . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
                     system qw(git commit -q -m), $self->[DIR]
                       if !system qw(git add),    "$name.txt"
                       or !system qw(git init)
@@ -328,6 +329,7 @@ sub watchFolder {
                         return;
                     }
                     my $newsha1 = sha1_base64( freeze($hashref) );
+                    warn "$self: $newsha1 v $frozensha1";
                     if ( $newsha1 ne $frozensha1 ) {
                         $frozensha1 = $newsha1;
                         $self->schedule( time + 5, $runner->{qu} );

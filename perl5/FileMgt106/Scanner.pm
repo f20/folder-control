@@ -485,7 +485,7 @@ sub new {
                         rename( $_, "$stash/$binName/$_" )
                           || die "rename $_, $stash/$binName/$_: $!"
                           foreach @items;
-                        unless (/^Z_(?:Archive|Cellar|Reuse|Rubbish)$/is) {
+                        unless (/^Z_(?:Archive|Cellar|Infill|Rubbish)$/is) {
                             chdir "$dir/$path" or next;
                             unless ( rmdir $_ ) {
                                 my $pathToMoveTo;
@@ -510,7 +510,7 @@ sub new {
                             warn "chdir $stash/$binName: $!";
                             next;
                         }
-                        if (/^Z_Cellar/i) {
+                        unless (/^Z_Rubbish/i) {
                             require FileMgt106::Tools;
                             FileMgt106::Tools::normaliseFileNames('.');
                         }
@@ -527,7 +527,8 @@ sub new {
                                     : $stash
                                   )
                                   . "/$binName/",
-                                /^Z_(?:Cellar|Rubbish)/i ? 2_000_000_000
+                                /^Z_(?:Archive|Cellar|Rubbish)/i
+                                ? 2_000_000_000
                                 : $forceReadOnlyTimeLimit
                             ),
                             $crashRecoverySymlink
@@ -605,16 +606,16 @@ sub new {
                     );
                     if ($missing) {
                         require FileMgt106::Tools;
-                        FileMgt106::Tools::saveJbz(
-                            "$dir/$path$binName+missing.jbz", $missing );
+                        FileMgt106::Tools::saveJbzPretty(
+                            "$dir/$path$binName-failed.jbz", $missing );
                     }
                 }
 
-                if ( $binName =~ /^Y_Reuse/i ) {
-                    warn "Reusing from $dir/$path: $binName";
+                if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/i ) {
+                    warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
                         require FileMgt106::Tools;
-                        $filter = FileMgt106::Tools::makeReuseFilter();
+                        $filter = FileMgt106::Tools::makeInfillFilter();
                         $hashref = $scanDir->( $locid, $path )
                           if $runningUnderWatcher;
                         $filter->($hashref);

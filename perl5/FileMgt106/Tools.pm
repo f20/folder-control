@@ -213,7 +213,7 @@ sub explodeByType {
     \%newHash;
 }
 
-sub makeReuseFilter {
+sub makeInfillFilter {
     my %done;
     my $filter;
     $filter = sub {
