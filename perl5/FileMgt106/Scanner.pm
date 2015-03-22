@@ -505,7 +505,7 @@ sub new {
                             warn "chdir $stash/$binName: $!";
                             next;
                         }
-                        unless (/^Z_Rubbish/i) {
+                        unless (/^Z_(?:Infill|Rubbish)/i) {
                             require FileMgt106::Tools;
                             FileMgt106::Tools::normaliseFileNames('.');
                         }
