@@ -501,6 +501,7 @@ EOL
                   unless my $drootid = $getRootidFromDev->( $stat[STAT_DEV] );
                 undef $locid
                   unless defined $size
+                  && defined $mtime
                   && $rootid == $drootid
                   && $ino == $stat[STAT_INO]
                   && $size == $stat[STAT_SIZE]

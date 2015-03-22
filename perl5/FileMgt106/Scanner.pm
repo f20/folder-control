@@ -774,13 +774,9 @@ sub _isReadOnly {
 }
 
 sub _isMergeable {
-    (
-        $_[0][STAT_MODE] & (
-            !$_[0][STAT_UID] || $_[0][STAT_UID] == 60
-            ? 0060
-            : 0260
-        )
-    ) == 0040;
+    $_[0][STAT_UID] < 500
+      ? 0040 == ( $_[0][STAT_MODE] & 0060 )
+      : 0000 == ( $_[0][STAT_MODE] & 0220 );
 }
 
 sub _copyFile {
