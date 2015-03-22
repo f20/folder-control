@@ -31,7 +31,7 @@ use strict;
 use warnings;
 use utf8;
 use Encode qw/decode_utf8/;
-require POSIX;
+use POSIX       ();
 use Digest::SHA ();
 use FileMgt106::FileSystem;
 
@@ -252,8 +252,7 @@ sub new {
             my %list = map { $_ => undef } @list;
             foreach ( grep { !exists $list{$_}; } keys %$target ) {
                 if ( -e $_ ) {
-                    warn "Found $_ in $dir/$path"
-                      . ' even though it is not in the list';
+                    warn "Unexpectedly found $_ in $dir/$path";
                 }
                 elsif ( $target->{$_} && !ref $target->{$_} ) {
                     undef $targetHasBeenApplied{$_};
@@ -264,7 +263,7 @@ sub new {
                         push @list, $_;
                     }
                     else {
-                        warn "create folder $_: $! (in $dir/$path)";
+                        warn "Could not mkdir $_: $! (in $dir/$path)";
                     }
                 }
             }
@@ -293,7 +292,8 @@ sub new {
 
             if ($mustBeTargeted) {
                 if ( !$target->{$_} ) {
-                    $stasher->( $_, $locid );
+                    $stasher->( $_, $locid ) > 0
+                      or warn "Blind stashing $_ from $dir/$path";
                     delete $oldChildrenHashref->{$_};
                     next;
                 }
