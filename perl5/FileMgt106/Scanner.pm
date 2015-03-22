@@ -282,11 +282,6 @@ sub new {
                     $locid, $_,
                     @stat[ STAT_DEV, STAT_INO, STAT_SIZE, STAT_MTIME ]
                   );
-                $stasher->(
-                    $_, $locid,
-                    'Stash adopted '
-                      . POSIX::strftime( '%Y-%m-%d %a %H%M', localtime )
-                ) if $stasher && $path && $_ eq '~$stash';
                 delete $oldChildrenHashref->{$_};
                 next;
             }
