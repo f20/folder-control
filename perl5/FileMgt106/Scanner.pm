@@ -522,8 +522,7 @@ sub new {
                                     : $stash
                                   )
                                   . "/$binName/",
-                                /^Z_(?:Archive|Cellar|Rubbish)/i
-                                ? 2_000_000_000
+                                /^Z_(?:Archive|Cellar)/i ? 2_000_000_000
                                 : $forceReadOnlyTimeLimit
                             ),
                             $crashRecoverySymlink
@@ -666,6 +665,10 @@ sub new {
         };
         my $rootStasher =
           $makeChildStasher->( sub { ( $rootLocid, $dir ); }, '~$stash' );
+        $rootStasher = $makeChildStasher->(
+            $rootStasher,
+            POSIX::strftime( "Y_Cellar %Y-%m-%d %a %H%M%S", localtime )
+        ) if $targetHashref;
         my $rootBackuper;
         if ($repository) {
             my $repoFolder = ref $repository ? $repository->[0] : $repository;
