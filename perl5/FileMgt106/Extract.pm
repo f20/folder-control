@@ -411,9 +411,9 @@ sub makeHintsBuilder {
 }
 
 sub _copyFile {
-    my $status = system qw(install -p --), @_;
+    my $status = system qw(cp -p --), @_;
     return 1 if 0 == $status;
-    warn join ' ', qw(system install -p --), @_, 'returned',
+    warn join ' ', qw(system cp -p --), @_, 'returned',
       unpack( 'H*', pack( 'n', $status ) ), 'Caller:', caller,
       'Cwd:',
       `pwd`;

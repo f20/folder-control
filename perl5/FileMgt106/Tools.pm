@@ -517,7 +517,7 @@ sub makeExtractAcceptor {
                   sort    { $a->[1] <=> $b->[1] } @list;
                 return;
             }
-            my $size = -s $_[0] or return;
+            my $size = -s $_[0];
             push @list, [ $_[0], $size ];
             return;
         };

@@ -330,7 +330,6 @@ sub new {
                      $readOnly
                   && $forceReadOnlyTimeLimit
                   && $allowActions
-                  && $stat[STAT_SIZE]
                   && ( $mergeEveryone || $rehash || $stat[STAT_CHMODDED] )
                   && _isMergeable( \@stat );
 
@@ -772,15 +771,16 @@ sub _isReadOnly {
 }
 
 sub _isMergeable {
+    return unless $_[0][STAT_SIZE];
     $_[0][STAT_UID] < 500
       ? 0040 == ( $_[0][STAT_MODE] & 0060 )
       : 0000 == ( $_[0][STAT_MODE] & 0220 );
 }
 
 sub _copyFile {
-    my $status = system qw(install -p --), @_;
+    my $status = system qw(cp -p --), @_;
     return 1 if 0 == $status;
-    warn join ' ', qw(system install -p --), @_, 'returned',
+    warn join ' ', qw(system cp -p --), @_, 'returned',
       unpack( 'H*', pack( 'n', $status ) ), 'Caller:', caller,
       'Cwd:',
       `pwd`;
