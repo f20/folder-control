@@ -179,44 +179,54 @@ EOS
         }
     }
     return unless @todo;
+
     my $pid = fork;
-    warn 'Cannot fork for email parsing' unless defined $pid;
+    unless ( defined $pid ) {
+        warn "Cannot fork for email parsing: $!";
+        return;
+    }
     if ($pid) {
         warn "Forked $pid for email parsing";
         delete $self->{ $_->[0] } foreach @todo;
         return;
     }
 
-    foreach (@todo) {
-        my $h;
-        opendir $h, $_->[0];
-        $_->[0] = $h;
-    }
+    eval {
 
-    require POSIX;
-    POSIX::setgid(6);
-    POSIX::setuid(60);
-    POSIX::setsid();
-
-    require EmailMgt108::EmailParser;
-
-    foreach (@todo) {
-        my ( $dirHandle, $toScan, $folders ) = @$_;
-        chdir $dirHandle or next;
-        open my $scanningHandle, '>', '~$ email index $~/scanning' or next;
-        while ( my ( $sha1hex, $emailFile ) = each %$toScan ) {
-            eval {
-                $folders->{$sha1hex} =
-                  EmailMgt108::EmailParser::parseMessage($emailFile);
-            };
-            warn "$emailFile: $@" if $@;
+        foreach (@todo) {
+            my $h;
+            opendir $h, $_->[0];
+            $_->[0] = $h;
         }
-        binmode $scanningHandle;
-        print {$scanningHandle} encode_json($folders);
-        close $scanningHandle;
-        rename '~$ email index $~/scanning', '~$ email index $~/unstashed.json';
-        unlink '~$ email index $~/toscan.json';
-    }
+
+        require POSIX;
+        POSIX::setgid(6);
+        POSIX::setuid(60);
+        POSIX::setsid();
+
+        require EmailMgt108::EmailParser;
+
+        foreach (@todo) {
+            my ( $dirHandle, $toScan, $folders ) = @$_;
+            chdir $dirHandle or next;
+            open my $scanningHandle, '>', '~$ email index $~/scanning' or next;
+            while ( my ( $sha1hex, $emailFile ) = each %$toScan ) {
+                eval {
+                    $folders->{$sha1hex} =
+                      EmailMgt108::EmailParser::parseMessage($emailFile);
+                };
+                warn "$emailFile: $@" if $@;
+            }
+            binmode $scanningHandle;
+            print {$scanningHandle} encode_json($folders);
+            close $scanningHandle;
+            rename '~$ email index $~/scanning',
+              '~$ email index $~/unstashed.json';
+            unlink '~$ email index $~/toscan.json';
+        }
+
+    };
+    warn $@ if $@;
     require POSIX and POSIX::_exit(0);
     die 'This should not happen';
 
