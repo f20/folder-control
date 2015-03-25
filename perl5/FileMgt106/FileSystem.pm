@@ -84,7 +84,7 @@ sub managementStat {
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
         return @stat
-          unless defined $force && -f _ && $force > $stat[STAT_MTIME];
+          unless $force && -f _ && $force > $stat[STAT_MTIME];
         if ( !$> && $stat[STAT_UID] ) {
             chown( 0, -1, $name ) or return @stat;
             $stat[STAT_UID]      = 0;
@@ -105,15 +105,16 @@ sub imapStat {
         my ( $name, $force ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat
-          unless defined $force && -f _ && $force > $stat[STAT_MTIME];
-        if ( !$> && $stat[STAT_UID] != 60 ) {
-            chown( 60, -1, $name ) or return @stat;
+        return @stat unless $force and -f _ || -d _;
+        if ( !$> and $stat[STAT_UID] != 60 || $stat[STAT_GID] != 6 ) {
+            chown( 60, 6, $name ) or return @stat;
             $stat[STAT_UID]      = 60;
+            $stat[STAT_GID]      = 6;
             $stat[STAT_CHMODDED] = 1;
         }
         my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 = 0550 & $stat[STAT_MODE];
+        my $rwx2 = 0040 | ( $force > $stat[STAT_MTIME] ? 0550 : 0770 ) &
+          $stat[STAT_MODE];
         if ( $rwx2 != $rwx1 ) {
             chmod $rwx2, $name or return @stat;
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );

@@ -207,8 +207,8 @@ sub dequeued {
         chdir $self->[DIR] or die "Cannot chdir to $self->[DIR]: $!";
         my $rgid = ( stat '.' )[STAT_GID];
         my $frotl =
-            $rgid < 500                    ? 0
-          : $self->[FROTL]                 ? $self->[FROTL]
+            $self->[FROTL]                 ? $self->[FROTL]
+          : $rgid < 500                    ? 0
           : $self->[DIR] =~ m#/(\~\$|Y_)#i ? 2_000_000_000
           : $self->[DIR] =~ m#/X_#i        ? -13
           :                                  -4_233_600;
