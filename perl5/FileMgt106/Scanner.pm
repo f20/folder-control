@@ -347,8 +347,7 @@ sub new {
                         $updateSha1->( $newsha1, $fileLocid );
 
                         if ($backuper) {
-                            $backuper->( $_, $locid, $sha1 )
-                              if defined $sha1;
+                            $backuper->( $_, $locid, $sha1 ) if defined $sha1;
                             unless ( $backuper->( $_, $locid, $newsha1 ) ) {
                                 $updateSha1->( undef, $fileLocid );    # undo
                                 warn "Could not backup $dir/$path$_";

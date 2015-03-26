@@ -76,7 +76,9 @@ sub activate {
                 @list = $master->{'/filter'}->(@list) if $master->{'/filter'};
                 my %list =
                   map { ( $_ => 1 ); }
-                  grep { !/^\.\.?$/s && -d "$root/$_"; } @list;
+                  grep {
+                    !/^\.\.?$/s && !/^\~\$/s && !/\.tmp$/s && -d "$root/$_";
+                  } @list;
 
                 foreach (
                     grep {
