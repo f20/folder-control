@@ -121,7 +121,7 @@ sub new {
             }
         }
         while ( !@stat && @wouldNeedToCopy ) {
-            _copyFile( pop @wouldNeedToCopy, $fileName );
+            system qw(cp -p --), pop @wouldNeedToCopy, $fileName;
             @stat = $rstat->( $fileName, time + 9_999 );
             unless ( $sha1 eq _sha1File($fileName) ) {
                 warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
@@ -774,16 +774,6 @@ sub _isMergeable {
     $_[0][STAT_UID] < 500
       ? 0040 == ( $_[0][STAT_MODE] & 0060 )
       : 0000 == ( $_[0][STAT_MODE] & 0220 );
-}
-
-sub _copyFile {
-    my $status = system qw(cp -p --), @_;
-    return 1 if 0 == $status;
-    warn join ' ', qw(system cp -p --), @_, 'returned',
-      unpack( 'H*', pack( 'n', $status ) ), 'Caller:', caller,
-      'Cwd:',
-      `pwd`;
-    return;
 }
 
 srand;
