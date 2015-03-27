@@ -90,7 +90,9 @@ sub run {
         }
         else {
             open STDERR, '>>', $logging or die $!;
+            binmode STDERR, ':utf8';
             open STDOUT, '>&STDERR' or die $!;
+            binmode STDOUT, ':utf8';
             my $nickPid = " $nickName\[$$]: ";
             require POSIX;
             $SIG{'__WARN__'} = sub {
