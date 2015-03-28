@@ -622,7 +622,7 @@ sub _setSQLitePragmas {
     do { $dbHandle->do($_); }
       foreach grep { $_ } split /;\s*/s, <<EOSQL;
 pragma temp_store = memory;
-pragma cache_size = 70000;
+pragma cache_size = 48000;
 EOSQL
 }
 
