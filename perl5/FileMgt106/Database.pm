@@ -260,7 +260,7 @@ EOL
         my ( $locid, $lrootid, $lino, $lsize, $lmtime, $sha1 ) =
           $qGetLocation->fetchrow_array;
         $qGetLocation->finish;
-        unless ( defined $locid ) {
+        if ( !defined $locid && $ino ) {
             $qGetLocidByNameRootidIno->execute( $name, $rootid, $ino );
             if ( my ($locidToClone) =
                 $qGetLocidByNameRootidIno->fetchrow_array )

@@ -32,7 +32,7 @@ use strict;
 use utf8;
 
 use overload
-  '""' => sub { $_[0][0] || 'Anonymous ScanMaster ' . ( 0 + $_[0] ); },
+  '""' => sub { $_[0][0] || $_[0]; },
   '0+' => sub { $_[0] },
   fallback => 1;
 

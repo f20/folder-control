@@ -771,7 +771,7 @@ sub _isReadOnly {
 }
 
 sub _isMergeable {
-    return unless $_[0][STAT_SIZE];
+    return unless $_[0][STAT_INO] && $_[0][STAT_SIZE];
     $_[0][STAT_UID] < 500
       ? 0040 == ( $_[0][STAT_MODE] & 0060 )
       : 0000 == ( $_[0][STAT_MODE] & 0220 );

@@ -73,7 +73,9 @@ sub noInodeStat {
     sub {
         my @stat = lstat $_[0] or return;
         $stat[STAT_CHMODDED] = 0;
-        $stat[STAT_MODE] &= 0555;
+        $stat[STAT_UID]      = 0;
+        $stat[STAT_GID]      = 0;
+        $stat[STAT_INO]      = 0;
         @stat;
     };
 }
