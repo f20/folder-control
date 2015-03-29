@@ -207,11 +207,12 @@ sub dequeued {
         chdir $self->[DIR] or die "Cannot chdir to $self->[DIR]: $!";
         my $rgid = ( stat '.' )[STAT_GID];
         my $frotl =
-            $self->[FROTL]                 ? $self->[FROTL]
-          : $rgid < 500                    ? 0
-          : $self->[DIR] =~ m#/(\~\$|Y_)#i ? 2_000_000_000
-          : $self->[DIR] =~ m#/X_#i        ? -13
-          :                                  -4_233_600;
+            $self->[FROTL] ? $self->[FROTL]
+          : $rgid < 500    ? 0
+          : $self->[DIR] =~ m#/(\~\$|Y_)#i
+          ? 2_000_000_000    # This will go wrong in 2033
+          : $self->[DIR] =~ m#/X_#i ? -13            # 13 seconds
+          :                           -4_233_600;    # Seven weeks
         $frotl += $time if $frotl < 0;
         $self->[REPO][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
           if ref $self->[REPO];

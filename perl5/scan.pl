@@ -105,7 +105,9 @@ foreach (@ARGV) {
     }
     elsif (/^-+read-?only/) {
         push @applyScanMasterConfig, sub {
-            $_[0]->setFrotl(2_000_000_000);
+            $_[0]->setFrotl(
+                2_000_000_000    # This will go wrong in 2033
+            );
         };
         next;
     }

@@ -520,7 +520,8 @@ sub new {
                                     : $stash
                                   )
                                   . "/$binName/",
-                                /^Z_(?:Archive|Cellar)/i ? 2_000_000_000
+                                /^Z_(?:Archive|Cellar)/i
+                                ? 2_000_000_000    # This will go wrong in 2033
                                 : $forceReadOnlyTimeLimit
                             ),
                             $crashRecoverySymlink
