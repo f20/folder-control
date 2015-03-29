@@ -168,6 +168,7 @@ sub setWatch {
     my $self = shift;
     if ( $_[0] && $_[1] ) {
         $self->[WATCHING] = \@_;
+        warn "Started watching $self";
     }
     else {
         delete $self->[WATCHING];
