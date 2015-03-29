@@ -150,7 +150,7 @@ sub run {
                 }
                 if ($kq) {
                     warn 'Kernel queue';
-                    while ( my ( $k, $v ) = each %$kq ) { warn "$k: $v\n"; }
+                    warn "$_: $kq->{$_}\n" foreach sort keys %$kq;
                 }
                 $runner->dumpState if UNIVERSAL::can( $runner, 'dumpState' );
             }

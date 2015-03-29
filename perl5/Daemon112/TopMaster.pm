@@ -45,6 +45,16 @@ sub new {
     bless {@_}, $class;
 }
 
+sub dumpState {
+    my ( $master, $prefix ) = @_;
+    $prefix ||= "$master/";
+    foreach ( sort keys %$master ) {
+        warn "$prefix$_: $master->{$_}\n";
+        $master->{$_}->dumpState("$prefix$_/")
+          if UNIVERSAL::can( $master->{$_}, 'dumpState' );
+    }
+}
+
 sub attach {
 
     my ( $master, $root, $runner ) = @_;
