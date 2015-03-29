@@ -109,37 +109,58 @@ sub run {
     $kq = new Daemon112::KQueue if eval { require Daemon112::KQueue; };
     my $runner;
 
-    my %sig = ( needsLoading => 1 );
-    $SIG{USR1} = $SIG{TERM} = $SIG{HUP} = sub { $sig{ $_[0] } = 1; };
+    my %signalQueue = ( needsLoading => 1 );
+    $SIG{HUP} = $SIG{TERM} = $SIG{USR1} = $SIG{USR2} =
+      sub { $signalQueue{ $_[0] } = 1; };
 
     while (1) {
-        if (%sig) {
-            warn join ' ', 'Signals pending:', sort keys %sig;
-            if ( $sig{USR1} ) {
+        if (%signalQueue) {
+            warn join ' ', 'Signals pending:', sort keys %signalQueue;
+            if ( $signalQueue{HUP} ) {
+                warn 'SIGHUP: Reloading ' . __PACKAGE__ . ' with ' . $module;
+                delete $signalQueue{HUP};
+                reloadMyModules();
+                $signalQueue{needsLoading} = 1;
+            }
+            if ( $signalQueue{TERM} ) {
+                warn 'SIGTERM: Terminating ' . __PACKAGE__ . ' with ' . $module;
+                require POSIX and POSIX::_exit(0);
+                die 'This should not happen';
+            }
+            if ( $signalQueue{USR1} ) {
                 warn 'SIGUSR1: Restarting ' . __PACKAGE__ . ' with ' . $module;
                 map { s/(['\\])/\\$1/g; } $module, $nickName, $logging;
                 my %inc = map { ( "-I$_" => undef ); } @INC;
                 exec $^X, keys %inc, '-M' . __PACKAGE__, '-e',
                   __PACKAGE__ . "->run('$module', '$nickName', '$logging')";
             }
-            if ( $sig{TERM} ) {
-                warn 'SIGTERM: Terminating ' . __PACKAGE__ . ' with ' . $module;
-                require POSIX and POSIX::_exit(0);
-                die 'This should not happen';
+            if ( $signalQueue{USR2} ) {
+                warn 'SIGUSR2: Dumping '
+                  . __PACKAGE__
+                  . ' state with '
+                  . $module;
+                delete $signalQueue{USR2};
+                if ($pq) {
+                    warn 'Priority queue';
+                    warn "@$_\n" foreach @$pq;
+                }
+                if ($qu) {
+                    warn 'Standard queue';
+                    warn "@$_\n" foreach @$qu;
+                }
+                if ($kq) {
+                    warn 'Kernel queue';
+                    while ( my ( $k, $v ) = each %$kq ) { warn "$k: $v\n"; }
+                }
+                $runner->dumpState if UNIVERSAL::can( $runner, 'dumpState' );
             }
-            if ( $sig{HUP} ) {
-                warn 'SIGHUP: Reloading ' . __PACKAGE__ . ' with ' . $module;
-                delete $sig{HUP};
-                reloadMyModules();
-                $sig{needsLoading} = 1;
-            }
-            if ( $sig{needsLoading} ) {
-                ++$sig{needsLoading};
+            if ( $signalQueue{needsLoading} ) {
+                ++$signalQueue{needsLoading};
                 eval "require $module;";
                 if ($@) {
                     warn "Cannot load $module: $@";
                     reloadMyModules();
-                    sleep $sig{needsLoading};
+                    sleep $signalQueue{needsLoading};
                     next;
                 }
                 warn "Loaded $module";
@@ -148,7 +169,7 @@ sub run {
                     if ( !$runner || $@ ) {
                         warn "Error or false result from $module->new: $@";
                         reloadMyModules();
-                        sleep $sig{needsLoading};
+                        sleep $signalQueue{needsLoading};
                         next;
                     }
                 }
@@ -157,11 +178,11 @@ sub run {
                 if ($@) {
                     warn "Cannot start $module: $@";
                     reloadMyModules();
-                    sleep $sig{needsLoading};
+                    sleep $signalQueue{needsLoading};
                     next;
                 }
                 warn "Started $module";
-                delete $sig{needsLoading};
+                delete $signalQueue{needsLoading};
                 next;
             }
         }
