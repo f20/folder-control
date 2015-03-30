@@ -188,6 +188,8 @@ EOS
     if ($pid) {
         warn "Forked $pid for email parsing";
         delete $self->{ $_->[0] } foreach @todo;
+        $self->{pid} = $pid;
+        $self->schedule;
         return;
     }
 
