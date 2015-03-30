@@ -60,6 +60,7 @@ sub attach {
     my ( $master, $root, $runner ) = @_;
 
     my $rescan = $master->{'/RESCANNER'} ||= sub {
+        warn "Scanning $root for $master";
         my ($runner) = @_;
         my $hints    = $runner->{hints};
         my @list     = $master->_listDirectory($root);
