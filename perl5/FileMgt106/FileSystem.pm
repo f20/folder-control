@@ -202,11 +202,9 @@ sub statFromGidAndMapping {
         };
     }
     elsif ( -e '/System/Library' ) {    # Mac OS X $allowGroupReadACL
-            # Assume modern enough to use NFSv4-style ACLs
-        my $grp = $singletonGroupFomGid{$rgid} ||= eval {
-            warn "dscl . -search /Groups PrimaryGroupID $rgid";
-            `dscl . -search /Groups PrimaryGroupID $rgid`;
-        };
+            # Assume Mac OS X is modern enough to use NFSv4-style ACLs
+        my $grp = $singletonGroupFomGid{$rgid} ||=
+          `dscl . -search /Groups PrimaryGroupID $rgid`;
         $grp =~ s/\t.*//s if $grp;
         if ($grp) {
             my @aclargs = ( qw(/bin/chmod +a), "group:$grp allow read" );
