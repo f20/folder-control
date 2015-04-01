@@ -255,7 +255,23 @@ EOL
         $self->beginInteractive;
     };
     $self->{scheduleNap} = sub { $needsNap = $nap; };
-    $self->{unscheduleNap} = sub { undef $needsNap; };
+    $self->{cleanup} = sub {
+        undef $needsNap;
+        undef $_
+          foreach $qGetLocid, $qGetLocidRootidIno,
+          $qGetLocidByNameRootidIno, $qGetLocation,
+          $qChangeRootid,            $qChangeIno,
+          $qInsertLocid,             $qInsertLocation,
+          $qGetChildren,             $qUpdateLocation,
+          $qUpdateSha1,              $qUpdateSha1if,
+          $qGetBySha1,               $qGetBySha1Rootid,
+          $qGetBySha1InoAvoid,       $qGetBySha1InoMax,
+          $qGetParidName,            $qGetLikeDesc,
+          $qUproot,                  $qMoveByParidName,
+          $qMoveByLocid,             $qClone,
+          $qAlreadyThere;
+        undef $dbHandle;
+    };
 
     my $file = $self->{file} = sub {
         my ( $parid, $name, $dev, $ino, $size, $mtime ) = @_;
@@ -707,9 +723,8 @@ sub commit {
 
 sub disconnect {
     my ($hints) = @_;
-    $hints->{unscheduleNap}->();
-    delete $hints->{$_} foreach qw(file findName folder scheduleNap topFolder);
-    $hints->{dbHandle}->disconnect;
+    $hints->{cleanup}->();
+    delete $hints->{$_} foreach keys %$hints;
 }
 
 1;
