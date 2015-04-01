@@ -246,15 +246,20 @@ EOL
 
     $prepareStatements->();
 
+    my $needsNap;
+    my $nap = sub {
+        $self->commit;
+        undef $needsNap;
+        warn 'Commit done in ' . `pwd`;
+        sleep 4;
+        $self->beginInteractive;
+    };
+    $self->{scheduleNap} = sub { $needsNap = $nap; };
+    $self->{unscheduleNap} = sub { undef $needsNap; };
+
     my $file = $self->{file} = sub {
         my ( $parid, $name, $dev, $ino, $size, $mtime ) = @_;
-        if ( $self->{needsNap} ) {
-            delete $self->{needsNap};
-            $self->commit;
-            warn 'Commit done in ' . `pwd`;
-            sleep 4;
-            $self->beginInteractive;
-        }
+        $self->{needsNap}->() if $self->{needsNap};
         my $rootid = $rootidFromDev{$dev};
         $qGetLocation->execute( $parid, $name );
         my ( $locid, $lrootid, $lino, $lsize, $lmtime, $sha1 ) =
@@ -638,7 +643,7 @@ sub beginInteractive {
         die $eString unless $eString =~ /locked/;
     }
     return if $noAutoCommit;
-    $SIG{ALRM} = sub { $self->{needsNap} = 1; };
+    $SIG{ALRM} = $self->{scheduleNap};
     alarm 555;
 }
 
@@ -698,6 +703,13 @@ sub commit {
     my $status;
     sleep 2 while !( $status = $dbHandle->commit );
     $status;
+}
+
+sub disconnect {
+    my ($hints) = @_;
+    $hints->{unscheduleNap}->();
+    delete $hints->{$_} foreach qw(file findName folder scheduleNap topFolder);
+    $hints->{dbHandle}->disconnect;
 }
 
 1;

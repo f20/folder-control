@@ -480,3 +480,5 @@ if ($missing) {
         rmdir $cellarDir;
     }
 }
+
+$hints->disconnect if $hints;
