@@ -57,7 +57,7 @@ sub dumpState {
 
 sub attach {
 
-    my ( $master, $root, @extras ) = @_;
+    my ( $master, $root, $runner ) = @_;
 
     my $rescan = $master->{'/RESCANNER'} ||= sub {
         warn "Scanning $root for $master";
@@ -96,7 +96,7 @@ sub attach {
         foreach (@list) {
             my $dir = catdir( $root, $_ );
             if ( $master->{$_} ) {
-                $master->{$_}->attach( $dir, @extras )
+                $master->{$_}->attach( $dir, $runner )
                   if UNIVERSAL::isa( $master->{$_}, __PACKAGE__ )
                   and -d $dir;
                 next;
@@ -116,6 +116,8 @@ sub attach {
     Daemon112::Watcher->new( $rescan, "Watcher: $root" )
       ->startWatching( $master->{'/kq'}, $root )
       if $master->{'/kq'};
+
+    $rescan->($runner) if $runner;
 
     $master;
 
