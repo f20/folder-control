@@ -57,7 +57,7 @@ sub dumpState {
 
 sub attach {
 
-    my ( $master, $root, $runner ) = @_;
+    my ( $master, $root ) = @_;
 
     my $rescan = $master->{'/RESCANNER'} ||= sub {
         warn "Scanning $root for $master";
@@ -116,8 +116,6 @@ sub attach {
     Daemon112::Watcher->new( $rescan, "Watcher: $root" )
       ->startWatching( $master->{'/kq'}, $root )
       if $master->{'/kq'};
-
-    $rescan->($runner) if $runner;
 
     $master;
 
