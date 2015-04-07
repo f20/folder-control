@@ -503,6 +503,7 @@ EOL
               ->execute( $sha1, $rootid );
         }
         my $a = $q->fetchall_arrayref;
+        undef $q;
         sub {
           ITERATION: while (1) {
                 return unless @$a;
