@@ -275,7 +275,7 @@ EOL
 
     my $file = $self->{file} = sub {
         my ( $parid, $name, $dev, $ino, $size, $mtime ) = @_;
-        $self->{needsNap}->() if $self->{needsNap};
+        $needsNap->() if $needsNap;
         my $rootid = $rootidFromDev{$dev};
         $qGetLocation->execute( $parid, $name );
         my ( $locid, $lrootid, $lino, $lsize, $lmtime, $sha1 ) =
