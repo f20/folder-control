@@ -647,7 +647,7 @@ sub new {
                 $moveByParidName->( $stashLocid, $stashName, $locid, $name );
             }
             else {
-                die "rename $name, $stashFile: $!";
+                warn "rename $name, $stashFile: $!";
             }
         };
         $makeChildStasher = sub {
