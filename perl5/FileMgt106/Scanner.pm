@@ -64,12 +64,12 @@ sub new {
     my (
         $folder,          $file,        $children,     $updateSha1,
         $updateLocation,  $searchSha1,  $alreadyThere, $findName,
-        $moveByParidName, $moveByLocid, $uproot,
+        $moveByParidName, $moveByLocid, $uproot,       $checkFolder,
       )
       = @{$hints}{
         qw(folder file children updateSha1 updateLocation),
         qw(searchSha1 alreadyThere findName),
-        qw(moveByParidName moveByLocid uproot),
+        qw(moveByParidName moveByLocid uproot checkFolder),
       };
 
     my $create = sub {
@@ -433,7 +433,19 @@ sub new {
             elsif ( -d _ ) {
 
                 delete $oldChildrenHashref->{$_};
-                next if $runningUnderWatcher && ref $hashref->{$_};
+                if ($runningUnderWatcher) {
+                    if (
+                        $checkFolder->(
+                            $locid, $_, @stat[ STAT_DEV, STAT_INO ]
+                        )
+                      )
+                    {
+                        next;
+                    }
+                    else {
+                        delete $hashref->{$_};
+                    }
+                }
                 if (/$regexIgnoreFolder/s) {
                     $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] );
                     next;
@@ -533,7 +545,6 @@ sub new {
                         -15, $_ )
                       if $watchMaster && -d $_;
                 }
-
                 else {
                     $hashref->{$_} = $scanDir->(
                         $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] ),

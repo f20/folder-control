@@ -326,6 +326,18 @@ EOL
           foreach @{ $qGetChildren->fetchall_arrayref };
     };
 
+    $self->{checkFolder} = sub {
+        my ( $parid, $name, $dev, $ino ) = @_;
+        my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
+        $qGetLocidRootidIno->execute( $parid, $name );
+        my ( $locid, $rootiddb, $inodb ) = $qGetLocidRootidIno->fetchrow_array
+          or return;
+        $qGetLocidRootidIno->finish;
+        return unless $rootiddb && $rootid && $rootiddb == $rootid;
+        return unless $inodb && $ino == $inodb;
+        $locid;
+    };
+
     my $folder = $self->{folder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
         my $rootid = $parid ? $rootidFromDev{$dev} : $dev;

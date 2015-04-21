@@ -39,13 +39,14 @@ use Scalar::Util qw(weaken);
 use Daemon112::KQueue qw(:constants);
 use BSD::Resource;
 
-my $maxHandlesToWatch = getrlimit(RLIMIT_NOFILE);
-if ( $maxHandlesToWatch < 2345 ) {
-    setrlimit( RLIMIT_NOFILE, 2345, 2345 )
-      ;    # RLIM_INFINITY does not work on Mac OS X 10.5
-    $maxHandlesToWatch = getrlimit(RLIMIT_NOFILE);
+my $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
+
+# RLIM_INFINITY does not work on Mac OS X 10.5
+if ( $thresholdWatchCount < 2345 ) {
+    setrlimit( RLIMIT_NOFILE, 2345, 2345 );
+    $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
 }
-$maxHandlesToWatch = int( 0.8 * $maxHandlesToWatch );
+$thresholdWatchCount = int( 0.8 * $thresholdWatchCount );
 our %watchedByFileno;
 our %priorityByFileno;
 
@@ -61,9 +62,8 @@ sub new {
 
 sub startWatching {
     my ( $self, $kqueue, $path, $priority ) = @_;
-    return $self if $self->{sysHandle}{$path};
-    if ( keys %watchedByFileno > $maxHandlesToWatch ) {
-        warn "maxHandlesToWatch ($maxHandlesToWatch) reached";
+    if ( keys %watchedByFileno > $thresholdWatchCount ) {
+        warn "thresholdWatchCount ($thresholdWatchCount) reached";
         my @todelete = (
             sort {
                 ( $priorityByFileno{$a} || 0 )
@@ -87,7 +87,7 @@ sub startWatching {
         0, $self
     );
     $self->{timestamp} = time;
-    $self->{sysHandle}{$path} = $sh;
+    $self->{sysHandle}{$sh} = $sh;
     weaken( $watchedByFileno{$no} = $self );
     $priorityByFileno{$no} = ( $priority || 0 ) + rand();
     $self;
@@ -95,25 +95,23 @@ sub startWatching {
 
 sub stopWatching {
     my ( $self, $kqueue, $fileno ) = @_;
-    my %handles;
-    while ( my ( $path, $sh ) = each %{ $self->{sysHandle} } ) {
-        if ($sh) {
-            my $no = fileno $sh;
-            if ( !defined $fileno || $no == $fileno ) {
-                $kqueue->EV_SET( $no, EVFILT_VNODE, EV_DELETE,
-                    NOTE_WRITE | NOTE_DELETE | NOTE_RENAME,
-                    0, $self );
-                close $sh;
-                delete $watchedByFileno{$no};
-            }
-            else {
-                $handles{$path} = $sh;
-            }
+    my %remainingSysHandles;
+    foreach ( grep { $_ } values %{ $self->{sysHandle} } ) {
+        my $no = fileno $_;
+        if ( !defined $fileno || $no == $fileno ) {
+            $kqueue->EV_SET( $no, EVFILT_VNODE, EV_DELETE,
+                NOTE_WRITE | NOTE_DELETE | NOTE_RENAME,
+                0, $self );
+            close $_;
+            delete $watchedByFileno{$no};
+        }
+        else {
+            $remainingSysHandles{$_} = $_;
         }
     }
     $kqueue->delete_objects( sub { !( $_[0] - $self ); } )
-      unless %handles;
-    $self->{sysHandle} = \%handles;
+      unless %remainingSysHandles;
+    $self->{sysHandle} = \%remainingSysHandles;
     $self;
 }
 

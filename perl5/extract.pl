@@ -38,20 +38,25 @@ use Encode 'decode_utf8';
 use File::Spec::Functions qw(catfile catdir rel2abs);
 use File::Basename qw(dirname basename);
 use Cwd;
-my ( $startDir, $perl5dir );
+my ( $startdir, $perl5dir );
 
 BEGIN {
     $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
         my ($sig) = @_;
-        die "Temporary $sig die signal handler invoked";
+        die "Died on $sig signal\n";
     };
-    $startDir = getcwd();
+    $startdir = getcwd();
     $perl5dir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
+    while (1) {
+        last if -d catdir( $perl5dir, 'FileMgt106' );
+        my $parent = dirname $perl5dir;
+        last if $parent eq $perl5dir;
+        $perl5dir = $parent;
+    }
     chdir $perl5dir or die "chdir $perl5dir: $!";
-    $perl5dir = getcwd();    # to resolve any .. in the path
-    chdir $startDir;
+    $perl5dir = getcwd();
+    chdir $startdir;
 }
-
 use lib $perl5dir;
 use JSON;
 use FileMgt106::Tools;

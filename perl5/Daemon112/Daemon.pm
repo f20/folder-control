@@ -110,35 +110,32 @@ sub run {
     my $runner;
 
     my %signalQueue = ( needsLoading => 1 );
-    $SIG{HUP} = $SIG{TERM} = $SIG{USR1} = $SIG{USR2} =
+    $SIG{HUP} = $SIG{TERM} = $SIG{INT} = $SIG{USR1} = $SIG{USR2} =
       sub { $signalQueue{ $_[0] } = 1; };
 
     while (1) {
         if (%signalQueue) {
             warn join ' ', 'Signals pending:', sort keys %signalQueue;
             if ( $signalQueue{HUP} ) {
-                warn 'SIGHUP: Reloading ' . __PACKAGE__ . ' with ' . $module;
+                warn 'Reloading ' . __PACKAGE__ . ' with ' . $module;
                 delete $signalQueue{HUP};
                 reloadMyModules();
                 $signalQueue{needsLoading} = 1;
             }
-            if ( $signalQueue{TERM} ) {
-                warn 'SIGTERM: Terminating ' . __PACKAGE__ . ' with ' . $module;
+            if ( $signalQueue{TERM} || $signalQueue{INT} ) {
+                warn 'Terminating ' . __PACKAGE__ . ' with ' . $module;
                 require POSIX and POSIX::_exit(0);
                 die 'This should not happen';
             }
             if ( $signalQueue{USR1} ) {
-                warn 'SIGUSR1: Restarting ' . __PACKAGE__ . ' with ' . $module;
+                warn 'Restarting ' . __PACKAGE__ . ' with ' . $module;
                 map { s/(['\\])/\\$1/g; } $module, $nickName, $logging;
                 my %inc = map { ( "-I$_" => undef ); } @INC;
                 exec $^X, keys %inc, '-M' . __PACKAGE__, '-e',
                   __PACKAGE__ . "->run('$module', '$nickName', '$logging')";
             }
             if ( $signalQueue{USR2} ) {
-                warn 'SIGUSR2: Dumping '
-                  . __PACKAGE__
-                  . ' state with '
-                  . $module;
+                warn 'Dumping ' . __PACKAGE__ . ' state with ' . $module;
                 delete $signalQueue{USR2};
                 if ($pq) {
                     warn 'Priority queue';
