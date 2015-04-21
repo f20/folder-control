@@ -476,6 +476,32 @@ sub datemarkFolder {
     $datemarker->('');
 }
 
+sub restampFolder {
+    my $restamper;
+    $restamper = sub {
+        my ($path) = @_;
+        my $maxt = 0;
+        my $dh;
+        opendir $dh, $path or return;
+        my @list =
+          map { decode_utf8 $_; } grep { !/^(?:|cyrus)\./s } readdir $dh;
+        foreach (@list) {
+            my $p2    = "$path/$_";
+            my $mtime = ( lstat $p2 )[9];
+            if ( -d _ ) {
+                $mtime = $restamper->($p2);
+            }
+            elsif ( !-f _ ) {
+                $mtime = 0;
+            }
+            $maxt = $mtime if $mtime > $maxt;
+        }
+        utime time, $maxt, $path;    # only works if folder owner
+        $maxt;
+    };
+    $restamper->( defined $_[0] && length $_[0] ? "$_[0]" : '.' );
+}
+
 sub categoriseByDay {
     my ($path) = @_;
     my $maxt = 0;

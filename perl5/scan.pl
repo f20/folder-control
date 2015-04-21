@@ -74,24 +74,12 @@ foreach (@ARGV) {
         $syncDestination = decode_utf8 getcwd();
         next;
     }
-    elsif (/^-+((?:clean|flat).*)$/) {
+    elsif (/^-+((?:clean|flat|filter|datemark|dayfolder|restamp).*)$/) {
         $cleaningFlag = $1;
-        next;
-    }
-    elsif (/^-+((?:filter).*)$/) {
-        $filterFlag = $1;
         next;
     }
     elsif (/^-+((?:split|explode).*)$/) {
         $filterFlag = $1 . 'nodb';
-        next;
-    }
-    elsif (/^-+(datemark.*)$/) {
-        $cleaningFlag = $1;
-        next;
-    }
-    elsif (/^-+(dayfolder.*)$/) {
-        $cleaningFlag = $1;
         next;
     }
     elsif (/^-+base=(.*)/) {
@@ -391,6 +379,10 @@ foreach (@ARGV) {
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
                 FileMgt106::Tools::datemarkFolder($dir);
+            }
+            if ( $cleaningFlag =~ /restamp/i ) {
+                warn "Re-timestamping $dir";
+                FileMgt106::Tools::restampFolder($dir);
             }
             if ( $cleaningFlag =~ /flat/i ) {
                 warn "Flattening $dir";
