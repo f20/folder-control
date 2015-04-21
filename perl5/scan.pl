@@ -40,14 +40,14 @@ require POSIX;
 use File::Spec::Functions qw(catfile catdir rel2abs);
 use File::Basename qw(dirname basename);
 use Cwd;
-my ( $startdir, $perl5dir );
+my ( $startFolder, $perl5dir );
 
 BEGIN {
     $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
         my ($sig) = @_;
         die "Died on $sig signal\n";
     };
-    $startdir = getcwd();
+    $startFolder = getcwd();
     $perl5dir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
         last if -d catdir( $perl5dir, 'FileMgt106' );
@@ -57,7 +57,7 @@ BEGIN {
     }
     chdir $perl5dir or die "chdir $perl5dir: $!";
     $perl5dir = getcwd();
-    chdir $startdir;
+    chdir $startFolder;
 }
 use lib $perl5dir;
 use FileMgt106::Database;
@@ -76,7 +76,7 @@ my (
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
     if (/^-+sync=(.+)$/) {
-        chdir $startDir;
+        chdir $startFolder;
         chdir $1 or next;
         $syncDestination = decode_utf8 getcwd();
         next;
@@ -133,7 +133,7 @@ foreach (@ARGV) {
             };
         }
         else {
-            my $repoDir = !$_ ? $startDir : m#^/#s ? $_ : "$startDir/$_";
+            my $repoDir = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
             push @applyScanMasterConfig,
               sub { $_[0]->setCatalogue( undef, $repoDir ); };
         }
@@ -143,19 +143,19 @@ foreach (@ARGV) {
       FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) )
       unless $filterFlag && $filterFlag =~ /nodb/i;
     if (/^-+aperture=?(.*)/) {
-        my $jbzDir = $startDir;
+        my $jbzDir = $startFolder;
         if ($1) {
-            chdir $startDir;
+            chdir $startFolder;
             chdir "$1" and $jbzDir = decode_utf8 getcwd();
         }
         require FileMgt106::ScanAperture;
-        $_->updateJbz( $hints, $startDir, $jbzDir )
+        $_->updateJbz( $hints, $startFolder, $jbzDir )
           foreach FileMgt106::ScanAperture->libraries( $hints, @ARGV );
         last;
     }
     elsif (/^-+migrate(?:=(.+))?/) {
         my $oldFileName;
-        $oldFileName = rel2abs( $1, $startDir ) if $1;
+        $oldFileName = rel2abs( $1, $startFolder ) if $1;
         chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
         unless ( $oldFileName && -f $oldFileName ) {
             $hints->{dbHandle}->do('begin exclusive transaction')
@@ -251,7 +251,7 @@ foreach (@ARGV) {
         next;
     }
     if (/^-+missing=(.*)/) {
-        chdir $startDir;
+        chdir $startFolder;
         $missing = FileMgt106::Tools::loadJbz($1);
         $grabFrom ||= '';
         next;
@@ -262,7 +262,7 @@ foreach (@ARGV) {
         push @baseScalars, FileMgt106::Tools::loadJbz($1);
         next;
     }
-    $_ = "$startDir/$_" unless m#^/#s;
+    $_ = "$startFolder/$_" unless m#^/#s;
     my @stat = lstat;
     if ( -l _ ) {
         if ( readlink =~ /([0-9a-zA-Z]{40})/ ) {
@@ -423,7 +423,7 @@ foreach (@ARGV) {
 if ($missing) {
     my ( $cellarScanner, $cellarDir );
     unless ($grabFrom) {
-        my $missingFile = "$startDir/+missing.jbz";
+        my $missingFile = "$startFolder/+missing.jbz";
         FileMgt106::Tools::saveJbz( $missingFile, $missing );
         die "Do your own grab: $missingFile";
     }

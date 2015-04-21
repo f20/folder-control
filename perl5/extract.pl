@@ -38,14 +38,14 @@ use Encode 'decode_utf8';
 use File::Spec::Functions qw(catfile catdir rel2abs);
 use File::Basename qw(dirname basename);
 use Cwd;
-my ( $startdir, $perl5dir );
+my ( $startFolder, $perl5dir );
 
 BEGIN {
     $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
         my ($sig) = @_;
         die "Died on $sig signal\n";
     };
-    $startdir = getcwd();
+    $startFolder = getcwd();
     $perl5dir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
         last if -d catdir( $perl5dir, 'FileMgt106' );
@@ -55,7 +55,7 @@ BEGIN {
     }
     chdir $perl5dir or die "chdir $perl5dir: $!";
     $perl5dir = getcwd();
-    chdir $startdir;
+    chdir $startFolder;
 }
 use lib $perl5dir;
 use JSON;

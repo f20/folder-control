@@ -90,16 +90,16 @@ sub libraries {
 
 sub setPathsCheckUpToDate {
     require Digest::SHA;
-    my ( $lib, $startDir, $jbzDir ) = @_;
+    my ( $lib, $startFolder, $jbzDir ) = @_;
     $jbzDir ||= getcwd();
-    chdir $startDir if $startDir;
+    chdir $startFolder if $startFolder;
     chdir $lib->[LIB_DIR] or return;
     my $jbz = $lib->[LIB_DIR] = decode_utf8 getcwd();
     my $shapp = ' ' . Digest::SHA::sha1_hex($jbz);
     $jbz =~ s#.*/##gs;
     $jbz = 'long name.aplibrary' if length( encode_utf8 $jbz) > 63;
     $jbz .= $shapp unless $jbz =~ s/\.aplibrary/$shapp.aplibrary/;
-    $lib->[LIB_JBZ] = $jbz = "$startDir/$jbz.jbz";
+    $lib->[LIB_JBZ] = $jbz = "$startFolder/$jbz.jbz";
     my @stat = stat $jbz;
     @stat and $stat[STAT_MTIME] > $lib->[LIB_MTIME] and return;
     $lib;
@@ -198,10 +198,10 @@ sub stars {
 }
 
 sub updateJbz {
-    my ( $lib, $hints, $startDir, $jbzDir ) = @_;
+    my ( $lib, $hints, $startFolder, $jbzDir ) = @_;
     return
       unless defined $lib->[LIB_JBZ]
-      || $lib->setPathsCheckUpToDate( $startDir, $jbzDir );
+      || $lib->setPathsCheckUpToDate( $startFolder, $jbzDir );
     $lib->repairPermissions;
     $lib->scan($hints);
     $lib->stars;
