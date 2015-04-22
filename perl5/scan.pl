@@ -81,8 +81,12 @@ foreach (@ARGV) {
         $syncDestination = decode_utf8 getcwd();
         next;
     }
-    elsif (/^-+((?:clean|flat|filter|datemark|dayfolder|restamp).*)$/) {
+    elsif (/^-+((?:clean|flat|datemark|dayfolder|restamp).*)$/) {
         $cleaningFlag = $1;
+        next;
+    }
+    elsif (/^-+((?:filter).*)$/) {
+        $filterFlag = $1;
         next;
     }
     elsif (/^-+((?:split|explode).*)$/) {

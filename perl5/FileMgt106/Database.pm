@@ -270,6 +270,7 @@ EOL
           $qUproot,                  $qMoveByParidName,
           $qMoveByLocid,             $qClone,
           $qAlreadyThere;
+        $dbHandle->disconnect;
         undef $dbHandle;
     };
 
