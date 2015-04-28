@@ -34,6 +34,61 @@ use Digest::SHA ();
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 
+sub makeExtractAcceptor {
+    my ($sort)    = grep { /^-+sort/i } @_;
+    my ($tarpipe) = grep { /^-+(?:tar|tbz|tgz)/i } @_;
+    if ( $sort || $tarpipe ) {
+        my @list;
+        my $fileHandle = \*STDOUT;
+        if ( my ($tarpipe) = grep { /^-+(?:tar|tbz|tgz)/i } @_ ) {
+            my $options = '';
+            if ( $tarpipe =~ /bz/i ) {
+                $options = '--bzip2';
+            }
+            elsif ( $tarpipe =~ /z/i ) {
+                $options = '-z';
+            }
+            if ( my ($cutOffDate) = map { /^-+newer=(.+)/i ? $1 : (); } @_ ) {
+                $options .= " --newer-mtime='$cutOffDate'";
+            }
+            $ENV{COPY_EXTENDED_ATTRIBUTES_DISABLE} = 1;
+            $ENV{COPYFILE_DISABLE}                 = 1;
+            open $fileHandle, "| tar $options -c -f - -T -";
+        }
+        return sub {
+            unless ( defined $_[0] ) {
+                print map { "$_->[0]\n" }
+                  sort    { $a->[1] <=> $b->[1] } @list;
+                return;
+            }
+            my $size = -s $_[0];
+            push @list, [ $_[0], $size ];
+            return;
+        };
+    }
+    sub {
+        print "@_\n" if @_;
+        return;
+    };
+}
+
+sub makeSimpleExtractor {
+    my ($acceptor) = @_;
+    my $readScal;
+    $readScal = sub {
+        return $acceptor->()
+          unless my ( $what, $path ) = @_;
+        $path ||= '.';
+        return unless $what;
+        if ( ref $what eq 'HASH' ) {
+            while ( my ( $k, $v ) = each %$what ) {
+                $readScal->( $v, "$path/$k" );
+            }
+        }
+        $acceptor->($path) unless ref $what;
+    };
+}
+
 sub makeHintsExtractor {
 
     my ( $hintsFile, $acceptor ) = @_;

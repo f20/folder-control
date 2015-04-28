@@ -536,10 +536,11 @@ EOL
                   unless my $drootid = $getRootidFromDev->( $stat[STAT_DEV] );
                 undef $locid
                   unless defined $size
-                  && defined $mtime
+                  && defined $rootid
                   && $rootid == $drootid
                   && $ino == $stat[STAT_INO]
                   && $size == $stat[STAT_SIZE]
+                  && defined $mtime
                   && $mtime == $stat[STAT_MTIME];
                 return wantarray ? ( $name, \@stat, $locid ) : $name;
             }

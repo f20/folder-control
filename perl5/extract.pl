@@ -2,7 +2,7 @@
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2014 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -58,17 +58,16 @@ BEGIN {
     chdir $startFolder;
 }
 use lib $perl5dir;
-use JSON;
-use FileMgt106::Tools;
 
 my ( $processScal, $processQuery );
 
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
     if (/^-+nohints/i) {
+        require FileMgt106::Extract;
         $processScal =
-          FileMgt106::Tools::makeSimpleExtractor(
-            FileMgt106::Tools::makeExtractAcceptor(@ARGV) );
+          FileMgt106::Extract::makeSimpleExtractor(
+            FileMgt106::Extract::makeExtractAcceptor(@ARGV) );
         next;
     }
     elsif (/^-+csv=?(.*)/i) {
@@ -108,7 +107,7 @@ foreach (@ARGV) {
         else {
             $processScal =
               FileMgt106::Extract::makeHintsExtractor( $hintsFile,
-                FileMgt106::Tools::makeExtractAcceptor(@ARGV) );
+                FileMgt106::Extract::makeExtractAcceptor(@ARGV) );
         }
     }
     if (/^(-+)$/) {
@@ -128,10 +127,12 @@ foreach (@ARGV) {
               if $numKeys == 1;
             if (undef) {
                 binmode STDOUT, ':utf8';
+                require JSON;
                 print JSON->new->canonical(1)
                   ->pretty->encode($missingCompilation);
             }
             else {
+                require FileMgt106::Tools;
                 FileMgt106::Tools::saveJbz( "+missing.jbz.$$",
                     $missingCompilation );
                 rename "+missing.jbz.$$", '+missing.jbz';
@@ -142,6 +143,7 @@ foreach (@ARGV) {
         $processScal->($_);
     }
     elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
+        require FileMgt106::Tools;
         if ( my $s = $processScal->( FileMgt106::Tools::loadJbz($_) ) ) {
             s/(\.jbz|json\.bz2)$/+missing$1/s;
             FileMgt106::Tools::saveJbz( $_, $s );
@@ -150,7 +152,7 @@ foreach (@ARGV) {
     elsif ($processQuery) {
         $processQuery->($_);
     }
-    elsif ( !/^-+(?:cwd|filter|sort|tar|tgz|tbz)$/ ) {
+    elsif ( !/^-+(?:cwd|filter|sort|tar|tgz|tbz|newer=.*)$/ ) {
         warn "Ignored: $_";
     }
 }
