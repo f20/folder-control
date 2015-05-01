@@ -58,6 +58,7 @@ BEGIN {
     chdir $startFolder;
 }
 use lib $perl5dir;
+use JSON;
 
 my ( $processScal, $processQuery );
 
