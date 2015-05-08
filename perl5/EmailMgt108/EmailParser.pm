@@ -204,7 +204,7 @@ sub parseMessage {
                     open \*STDIN, '<&', fileno($r);
                     mkdir "$folder.tmp/winmail"
                       and chdir "$folder.tmp/winmail"
-                      and exec 'tnef';
+                      and exec qw(tnef --save-body);
                     local undef $/;
                     <$r>;
                     close $r;
