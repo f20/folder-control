@@ -278,6 +278,7 @@ EOL
         my ( $parid, $name, $dev, $ino, $size, $mtime ) = @_;
         $needsNap->() if $needsNap;
         my $rootid = $rootidFromDev{$dev};
+        die "Device $dev not known" unless defined $rootid;
         $qGetLocation->execute( $parid, $name );
         my ( $locid, $lrootid, $lino, $lsize, $lmtime, $sha1 ) =
           $qGetLocation->fetchrow_array;
@@ -330,6 +331,7 @@ EOL
     $self->{checkFolder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
         my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
+        die "Device $dev not known" unless defined $rootid;
         $qGetLocidRootidIno->execute( $parid, $name );
         my ( $locid, $rootiddb, $inodb ) = $qGetLocidRootidIno->fetchrow_array
           or return;
@@ -342,6 +344,7 @@ EOL
     my $folder = $self->{folder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
         my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
+        die "Device $dev not known" unless defined $rootid;
         $qGetLocidRootidIno->execute( $parid, $name );
         if ( my ( $locid, $rootiddb, $inodb ) =
             $qGetLocidRootidIno->fetchrow_array )
