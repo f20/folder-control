@@ -357,7 +357,7 @@ sub deepClean {
             if ( $file =~ s/^(\~\$|Z_|\.)/_$1/is ) {
                 my $d3 = "$_/$file";
                 if ( -e $d3 ) {
-                    my ( $base, $extension ) = ( $d3 =~ m#(.*)(\.\S+)$#s );
+                    my ( $base, $extension ) = ( $d3 =~ m#(.*)(\.[^ /]+)$#s );
                     ( $base, $extension ) = ( $d3, '' )
                       unless defined $extension;
                     my $c = 2;
@@ -422,7 +422,7 @@ sub normaliseFileNames {
         if ( $norm ne $_ ) {
             my $d3 = "$dir/$norm";
             if ( -e $d3 ) {
-                my ( $base, $ext ) = ( $d3 =~ m#(.*)(\.\S+)$#s );
+                my ( $base, $ext ) = ( $d3 =~ m#(.*)(\.[^ /]+)$#s );
                 ( $base, $ext ) = ( $d3, '' ) unless defined $ext;
                 my $c = 2;
                 while ( -e ( $d3 = "$base~$c$ext" ) ) { ++$c; }
