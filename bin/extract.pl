@@ -46,15 +46,16 @@ BEGIN {
         die "Died on $sig signal\n";
     };
     $startFolder = getcwd();
-    $perl5dir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
+    my $homedir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
+        $perl5dir = catdir( $homedir, 'lib' );
         last if -d catdir( $perl5dir, 'FileMgt106' );
-        my $parent = dirname $perl5dir;
-        last if $parent eq $perl5dir;
-        $perl5dir = $parent;
+        my $parent = dirname $homedir;
+        last if $parent eq $homedir;
+        $homedir = $parent;
     }
     chdir $perl5dir or die "chdir $perl5dir: $!";
-    $perl5dir = getcwd();
+    $perl5dir = decode_utf8 getcwd();
     chdir $startFolder;
 }
 use lib $perl5dir;
