@@ -80,7 +80,7 @@ foreach (@ARGV) {
         mkdir catdir( dirname($perl5dir), '~$' );
         mkdir catdir( dirname($perl5dir), 'top' );
         mkdir catdir( dirname($perl5dir), 'top', 'test' );
-        use Daemon112::Daemon;
+        require Daemon112::Daemon;
         Daemon112::Daemon->run('Daemon112::TestWatch');
     }
     elsif (/^-+sync=(.+)$/) {
