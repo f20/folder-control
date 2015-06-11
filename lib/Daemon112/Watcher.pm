@@ -2,7 +2,7 @@ package Daemon112::Watcher;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2012 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -141,15 +141,6 @@ sub schedule {
     }
     $self->{qid} = $self->{queue}->enqueue( $self->{ttr} = $ttr, $self )
       unless exists $self->{qid};
-    $self;
-}
-
-sub unschedule {
-    my ($self) = @_;
-    if ( $self->{queue} && defined $self->{qid} ) {
-        $self->{queue}->remove_item( $self->{qid}, sub { $_[0] == $self; } );
-    }
-    delete $self->{$_} foreach qw(queue qid);
     $self;
 }
 

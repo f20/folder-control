@@ -304,13 +304,11 @@ sub watchFolder {
       || $self->[WATCHING][0]->new(
         sub {
             my ($runner) = @_;
+            $controller->stopWatching( $self->[WATCHING][1] );
             $self->[HINTS]->enqueue(
                 $runner->{pq},
                 sub {
-                    unless ( chdir "$self->[DIR]/$path" ) {
-                        $controller->stopWatching( $self->[WATCHING][1] );
-                        return;
-                    }
+                    chdir "$self->[DIR]/$path" or return;
                     $frozensha1 ||= sha1_base64( freeze($hashref) );
                     eval {
                         $scanDir->(
@@ -356,7 +354,7 @@ sub watchFile {
 
 sub unwatchAll {
     my ($self) = @_;
-    $_->stopWatching( $self->[WATCHING][1] )->unschedule
+    $_->stopWatching( $self->[WATCHING][1] )
       foreach values %{ $self->[WATCHERS] };
     $self->[WATCHERS] = {};
     $self;

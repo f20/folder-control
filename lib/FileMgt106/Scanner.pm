@@ -122,7 +122,9 @@ sub new {
         }
         while ( !@stat && @wouldNeedToCopy ) {
             system qw(cp -p --), pop @wouldNeedToCopy, $fileName;
-            @stat = $rstat->( $fileName, time + 9_999 );
+            @stat = $rstat->(
+                $fileName, 2_000_000_000    # This will go wrong in 2033
+            );
             unless ( $sha1 eq _sha1File($fileName) ) {
                 warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
                 @stat = ();
@@ -239,7 +241,7 @@ sub new {
         $hashref = {} if $target || !$hashref;
         $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
             $forceReadOnlyTimeLimit, $stasher, $backuper )
-          if $watchMaster && !$runningUnderWatcher;
+          if $watchMaster;
         my %targetHasBeenApplied;
         my @list;
         {
@@ -409,8 +411,9 @@ sub new {
                 $watchMaster->watchFile( $scanDir, $locid, $path, $hashref, $_,
                     $stasher, $backuper )
                   if $watchMaster
-                  && !$readOnly
-                  && $_ =~ $regexWatchThisFile;
+                  and !$readOnly
+                  and $stat[STAT_MTIME] > time - 60
+                  || $_ =~ $regexWatchThisFile;
 
                 $hashref->{$_} = unpack 'H*', $sha1;
 
@@ -433,23 +436,12 @@ sub new {
             elsif ( -d _ ) {
 
                 delete $oldChildrenHashref->{$_};
-                if ($runningUnderWatcher) {
-                    if (
-                        $checkFolder->(
-                            $locid, $_, @stat[ STAT_DEV, STAT_INO ]
-                        )
-                      )
-                    {
-                        next;
-                    }
-                    else {
-                        delete $hashref->{$_};
-                    }
-                }
+
                 if (/$regexIgnoreFolder/s) {
                     $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] );
                     next;
                 }
+
                 unless ( chdir $_ ) {
                     warn "chdir $dir/$path$_: $!";
                     next;
@@ -546,16 +538,30 @@ sub new {
                       if $watchMaster && -d $_;
                 }
                 else {
+                    if ($runningUnderWatcher) {
+                        if (
+                            $checkFolder->(
+                                $locid, $_, @stat[ STAT_DEV, STAT_INO ]
+                            )
+                          )
+                        {
+                            next;
+                        }
+                        else {
+                            delete $hashref->{$_};
+                        }
+                    }
                     $hashref->{$_} = $scanDir->(
                         $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] ),
                         "$path$_/",
                         $allowActions && /^[XY]_/si
-                        ? (
+                        ? do {
+                            my $now = time;
                             $forceReadOnlyTimeLimit
-                              && $forceReadOnlyTimeLimit > time
-                            ? $forceReadOnlyTimeLimit
-                            : time - 13
-                          )
+                              && $forceReadOnlyTimeLimit > $now
+                              ? $forceReadOnlyTimeLimit
+                              : $now - 13;
+                          }
                         : $forceReadOnlyTimeLimit,
                         /^[OWX]_/si
                           || !/^Y_/si
@@ -566,8 +572,7 @@ sub new {
                         : ref $hashref->{$_} ? $hashref->{$_}
                         : undef,
                         $stasher ? $makeChildStasher->( $stasher, $_ ) : undef,
-                        $backuper
-                        ? $makeChildBackuper->( $backuper, $_ )
+                        $backuper ? $makeChildBackuper->( $backuper, $_ )
                         : undef,
                         /^Y_/si ? undef : $watchMaster || $reserveWatchMaster,
                     );

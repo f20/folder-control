@@ -76,7 +76,7 @@ my (
 
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
-    if (/^-+testwatcher/) {
+    if (/^-+testwatch/) {
         mkdir catdir( dirname($perl5dir), '~$' );
         mkdir catdir( dirname($perl5dir), 'top' );
         mkdir catdir( dirname($perl5dir), 'top', 'test' );
