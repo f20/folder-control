@@ -461,94 +461,83 @@ sub new {
                 }
 
                 if ( $allowActions && /^Z_/si && $stasher && -w _ ) {
-                    if ( my @items = _listDirectory() ) {
-                        my ( $stashLocid, $stash ) = $stasher->();
-                        my $name = $_;
-                        $name =~ s/^Z_/Y_/i;
-                        $name .=
-                          POSIX::strftime( ' %Y-%m-%d %a %H%M%S', localtime );
-                        my $binName = $name;
-                        foreach ( -9 .. 0 ) {
-                            my $p2 = $stash . '/' . $binName;
-                            last if mkdir $p2 and $rstat->($p2);
-                            die "mkdir $stash/$binName: $!" unless $_;
-                            $binName = $name . ' #' . _randomString(3);
-                        }
-                        my $crashRecoverySymlink = "$dir/$path~\$temp $_";
-                        if (
-                            -e $crashRecoverySymlink
-                            || !symlink "$stash/$binName",
-                            $crashRecoverySymlink
-                          )
-                        {
+                    my $do_it = sub {
+                        if ( my @items = _listDirectory() ) {
+                            my ( $stashLocid, $stash ) = $stasher->();
+                            my $name = $_;
+                            $name =~ s/^Z_/Y_/i;
+                            $name .=
+                              POSIX::strftime( ' %Y-%m-%d %a %H%M%S',
+                                localtime );
+                            my $binName = $name;
                             foreach ( -9 .. 0 ) {
-                                my $n =
-                                  $crashRecoverySymlink . ' #'
-                                  . _randomString(3);
-                                if ( symlink "$stash/$binName", $n ) {
-                                    $crashRecoverySymlink = $n;
-                                    last;
-                                }
+                                my $p2 = $stash . '/' . $binName;
+                                last if mkdir $p2 and $rstat->($p2);
+                                die "mkdir $stash/$binName: $!" unless $_;
+                                $binName = $name . ' #' . _randomString(3);
                             }
-                            die $crashRecoverySymlink unless $_;
-                        }
-                        rename( $_, "$stash/$binName/$_" )
-                          || die "rename $_, $stash/$binName/$_: $!"
-                          foreach @items;
-                        unless (/^Z_(?:Archive|Cellar|Infill|Rubbish)$/is) {
-                            chdir "$dir/$path" or next;
-                            unless ( rmdir $_ ) {
-                                my $pathToMoveTo;
-                                foreach my $counter ( 0 .. 2 ) {
-                                    $pathToMoveTo =
-                                        $stash . '/'
-                                      . $_
-                                      . (
-                                        $counter
-                                        ? ' #' . _randomString(3)
-                                        : ''
-                                      );
-                                    last if rename $_, $pathToMoveTo;
-                                    undef $pathToMoveTo;
+                            my $crashRecoverySymlink = "$dir/$path~\$temp $_";
+                            if (
+                                -e $crashRecoverySymlink
+                                || !symlink "$stash/$binName",
+                                $crashRecoverySymlink
+                              )
+                            {
+                                foreach ( -9 .. 0 ) {
+                                    my $n =
+                                      $crashRecoverySymlink . ' #'
+                                      . _randomString(3);
+                                    if ( symlink "$stash/$binName", $n ) {
+                                        $crashRecoverySymlink = $n;
+                                        last;
+                                    }
                                 }
-                                rename $pathToMoveTo, $_
-                                  if defined $pathToMoveTo
-                                  and _listDirectory($pathToMoveTo);
+                                die $crashRecoverySymlink unless $_;
                             }
-                        }
-                        unless ( chdir "$stash/$binName" ) {
-                            warn "chdir $stash/$binName: $!";
-                            next;
-                        }
-                        unless (/^Z_(?:Infill|Rubbish)/i) {
-                            require FileMgt106::Tools;
-                            FileMgt106::Tools::normaliseFileNames('.');
-                        }
-                        $binned{"$binName"} = [
-                            $scanDir->(
-                                $folder->(
-                                    $stashLocid, $binName,
-                                    ( stat '.' )[ STAT_DEV, STAT_INO ]
+                            rename( $_, "$stash/$binName/$_" )
+                              || die "rename $_, $stash/$binName/$_: $!"
+                              foreach @items;
+                            unless (/^Z_(?:Archive|Cellar|Infill|Rubbish)$/is) {
+                                chdir "$dir/$path"
+                                  or die "chdir $dir/$path: $!";
+                                rmdir $_;
+                            }
+                            chdir "$stash/$binName"
+                              or die "chdir $stash/$binName: $!";
+                            unless (/^Z_(?:Infill|Rubbish)/i) {
+                                require FileMgt106::Tools;
+                                FileMgt106::Tools::normaliseFileNames('.');
+                            }
+                            $binned{"$binName"} = [
+                                $scanDir->(
+                                    $folder->(
+                                        $stashLocid, $binName,
+                                        ( stat '.' )[ STAT_DEV, STAT_INO ]
+                                    ),
+                                    (
+                                        substr( $stash, 0, length($dir) + 1 )
+                                          eq "$dir/"
+                                        ? substr( $stash, length($dir) + 1 )
+                                        : $stash
+                                      )
+                                      . "/$binName/",
+                                    /^Z_(?:Archive|Cellar)/i
+                                    ? 2_000_000_000 # This will go wrong in 2033
+                                    : $forceReadOnlyTimeLimit
                                 ),
-                                (
-                                    substr( $stash, 0, length($dir) + 1 ) eq
-                                      "$dir/"
-                                    ? substr( $stash, length($dir) + 1 )
-                                    : $stash
-                                  )
-                                  . "/$binName/",
-                                /^Z_(?:Archive|Cellar)/i
-                                ? 2_000_000_000    # This will go wrong in 2033
-                                : $forceReadOnlyTimeLimit
-                            ),
-                            $crashRecoverySymlink
-                        ];
+                                $crashRecoverySymlink
+                            ];
+                        }
+                        chdir "$dir/$path" or die "chdir $dir/$path: $!";
+                    };
+                    $do_it->();
+                    if ( $watchMaster && -d $_ ) {
+                        $watchMaster->watchFolder( $scanDir, $locid, $path,
+                            $hashref, $forceReadOnlyTimeLimit, $stasher,
+                            $backuper, -15, $_ );
+                        $do_it->() if chdir $_;
                     }
-                    chdir "$dir/$path" or next;
-                    $watchMaster->watchFolder( $scanDir, $locid, $path,
-                        $hashref, $forceReadOnlyTimeLimit, $stasher, $backuper,
-                        -15, $_ )
-                      if $watchMaster && -d $_;
+                    next;
                 }
                 else {
                     $hashref->{$_} = $scanDir->(
