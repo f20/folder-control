@@ -412,8 +412,7 @@ sub new {
                     $stasher, $backuper )
                   if $watchMaster
                   and !$readOnly
-                  and $stat[STAT_MTIME] > time - 60
-                  || $_ =~ $regexWatchThisFile;
+                  and $stat[STAT_MTIME] > time - 60 || /$regexWatchThisFile/;
 
                 $hashref->{$_} = unpack 'H*', $sha1;
 
@@ -436,6 +435,20 @@ sub new {
             elsif ( -d _ ) {
 
                 delete $oldChildrenHashref->{$_};
+
+                if ($runningUnderWatcher) {
+                    if (
+                        $checkFolder->(
+                            $locid, $_, @stat[ STAT_DEV, STAT_INO ]
+                        )
+                      )
+                    {
+                        next;
+                    }
+                    else {
+                        delete $hashref->{$_};
+                    }
+                }
 
                 if (/$regexIgnoreFolder/s) {
                     $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] );
@@ -538,19 +551,6 @@ sub new {
                       if $watchMaster && -d $_;
                 }
                 else {
-                    if ($runningUnderWatcher) {
-                        if (
-                            $checkFolder->(
-                                $locid, $_, @stat[ STAT_DEV, STAT_INO ]
-                            )
-                          )
-                        {
-                            next;
-                        }
-                        else {
-                            delete $hashref->{$_};
-                        }
-                    }
                     $hashref->{$_} = $scanDir->(
                         $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] ),
                         "$path$_/",
