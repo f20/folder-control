@@ -144,7 +144,7 @@ sub scan {
     $hints->beginInteractive;
     warn "Scanning $lib->[LIB_DIR]/Masters";
     FileMgt106::Scanner->new( "$lib->[LIB_DIR]/Masters", $hints, $stat )
-      ->scan( time - 17 )
+      ->scan( time - 27 )
       if -d "$lib->[LIB_DIR]/Masters";
     warn "Scanning $lib->[LIB_DIR]";
     $lib->[LIB_SCALAR] =

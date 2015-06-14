@@ -55,7 +55,7 @@ sub new {
     bless {
         action    => $action,
         name      => $name,
-        delay     => defined $delay ? $delay : 17,
+        delay     => defined $delay ? $delay : 7,
         sysHandle => {},
     }, $className;
 }
