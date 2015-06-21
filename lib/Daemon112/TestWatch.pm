@@ -73,7 +73,7 @@ sub start {
         $self->{topMaster} ||= Daemon112::TopMaster->new(
             '/kq' => $self->{kq},
             '/pq' => $self->{pq},
-        )->attach( catdir( $self->{backupDir}, 'top' ) )
+        )->attach( catdir( $self->{backupDir}, 'top.tmp' ) )
     );
     $self;
 }

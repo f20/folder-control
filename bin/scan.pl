@@ -78,8 +78,8 @@ foreach (@ARGV) {
     local $_ = decode_utf8 $_;
     if (/^-+testwatch/) {
         mkdir catdir( dirname($perl5dir), '~$' );
-        mkdir catdir( dirname($perl5dir), 'top' );
-        mkdir catdir( dirname($perl5dir), 'top', 'test' );
+        mkdir catdir( dirname($perl5dir), 'top.tmp' );
+        mkdir catdir( dirname($perl5dir), 'top.tmp', 'test' );
         require Daemon112::Daemon;
         Daemon112::Daemon->run('Daemon112::TestWatch');
     }
