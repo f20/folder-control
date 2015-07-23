@@ -40,7 +40,8 @@ my $normaliser = -e '/System/Library' ? \&NFD : \&NFC;
 sub setNormalisation {
     return unless local $_ = "@_";
     $normaliser =
-        /ascii/i ? sub { local $_ = NFKD( $_[0] ); s/[^ -~]/_/g; $_; }
+        /ascii/i ? sub { local $_ = NFKD( $_[0] ); s/[^ -~]/_/g;    $_; }
+      : /win/i   ? sub { local $_ = NFC( $_[0] );  tr/[]?\/\\|:/_/; $_; }
       : /nfkd/i  ? \&NFKD
       : /nfkc/i  ? \&NFKC
       : /nfd/i   ? \&NFD
@@ -74,7 +75,7 @@ sub normaliseHash {
         if ( $map{$u} ) {
             my $c;
             do {
-                $c = $u . '+++' . $map{$u}++;
+                $c = $u . ' ~' . $map{$u}++;
             } while defined $map{$c};
             $map{$c} = 0;
             $hr->{$c}{$n} = normaliseHash( delete $hr->{$o}, $keyFilter );
@@ -463,7 +464,8 @@ sub datemarkFolder {
         my $np = $path;
         if ( $maxt && length $path ) {
             my $date = POSIX::strftime( '%Y-%m-%d', localtime($maxt) );
-            $np =~ s#(?:[XY]_)?(?:[()_ ]|$date|[0-9]{4}-[0-9]{2}-[0-9]{2})*([^/]*)$#Y_$date $1#s;
+            $np =~
+s#(?:[XY]_)?(?:[()_ ]|$date|[0-9]{4}-[0-9]{2}-[0-9]{2})*([^/]*)$#Y_$date $1#s;
             $np =~ s/ +$//s;
             if ( $np ne $path ) {
                 $np .= '_' while -e $prefix . $np;

@@ -116,10 +116,13 @@ foreach (@ARGV) {
         local undef $/;
         binmode STDIN;
         my $missingCompilation;
+        require FileMgt106::Tools;
+        FileMgt106::Tools::setNormalisation('win');
         foreach ( map { decode_json("{$_}") } grep { $_ } split /}\s*{/s,
             '}' . <STDIN> . '{' )
         {
-            my $missing = $processScal->($_);
+            my $missing =
+              $processScal->( FileMgt106::Tools::normaliseHash($_) );
             $missingCompilation->{$_} = $missing if $missing;
         }
         if ( $missingCompilation
