@@ -497,9 +497,11 @@ EOL
         my ($dev) = @_;
         my $rootid = $rootidFromDev{$dev};
         return $rootid if defined $rootid;
-        map { $rootidFromDev{ $_->[0] } = $_->[1]; } @{
+        map { $rootidFromDev{ $_->[0] } ||= $_->[1]; } @{
             $dbHandle->selectall_arrayref(
-                'select rootid, locid from locations where parid=0');
+                    'select rootid, locid from locations'
+                  . ' where parid=0 order by length(name)'
+            );
         };
         $rootidFromDev{$dev} ||= 0;
     };
