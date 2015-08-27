@@ -35,6 +35,9 @@ use POSIX       ();
 use Digest::SHA ();
 use FileMgt106::FileSystem;
 
+my $_sha1Machine = new Digest::SHA;
+my $_sha1Empty   = $_sha1Machine->digest;
+
 sub new {
 
     my ( $className, $dir, $hints, $rstat ) = @_;
@@ -51,8 +54,8 @@ sub new {
       qr/\.(?:download|tmp|app|git|svn|AppleDouble|aplibrary)$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
-      ? qr/\.(?:txt|js|json|yml|java|css|pl|pm|R|doc|docx|ppt|pptx)$/is
-      : qr/\.(?:txt|js|json|yml|java|css|pl|pm|R|xls|ppt|do)$/is;
+      ? qr/\.(?:txt|js|json|yml|java|css|pl|pm|py|R|doc|docx|ppt|pptx)$/is
+      : qr/\.(?:txt|js|json|yml|java|css|pl|pm|py|R|xls|ppt|do)$/is;
     my $suspectRegex       = qr/\.xls$/is;
     my $timeLimitAutowatch = time - 3_000_000;
     my @stat               = lstat $dir or die "$dir: cannot stat";
@@ -95,6 +98,10 @@ sub new {
         else {
             return unless $sha1 = $whatYouWant;
         }
+        if ( $sha1 eq $_sha1Empty ) {
+            open my $fh, '>', $fileName or return;
+            return 1;
+        }
         my $iterator = $searchSha1->( $sha1, $devNo );
         my ( @stat, @wouldNeedToCopy );
         while ( !@stat
@@ -112,10 +119,7 @@ sub new {
                 @stat = $rstat->($fileName);
                 $moveByLocid->( $folderLocid, $name, $locid );
             }
-            elsif (  # $path =~ m#/Y_Master#i and symlink( $path, $fileName ) or
-                link( $path, $fileName )
-              )
-            {
+            elsif ( link( $path, $fileName ) ) {
                 @stat = $rstat->($fileName);
             }
             else {
@@ -750,8 +754,6 @@ sub scan {
 sub infill {
     goto &{ shift->{infill} };
 }
-
-my $_sha1Machine = new Digest::SHA;
 
 sub _sha1File($) {
     warn "@_\n";
