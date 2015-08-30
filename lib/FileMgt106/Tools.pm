@@ -239,7 +239,7 @@ sub makeInfillFilter {
     };
 }
 
-sub makeHintsFilter {
+sub makeHintsFilterQuick {
     my ( $hints, $filterFlag ) = @_;
     my $searchSha1;
     $searchSha1 = $hints->{searchSha1} if $hints;
@@ -472,7 +472,7 @@ s#(?:[XY]_)?(?:[()_ ]|$date|[0-9]{4}-[0-9]{2}-[0-9]{2})*([^/]*)$#Y_$date $1#s;
                 rename $prefix . $path, $prefix . $np;
             }
         }
-        utime time, $maxt, $prefix . $np;    # only works if root or folder owner
+        utime time, $maxt, $prefix . $np;   # only works if root or folder owner
         $maxt;
     };
     $datemarker->('');

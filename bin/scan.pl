@@ -253,7 +253,8 @@ foreach (@ARGV) {
     }
     if ( /^-+$/ && $filterFlag ) {
         unless ($filter) {
-            $filter = FileMgt106::Tools::makeHintsFilter( $hints, $filterFlag );
+            $filter =
+              FileMgt106::Tools::makeHintsFilterQuick( $hints, $filterFlag );
             $filter->($_) foreach @baseScalars;
         }
         local undef $/;
@@ -317,7 +318,8 @@ foreach (@ARGV) {
         if ($filterFlag) {
             unless ($filter) {
                 $filter =
-                  FileMgt106::Tools::makeHintsFilter( $hints, $filterFlag );
+                  FileMgt106::Tools::makeHintsFilterQuick( $hints,
+                    $filterFlag );
                 $filter->($_) foreach @baseScalars;
             }
             warn "Filtering '$root$ext' with $filterFlag";

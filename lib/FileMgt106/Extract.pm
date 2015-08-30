@@ -479,6 +479,7 @@ sub makeHintsFilter {
 
     my ($hintsFile) = @_;
     my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
+    my %seen;
     my $sha1Machine;
 
     my $filterTree;
@@ -502,6 +503,8 @@ sub makeHintsFilter {
                 }
                 next;
             }
+            next if exists $seen{$what};
+            undef $seen{$what};
             next unless $what =~ /([0-9a-fA-F]{40})/;
             my $sha1 = pack( 'H*', $1 );
             my $iterator = $searchSha1->( $sha1, $devNo );
