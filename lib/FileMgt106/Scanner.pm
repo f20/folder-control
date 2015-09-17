@@ -45,17 +45,18 @@ sub new {
     $rstat = FileMgt106::FileSystem->justLookingStat
       unless $allowActions;
     my $self = bless {}, $className;
-    my $regexIgnoreEntirely = qr/^(?:
-          ~\$|\._|
-          write-lock$|cyrus\.cache$|\.DS_Store$|:2eDS_Store$|
-          thumb_.*\.jpg$|AP.(?:Minis|Thumbnails|Tinies)$
+    my $regexIgnoreEntirely = qr/(?:
+        ^~\$|^\._|
+        ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^:2eDS_Store$|
+        ^thumb_.*\.jpg$|AP.(?:Minis|Thumbnails|Tinies)$|
+        \.pyc$
       )/sx;
     my $regexIgnoreFolder =
       qr/\.(?:download|tmp|app|git|svn|AppleDouble|aplibrary)$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
-      ? qr/\.(?:txt|js|json|yml|java|css|pl|pm|py|R|doc|docx|ppt|pptx)$/is
-      : qr/\.(?:txt|js|json|yml|java|css|pl|pm|py|R|xls|ppt|do)$/is;
+      ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|ppt|pptx|py|txt|yml)$/is
+      : qr/\.(?:R|c|cpp|css|do|h|java|js|json|m|pl|pm|ppt|py|txt|xls|yml)$/is;
     my $suspectRegex       = qr/\.xls$/is;
     my $timeLimitAutowatch = time - 3_000_000;
     my @stat               = lstat $dir or die "$dir: cannot stat";
