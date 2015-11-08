@@ -84,7 +84,7 @@ sub new {
         my $fileName = defined $pathToFolder ? "$pathToFolder/$name" : $name;
         my $sha1;
         if ( ref $whatYouWant ) {
-            if ( $whatYouWant->{$name} =~ /([0-9a-zA-Z]{40})/ ) {
+            if ( $whatYouWant->{$name} =~ /([0-9a-fA-F]{40})/ ) {
                 $sha1 = pack( 'H*', $1 );
             }
             elsif ( symlink $whatYouWant->{$name}, $fileName ) {
@@ -426,7 +426,7 @@ sub new {
                 $hashref->{$_} = unpack 'H*', $sha1;
 
                 if ($mustBeTargeted) {
-                    if ( $target->{$_} eq $hashref->{$_} ) {
+                    if ( lc $target->{$_} eq $hashref->{$_} ) {
                         delete $target->{$_};
                         delete $oldChildrenHashref->{$_};
                     }
