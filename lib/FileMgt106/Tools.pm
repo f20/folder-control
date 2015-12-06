@@ -465,7 +465,7 @@ sub datemarkFolder {
         if ( $maxt && length $path ) {
             my $date = POSIX::strftime( '%Y-%m-%d', localtime($maxt) );
             $np =~
-s#(?:[XY]_)?(?:[()_ ]|$date|[0-9]{4}-[0-9]{2}-[0-9]{2})*([^/]*)$#Y_$date $1#s;
+              s#(?:[XY]_|_| |[0-9]{4}-[0-9]{2}-[0-9]{2})*([^/]*)$#Y_$date $1#s;
             $np =~ s/ +$//s;
             if ( $np ne $path ) {
                 $np .= '_' while -e $prefix . $np;
