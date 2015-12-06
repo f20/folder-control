@@ -1,8 +1,10 @@
 folder-control
 ==============
 
-This is a set of undocumented Perl scripts for file cataloguing, file backup, synchronisation and file-level deduplication.
+This is a set of Perl scripts for file cataloguing, file backup,
+synchronisation and file-level deduplication.
+
+Sorry no documentation.
 
 Franck Latrémolière
-
-17 March 2015
+6 December 2015
