@@ -55,8 +55,8 @@ sub new {
       qr/\.(?:download|tmp|app|git|svn|AppleDouble|aplibrary)$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
-      ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|ppt|pptx|py|txt|yml)$/is
-      : qr/\.(?:R|c|cpp|css|do|h|java|js|json|m|pl|pm|ppt|py|txt|xls|yml)$/is;
+      ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|pptx|py|txt|yml)$/isx
+      : qr/\.(?:R|c|cpp|css|do      |h|java|js|json|m|pl|pm     |py|txt|yml)$/isx;
     my $suspectRegex       = qr/\.xls$/is;
     my $timeLimitAutowatch = time - 3_000_000;
     my @stat               = lstat $dir or die "$dir: cannot stat";
