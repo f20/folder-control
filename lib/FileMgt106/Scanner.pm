@@ -57,7 +57,7 @@ sub new {
       -e '/System/Library'
       ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|pptx|py|txt|yml)$/isx
       : qr/\.(?:R|c|cpp|css|do      |h|java|js|json|m|pl|pm     |py|txt|yml)$/isx;
-    my $suspectRegex       = qr/\.xls$/is;
+    my $regexCheckThisFile = qr/\.xls$/is;
     my $timeLimitAutowatch = time - 3_000_000;
     my @stat               = lstat $dir or die "$dir: cannot stat";
     my $dev                = $stat[STAT_DEV];
@@ -335,7 +335,9 @@ sub new {
                   if !$rehash
                   and $allowActions
                   and $stat[STAT_CHMODDED]
-                  || !$runningUnderWatcher && !$readOnly && $_ =~ $suspectRegex;
+                  || !$runningUnderWatcher
+                  && !$readOnly
+                  && $_ =~ $regexCheckThisFile;
 
                 my $mergeCandidate =
                      $readOnly
