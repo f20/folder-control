@@ -555,7 +555,7 @@ EOL
 
     $self->{alreadyThere} = sub {
         my ( $parid, $name, $sha1 ) = @_;
-        my ( $base, $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S+)$#s );
+        my ( $base, $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S*)$#s );
         ( $base, $extension ) = ( $name, '' ) unless defined $extension;
         $qAlreadyThere->execute( $parid, $sha1, $name,
             $base . '~___' . $extension );
@@ -566,7 +566,7 @@ EOL
 
     my $nextVersion = sub {
         my ( $parid, $name )      = @_;
-        my ( $base,  $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S+)$#s );
+        my ( $base,  $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S*)$#s );
         ( $base, $extension ) = ( $name, '' ) unless defined $extension;
         $name = '~001' . $extension unless length $base;
         $qGetLocid->execute( $parid, $name );

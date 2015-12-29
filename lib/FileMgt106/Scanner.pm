@@ -52,7 +52,7 @@ sub new {
         \.pyc$
       )/sx;
     my $regexIgnoreFolder =
-      qr/\.(?:download|tmp|app|git|svn|AppleDouble|aplibrary)$/s;
+      qr/(?:^\.(?:git|svn)|\.(?:download|tmp|app|AppleDouble|aplibrary))$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
       ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|pptx|py|txt|yml)$/isx
