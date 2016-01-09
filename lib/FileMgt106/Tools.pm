@@ -498,7 +498,7 @@ sub restampFolder {
             }
             $maxt = $mtime if $mtime > $maxt;
         }
-        utime time, $maxt, $path;    # only works if root or folder owner
+        utime time, $maxt, $path if $maxt;  # only works if root or folder owner
         $maxt;
     };
     $restamper->( defined $_[0] && length $_[0] ? "$_[0]" : '.' );
