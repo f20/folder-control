@@ -456,7 +456,7 @@ sub datemarkFolder {
             if ( -d _ ) {
                 $mtime = $datemarker->($p2);
             }
-            elsif ( !-f _ ) {
+            elsif ( !-f _ || !-s _ ) {
                 $mtime = 0;
             }
             $maxt = $mtime if $mtime > $maxt;
@@ -493,7 +493,7 @@ sub restampFolder {
             if ( -d _ ) {
                 $mtime = $restamper->($p2);
             }
-            elsif ( !-f _ ) {
+            elsif ( !-f _ || !-s _ ) {
                 $mtime = 0;
             }
             $maxt = $mtime if $mtime > $maxt;
