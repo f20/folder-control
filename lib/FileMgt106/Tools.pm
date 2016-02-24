@@ -239,6 +239,25 @@ sub makeInfillFilter {
     };
 }
 
+sub simpleDedup {
+    my ($hash) = @_;
+    my ( %flagged, %new );
+    foreach ( sort { length $a <=> length $b } keys %$hash ) {
+        my $what = $hash->{$_};
+        if ( ref $what eq 'HASH' ) {
+            $new{$_} = simpleDedup($what);
+        }
+        elsif ( ref $what ) {
+            $new{$_} = $what;
+        }
+        elsif ( !exists $flagged{$what} ) {
+            $new{$_} = $what;
+            undef $flagged{$what};
+        }
+    }
+    \%new;
+}
+
 sub makeHintsFilterQuick {
     my ( $hints, $filterFlag ) = @_;
     my $searchSha1;

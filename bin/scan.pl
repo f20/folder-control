@@ -388,7 +388,7 @@ foreach (@ARGV) {
             my ($s) =
               FileMgt106::Scanner->new( $dir, $hints, @extrasSource )->scan;
             FileMgt106::Scanner->new( $destination, $hints, @extrasDestination )
-              ->scan( 0, $s );
+              ->scan( 0, FileMgt106::Tools::simpleDedup($s) );
             $hints->commit;
             next;
         }
