@@ -101,47 +101,48 @@ sub new {
         }
         if ( $sha1 eq $_sha1Empty ) {
             open my $fh, '>', $fileName or return;
-            return 1;
         }
-        my $iterator = $searchSha1->( $sha1, $devNo );
-        my ( @stat, @wouldNeedToCopy );
-        while ( !@stat
-            && ( my ( $path, $statref, $locid ) = $iterator->() ) )
-        {
-            next unless -f _;
-            unless ( $locid
-                && $statref->[STAT_DEV] == $devNo
-                && _isMergeable($statref) )
+        else {
+            my $iterator = $searchSha1->( $sha1, $devNo );
+            my ( @stat, @wouldNeedToCopy );
+            while ( !@stat
+                && ( my ( $path, $statref, $locid ) = $iterator->() ) )
             {
-                push @wouldNeedToCopy, $path;
-                next;
+                next unless -f _;
+                unless ( $locid
+                    && $statref->[STAT_DEV] == $devNo
+                    && _isMergeable($statref) )
+                {
+                    push @wouldNeedToCopy, $path;
+                    next;
+                }
+                if ( $path =~ m#/Y_Cellar#i and rename( $path, $fileName ) ) {
+                    @stat = $rstat->($fileName);
+                    $moveByLocid->( $folderLocid, $name, $locid );
+                }
+                elsif ( link( $path, $fileName ) ) {
+                    @stat = $rstat->($fileName);
+                }
+                else {
+                    warn "link $path, $fileName: $!";
+                    next;
+                }
             }
-            if ( $path =~ m#/Y_Cellar#i and rename( $path, $fileName ) ) {
-                @stat = $rstat->($fileName);
-                $moveByLocid->( $folderLocid, $name, $locid );
+            while ( !@stat && @wouldNeedToCopy ) {
+                system qw(cp -p --), pop @wouldNeedToCopy, $fileName;
+                @stat = $rstat->(
+                    $fileName, 2_000_000_000    # This will go wrong in 2033
+                );
+                unless ( $sha1 eq _sha1File($fileName) ) {
+                    warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
+                    @stat = ();
+                    unlink $fileName;
+                }
             }
-            elsif ( link( $path, $fileName ) ) {
-                @stat = $rstat->($fileName);
+            unless (@stat) {
+                symlink $whatYouWant->{$name}, $fileName if ref $whatYouWant;
+                return;
             }
-            else {
-                warn "link $path, $fileName: $!";
-                next;
-            }
-        }
-        while ( !@stat && @wouldNeedToCopy ) {
-            system qw(cp -p --), pop @wouldNeedToCopy, $fileName;
-            @stat = $rstat->(
-                $fileName, 2_000_000_000    # This will go wrong in 2033
-            );
-            unless ( $sha1 eq _sha1File($fileName) ) {
-                warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
-                @stat = ();
-                unlink $fileName;
-            }
-        }
-        unless (@stat) {
-            symlink $whatYouWant->{$name}, $fileName if ref $whatYouWant;
-            return;
         }
         my ($fileLocid) = $file->(
             $folderLocid, $name,
