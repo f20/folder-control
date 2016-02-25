@@ -284,13 +284,10 @@ foreach (@ARGV) {
         }
         @stat = stat;
     }
-    if (
-        -f _
-        && ( my ( $root, $ext ) =
-            /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
-      )
+    my ( $target, $root, $ext );
+    if ( -f _
+        and ( $root, $ext ) = /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
     {
-        my $target;
         $target = FileMgt106::Tools::loadJbz(
             $root . $ext,
             $filter ? undef : sub {
@@ -300,6 +297,15 @@ foreach (@ARGV) {
         );
         $target = FileMgt106::Tools::parseText( $root . $ext )
           if !$target && $ext =~ /txt|yml/i;
+    }
+    elsif ( -d _ && defined $grabFrom && chdir $_ ) {
+        $root = decode_utf8 getcwd();
+        $ext  = '';
+        $hints->beginInteractive;
+        $target = FileMgt106::Scanner->new( $root, $hints )->scan;
+        $hints->commit;
+    }
+    if ($target) {
         if ( $filterFlag && $filterFlag =~ /split/ ) {
             while ( my ( $k, $v ) = each %$target ) {
                 local $_ = $k;
