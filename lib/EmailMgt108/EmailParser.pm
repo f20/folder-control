@@ -2,7 +2,7 @@ package EmailMgt108::EmailParser;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2016 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -260,8 +260,8 @@ sub _unzipfile {
         unless ( $? >> 8 ) {
             mkdir "$container/Z_Unpacked";
             rename "$container/$zipfile", "$container/Z_Unpacked/$zipfile";
-            _unzipfolder("$container/$folder");
         }
+        _unzipfolder("$container/$folder");
     }
     elsif ( defined $pid ) {
         exec qw(unzip -q -n -d), $folder, $zipfile if chdir $container;
