@@ -2,7 +2,7 @@ package FileMgt106::Scanner;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -59,11 +59,13 @@ sub new {
       : qr/\.(?:R|c|cpp|css|do      |h|java|js|json|m|pl|pm     |py|txt|yml)$/isx;
     my $regexCheckThisFile = qr/\.xls$/is;
     my $timeLimitAutowatch = time - 3_000_000;
-    my @stat               = lstat $dir or die "$dir: cannot stat";
-    my $dev                = $stat[STAT_DEV];
-    my $rootLocid = $hints->{topFolder}->( $dir, @stat[ STAT_DEV, STAT_INO ] )
-      or die "$dir: no root locid";
-    my ( $makeChildStasher, $makeChildBackuper, $repoDev );
+    my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
+    {
+        my @stat = lstat $dir or die "$dir: cannot stat";
+        $dev = $stat[STAT_DEV];
+        $rootLocid = $hints->{topFolder}->( $dir, @stat[ STAT_DEV, STAT_INO ] )
+          or die "$dir: no root locid";
+    }
 
     my (
         $folder,          $file,        $children,     $updateSha1,
@@ -99,12 +101,14 @@ sub new {
         else {
             return unless $sha1 = $whatYouWant;
         }
+        my @stat;
         if ( $sha1 eq $_sha1Empty ) {
             open my $fh, '>', $fileName or return;
+            @stat = $rstat->($fileName);
         }
         else {
             my $iterator = $searchSha1->( $sha1, $devNo );
-            my ( @stat, @wouldNeedToCopy );
+            my @wouldNeedToCopy;
             while ( !@stat
                 && ( my ( $path, $statref, $locid ) = $iterator->() ) )
             {
@@ -753,7 +757,8 @@ sub infill {
 }
 
 sub _sha1File($) {
-    warn "@_\n";
+    warn "@_\n"
+      ;  # warn join (' ', map { defined $_ ? $_ : undef; } @_, caller ) . "\n";
     my ( %sig, %received );
     my $catch = sub { undef $received{ $_[0] }; };
     foreach ( grep { $SIG{$_} } keys %SIG ) {
