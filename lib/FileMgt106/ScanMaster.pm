@@ -134,7 +134,7 @@ sub setCatalogue {
                     $ENV{PATH} =
                         '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                       . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                    system qw(git commit -q -m), $self->[DIR]
+                    system qw(git commit -q --untracked-files=no -m), $self->[DIR]
                       if !system qw(git add),    "$name.txt"
                       or !system qw(git init)
                       and !system qw(git add), "$name.txt";
