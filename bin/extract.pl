@@ -118,8 +118,12 @@ foreach (@ARGV) {
         my $missingCompilation;
         require FileMgt106::Tools;
         FileMgt106::Tools::setNormalisation('win');
-        foreach ( map { decode_json("{$_}") } grep { $_ } split /}\s*{/s,
-            '}' . <STDIN> . '{' )
+        local $_ = <STDIN>;
+        foreach (
+            eval { decode_json($_); } || map { decode_json("{$_}") }
+            grep { $_ } split /}\s*{/s,
+            '}' . $_ . '{'
+          )
         {
             my $missing =
               $processScal->( FileMgt106::Tools::normaliseHash($_) );
