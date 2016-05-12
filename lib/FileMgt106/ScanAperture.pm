@@ -115,7 +115,7 @@ sub repairPermissions {
     foreach (
         <*.xml>,                  <*.plist>,
         <Aperture.aplib/*.plist>, <Database/*.plist>,
-        <Database/apdb/*>
+        <Database/apdb/*>    # out of date: need to unlock version files etc.
       )
     {
         my @stat = lstat $_;
@@ -166,23 +166,19 @@ sub stars {
     foreach (
         @{
             $lib->selectall_arrayref(
-                    'select uuid, '
-                  . 'masterUuid, rawMasterUuid, nonRawMasterUuid, '
-                  . 'mainRating from RKVersion where mainRating'
+                    'select uuid, mainRating, '
+                  . 'masterUuid, rawMasterUuid, nonRawMasterUuid '
+                  . ' from RKVersion where mainRating'
             )
         }
       )
     {
-        my ( $v, $m, $rm, $jm, $stars ) = @$_;
+        my ( $v, $stars, @masters ) = @$_;
         $starsVersion{$v} = $stars;
-        $starsMaster{$m}[0] = $stars
-          unless $starsMaster{$m}[0] && $starsMaster{$m}[0] > $stars;
-        $starsMaster{$rm}[1] = $stars
-          unless !$rm
-          || $starsMaster{$rm}[1] && $starsMaster{$rm}[1] > $stars;
-        $starsMaster{$jm}[2] = $stars
-          unless !$jm
-          || $starsMaster{$jm}[2] && $starsMaster{$jm}[2] > $stars;
+        foreach my $m ( grep { $_ } @masters ) {
+            $starsMaster{$m} = $stars
+              unless $starsMaster{$m} && $starsMaster{$m} > $stars;
+        }
     }
     $self->[LIB_STARS_UUID] = { %starsVersion, %starsMaster };
     my %masters;
@@ -214,11 +210,18 @@ sub updateJbz {
     require FileMgt106::Tools;
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
+
+    foreach ( -1 .. 5 ) {
+        FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
+            $lib->getFilteredScalar( $_, $_ ) );
+        rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_DIR].$_.aplibrary.jbz";
+    }
+
 }
 
-sub scalar {
+sub getFilteredScalar {
 
-    my ( $lib, $minStars, $mainOnly ) = @_;
+    my ( $lib, $minStars, $maxStars, $mainOnly ) = @_;
 
     my $filter = sub {
         my ( $k, $o ) = @_;
@@ -229,9 +232,11 @@ sub scalar {
                 foreach my $c ( keys %{ $o->{$a}{$b} } ) {
                     foreach my $d ( keys %{ $o->{$a}{$b}{$c} } ) {
                         foreach my $e ( keys %{ $o->{$a}{$b}{$c}{$d} } ) {
-                            my $s = $lib->[LIB_STARS_UUID]{$e};
+                            my $s = $lib->[LIB_STARS_UUID]{$e} || 0;
                             $n->{$a}{$b}{$c}{$d}{$e} = $o->{$a}{$b}{$c}{$d}{$e}
-                              if defined $s && $s >= $minStars;
+                              if defined $s
+                              && $s >= $minStars
+                              && $s <= $maxStars;
                         }
                     }
                 }
@@ -252,11 +257,9 @@ sub scalar {
                             my $s =
                               $lib->[LIB_STARS_MASTERS]{$a}{$b}{$c}{$d}{$e};
                             $n->{$a}{$b}{$c}{$d}{$e} = $o->{$a}{$b}{$c}{$d}{$e}
-                              if $s
-                              and defined $s->[0] && $s->[0] >= $minStars
-                              || !$mainOnly
-                              && ( defined $s->[1] && $s->[1] >= $minStars
-                                || defined $s->[2] && $s->[2] >= $minStars );
+                              if defined $s
+                              && $s >= $minStars
+                              && $s <= $maxStars;
                         }
                     }
                 }
