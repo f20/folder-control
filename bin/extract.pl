@@ -121,8 +121,8 @@ foreach (@ARGV) {
         local $_ = <STDIN>;
         foreach (
             eval { decode_json($_); } || map { decode_json("{$_}") }
-            grep { $_ } split /}\s*{/s,
-            '}' . $_ . '{'
+            grep { $_ } split /}\s*\n\s*{/s,
+            "}\n$_\n{"
           )
         {
             my $missing =
