@@ -211,10 +211,11 @@ sub updateJbz {
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
 
-    foreach ( -1 .. 5 ) {
+    foreach ( [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
-            $lib->getFilteredScalar( $_, $_ ) );
-        rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_DIR].$_.aplibrary.jbz";
+            $lib->getFilteredScalar(@$_) );
+        rename $lib->[LIB_JBZ] . $$,
+          $lib->[LIB_DIR] . '.' . join( 'to', @$_ ) . '.aplibrary.jbz';
     }
 
 }
