@@ -112,29 +112,45 @@ sub repairPermissions {
         return;
     }
     my $rgid = $lib->[LIB_RGID] = ( stat '.' )[STAT_GID];
-    foreach (
-        <*.xml>,                  <*.plist>,
-        <Aperture.aplib/*.plist>, <Database/*.plist>,
-        <Database/apdb/*>    # out of date: need to unlock version files etc.
-      )
-    {
-        my @stat = lstat $_;
-        next unless -f _;
-        if ( $stat[STAT_NLINK] > 1 ) {
-            system 'cp', '-p', '--', $_, 'aperturescantmp';
-            unless ( rename 'aperturescantmp', $_ ) {
-                warn "Cannot rename aperturescantmp to $_ in $lib->[LIB_DIR]";
-                next;
+    my $repairer;
+    $repairer = sub {
+        foreach (@_) {
+            chdir $_[0] or next;
+            opendir DIR, '.';
+            my @list = grep { !/^\.\.?$/s; } readdir DIR;
+            closedir DIR;
+            foreach (@list) {
+                my @stat = lstat $_;
+                if ( -d_ ) {
+                    $repairer->($_);
+                }
+                elsif ( -f _ ) {
+                    if ( $stat[STAT_NLINK] > 1 ) {
+                        system 'cp', '-p', '--', $_,
+                          'aperture_repair_permissions_temporary';
+                        unless ( rename 'aperture_repair_permissions_temporary',
+                            $_ )
+                        {
+                            warn "Cannot rename to $_ in $lib->[LIB_DIR]";
+                            next;
+                        }
+                        @stat = lstat $_;
+                    }
+                    if ( $stat[STAT_NLINK] > 1 ) {
+                        warn "$_ still multilinked in $lib->[LIB_DIR]";
+                        next;
+                    }
+                    chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
+                    chmod 0660, $_ unless $stat[STAT_MODE] & 020;
+                }
             }
-            @stat = lstat $_;
+            chdir '..';
         }
-        if ( $stat[STAT_NLINK] > 1 ) {
-            warn "$_ still multilinked in $lib->[LIB_DIR]";
-            next;
-        }
-        chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
-        chmod 0660, $_ unless $stat[STAT_MODE] & 020;
-    }
+    };
+    opendir DIR, '.';
+    my @list = grep { !/^\.\.?|Masters$/s; } readdir DIR;
+    closedir DIR;
+    $repairer->(@list);
     $lib;
 }
 
@@ -168,12 +184,13 @@ sub stars {
             $lib->selectall_arrayref(
                     'select uuid, mainRating, '
                   . 'masterUuid, rawMasterUuid, nonRawMasterUuid '
-                  . ' from RKVersion where mainRating'
+                  . ' from RKVersion'
             )
         }
       )
     {
         my ( $v, $stars, @masters ) = @$_;
+        $stars ||= 0;
         $starsVersion{$v} = $stars;
         foreach my $m ( grep { $_ } @masters ) {
             $starsMaster{$m} = $stars
@@ -215,7 +232,7 @@ sub updateJbz {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
             $lib->getFilteredScalar(@$_) );
         rename $lib->[LIB_JBZ] . $$,
-          $lib->[LIB_DIR] . '.' . join( 'to', @$_ ) . '.aplibrary.jbz';
+          $lib->[LIB_JBZ] . '.' . join( 'to', @$_ ) . '.aplibrary.jbz';
     }
 
 }

@@ -48,7 +48,6 @@ sub new {
     my $regexIgnoreEntirely = qr/(?:
         ^~\$|^\._|
         ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^:2eDS_Store$|
-        ^thumb_.*\.jpg$|AP.(?:Minis|Thumbnails|Tinies)$|
         \.pyc$
       )/sx;
     my $regexIgnoreFolder =
