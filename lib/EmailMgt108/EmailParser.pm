@@ -164,15 +164,41 @@ sub parseMessage {
                     return;
                 }
                 $fn = 'Item ' . @files;
-                if ( $ct && $ct =~ m#message/rfc822#i ) {
+                if ( !$ct ) { }
+                elsif ( $ct =~ m#message/rfc822#i ) {
                     $ext = '.eml';
                 }
-                elsif ( $ct && $ct =~ m#text/html#i ) {
+                elsif ( $ct =~ m#text/html#i ) {
                     $ext = '.html';
                 }
-                elsif ( $ct && $ct =~ m#image/(gif|jpe?g|png)#i ) {
+                elsif ( $ct =~ m#image/(gif|jpe?g|png)#i ) {
                     $ext = ".$1";
                 }
+                elsif ( $ct =~ m#text/calendar#i ) {
+                    $ext = '.ics';
+                }
+                elsif ( $ct =~ m#application/pdf#i ) {
+                    $ext = '.pdf';
+                }
+                elsif ( $ct =~
+m#application/vnd\.openxmlformats-officedocument\.wordprocessingml\.document#i
+                  )
+                {
+                    $ext = '.docx';
+                }
+                elsif ( $ct =~
+m#application/vnd\.openxmlformats-officedocument\.presentationml\.presentation#i
+                  )
+                {
+                    $ext = '.pptx';
+                }
+                elsif ( $ct =~
+m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
+                  )
+                {
+                    $ext = '.xlsx';
+                }
+
                 else {
                     eval {
                         open my $fh2, ">", "$folder.tmp/$fn headers.txt"
