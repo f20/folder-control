@@ -566,7 +566,7 @@ sub new {
                               : $now - 13;
                           }
                         : $forceReadOnlyTimeLimit,
-                        /^[OWX]_/si
+                        /^[OWXZ]_/si
                           || !/^Y_/si
                           && $stat[STAT_MTIME] > $timeLimitAutowatch
                         ? $watchMaster || $reserveWatchMaster
