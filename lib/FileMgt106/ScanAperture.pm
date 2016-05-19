@@ -295,7 +295,8 @@ sub getFilteredScalar {
                 $lib->[LIB_SCALAR]{Database}{$_}
                   ? ( $_ => $lib->[LIB_SCALAR]{Database}{$_} )
                   : ();
-            } qw(DataModelVersion.plist Folders KeywordSets.plist Keywords.plist),
+              } qw(DataModelVersion.plist KeywordSets.plist Keywords.plist
+              Albums Faces Folders),
         },
         $filter->( Previews => $lib->[LIB_SCALAR]{Previews} ),
         $filterM->( Masters => $lib->[LIB_SCALAR]{Masters} ),
