@@ -1,8 +1,8 @@
 #!/bin/sh
 if [ "$*" != "" ]
 then
-	find "$@" -type f -links 1 -not -perm +020 -not -name .DS_Store -exec chmod ug+w {} \;
-	find "$@" -type f -not -perm +020 -not -name .DS_Store | while read x
+	find "$@" -type f -links 1 -not -perm -0220 -not -name .DS_Store -exec chmod ug+w {} \;
+	find "$@" -type f -not -perm -0220 -not -name .DS_Store | while read x
 	do	
 		echo $x
 		cat "$x" > "$x$$"
