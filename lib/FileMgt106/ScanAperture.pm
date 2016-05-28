@@ -95,12 +95,12 @@ sub setPathsCheckUpToDate {
     chdir $startFolder if $startFolder;
     chdir $lib->[LIB_DIR] or return;
     my $jbz = $lib->[LIB_DIR] = decode_utf8 getcwd();
-    my $shapp = ' ' . Digest::SHA::sha1_hex($jbz);
+    my $shapp = ' ' . substr( Digest::SHA::sha1_hex($jbz), 6 );
     $jbz =~ s#.*/##gs;
     $jbz = 'long name.aplibrary' if length( encode_utf8 $jbz) > 63;
-    $jbz .= $shapp unless $jbz =~ s/\.aplibrary/$shapp.aplibrary/;
-    $lib->[LIB_JBZ] = $jbz = "$startFolder/$jbz.jbz";
-    my @stat = stat $jbz;
+    $jbz .= $shapp unless $jbz =~ s/\.aplibrary/$shapp/;
+    $lib->[LIB_JBZ] = $jbz = "$startFolder/$jbz";
+    my @stat = stat "$jbz.aplibrary.jbz";
     @stat and $stat[STAT_MTIME] > $lib->[LIB_MTIME] and return;
     $lib;
 }
@@ -226,7 +226,7 @@ sub updateJbz {
     };
     require FileMgt106::Tools;
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
-    rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
+    rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
 
     foreach ( [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
