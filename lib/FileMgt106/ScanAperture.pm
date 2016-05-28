@@ -2,7 +2,7 @@ package FileMgt106::ScanAperture;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière.
+Copyright 2011-2016 Franck Latrémolière.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -95,7 +95,7 @@ sub setPathsCheckUpToDate {
     chdir $startFolder if $startFolder;
     chdir $lib->[LIB_DIR] or return;
     my $jbz = $lib->[LIB_DIR] = decode_utf8 getcwd();
-    my $shapp = ' ' . substr( Digest::SHA::sha1_hex($jbz), 6 );
+    my $shapp = ' ' . substr( Digest::SHA::sha1_hex($jbz), 0, 6 );
     $jbz =~ s#.*/##gs;
     $jbz = 'long name.aplibrary' if length( encode_utf8 $jbz) > 63;
     $jbz .= $shapp unless $jbz =~ s/\.aplibrary/$shapp/;
@@ -115,36 +115,34 @@ sub repairPermissions {
     my $repairer;
     $repairer = sub {
         foreach (@_) {
-            chdir $_[0] or next;
-            opendir DIR, '.';
-            my @list = grep { !/^\.\.?$/s; } readdir DIR;
-            closedir DIR;
-            foreach (@list) {
-                my @stat = lstat $_;
-                if ( -d_ ) {
-                    $repairer->($_);
-                }
-                elsif ( -f _ ) {
-                    if ( $stat[STAT_NLINK] > 1 ) {
-                        system 'cp', '-p', '--', $_,
-                          'aperture_repair_permissions_temporary';
-                        unless ( rename 'aperture_repair_permissions_temporary',
-                            $_ )
-                        {
-                            warn "Cannot rename to $_ in $lib->[LIB_DIR]";
-                            next;
-                        }
-                        @stat = lstat $_;
-                    }
-                    if ( $stat[STAT_NLINK] > 1 ) {
-                        warn "$_ still multilinked in $lib->[LIB_DIR]";
+            my @stat = lstat $_;
+            if ( -d _ ) {
+                chdir $_ or next;
+                opendir DIR, '.';
+                my @list = grep { !/^\.\.?$/s; } readdir DIR;
+                closedir DIR;
+                $repairer->(@list);
+                chdir '..';
+            }
+            elsif ( -f _ ) {
+                if ( $stat[STAT_NLINK] > 1 ) {
+                    system 'cp', '-p', '--', $_,
+                      'aperture_repair_permissions_temporary';
+                    unless ( rename 'aperture_repair_permissions_temporary',
+                        $_ )
+                    {
+                        warn "Cannot rename to $_ in $lib->[LIB_DIR]";
                         next;
                     }
-                    chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
-                    chmod 0660, $_ unless $stat[STAT_MODE] & 020;
+                    @stat = lstat $_;
                 }
+                if ( $stat[STAT_NLINK] > 1 ) {
+                    warn "$_ still multilinked in $lib->[LIB_DIR]";
+                    next;
+                }
+                chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
+                chmod 0660, $_ unless $stat[STAT_MODE] & 0660 == 0660;
             }
-            chdir '..';
         }
     };
     opendir DIR, '.';
@@ -169,11 +167,12 @@ sub scan {
     $lib;
 }
 
-sub stars {
+sub extractStarRatings {
     my ($self) = @_;
+    return unless -s "$self->[LIB_DIR]/Database/apdb/Library.apdb";
     my $lib = DBI->connect(
         "dbi:SQLite:dbname=$self->[LIB_DIR]/Database/apdb/Library.apdb",
-        '', '', { sqlite_unicode => 0, AutoCommit => 0, } );
+        '', '', { sqlite_unicode => 0, AutoCommit => 1, } );
     unless ($lib) {
         warn "Cannot open $self->[LIB_DIR]/Database/apdb/Library.apdb";
         return;
@@ -202,6 +201,7 @@ sub stars {
     foreach (
         @{ $lib->selectall_arrayref('select uuid, imagePath from RKMaster') } )
     {
+        # This goes wrong if there are masters outside the .aplibrary folder
         my ( $m, $path ) = @$_;
         my ( $a, $b, $c, $d, $e ) = split m#/#, $path;
         $masters{$a}{$b}{$c}{$d}{$e} = $starsMaster{$m};
@@ -217,7 +217,7 @@ sub updateJbz {
       || $lib->setPathsCheckUpToDate( $startFolder, $jbzDir );
     $lib->repairPermissions;
     $lib->scan($hints);
-    $lib->stars;
+    $lib->extractStarRatings;
     my $jbz = {
         %{ $lib->[LIB_SCALAR] },
         '/LIB_DIR'           => $lib->[LIB_DIR],
@@ -228,7 +228,7 @@ sub updateJbz {
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
 
-    foreach ( [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) {
+    foreach ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
             $lib->getFilteredScalar(@$_) );
         rename $lib->[LIB_JBZ] . $$,
@@ -290,13 +290,14 @@ sub getFilteredScalar {
         'Aperture.aplib' => $lib->[LIB_SCALAR]{'Aperture.aplib'},
         'Info.plist'     => $lib->[LIB_SCALAR]{'Info.plist'},
         Database         => {
+            apdb => {},
             $filter->( Versions => $lib->[LIB_SCALAR]{Database}{Versions} ),
             map {
                 $lib->[LIB_SCALAR]{Database}{$_}
                   ? ( $_ => $lib->[LIB_SCALAR]{Database}{$_} )
                   : ();
               } qw(DataModelVersion.plist KeywordSets.plist Keywords.plist
-              Albums Faces Folders),
+              Albums Faces Folders)
         },
         $filter->( Previews => $lib->[LIB_SCALAR]{Previews} ),
         $filterM->( Masters => $lib->[LIB_SCALAR]{Masters} ),
