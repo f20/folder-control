@@ -228,7 +228,10 @@ sub updateJbz {
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
 
-    foreach ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) {
+    foreach ( 1
+        ? ( [ 3, 3 ], [ 4, 5 ] )
+        : ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) )
+    {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
             $lib->getFilteredScalar(@$_) );
         rename $lib->[LIB_JBZ] . $$,
