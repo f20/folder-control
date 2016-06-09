@@ -124,7 +124,7 @@ foreach (@ARGV) {
             if ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
                 warn "Filtering $_";
                 my $missing = $processScal->( FileMgt106::Tools::loadJbz($_) );
-                $missingCompilation->{$_} = $missing if $missing;
+                $missingCompilation->{$_} ||= $missing if $missing;
             }
             else {
                 warn "Not processed: $_";
