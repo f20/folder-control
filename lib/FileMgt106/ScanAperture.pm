@@ -36,13 +36,14 @@ use FileMgt106::Scanner;
 use FileMgt106::FileSystem;
 
 use constant {
-    LIB_DIR           => 0,
-    LIB_MTIME         => 1,
-    LIB_RGID          => 2,
-    LIB_SCALAR        => 3,
-    LIB_STARS_UUID    => 4,
-    LIB_STARS_MASTERS => 5,
-    LIB_JBZ           => 6,
+    LIB_DIR             => 0,
+    LIB_MTIME           => 1,
+    LIB_RGID            => 2,
+    LIB_SCALAR          => 3,
+    LIB_STARS_UUID      => 4,
+    LIB_MASTER_METADATA => 5,
+    LIB_KEYWORDS_UUID   => 6,
+    LIB_JBZ             => 7,
 };
 
 sub new {
@@ -198,6 +199,28 @@ sub extractStarRatings {
         }
     }
     $self->[LIB_STARS_UUID] = { %starsVersion, %starsMaster };
+    my %keywords;
+    foreach (
+        @{
+            $lib->selectall_arrayref(
+                    'select RKKeyword.name,'
+                  . ' RKVersion.uuid,'
+                  . ' RKVersion.masterUuid,'
+                  . ' RKVersion.rawMasterUuid,'
+                  . ' RKVersion.nonRawMasterUuid'
+                  . ' from RKKeywordForVersion, RKVersion, RKKeyword'
+                  . ' where RKVersion.modelId = RKKeywordForVersion.versionId'
+                  . ' and RKKeyword.modelId = RKKeywordForVersion.keywordId'
+                  . ' order by RKKeyword.name'
+            )
+        }
+      )
+    {
+        my ( $key, @uuids ) = @$_;
+        my %uuids = map { ( $_ => undef ); } grep { $_ } @uuids;
+        push @{ $keywords{$_} }, $key foreach keys %uuids;
+    }
+    $self->[LIB_KEYWORDS_UUID] = \%keywords;
     my %masters;
     foreach (
         @{ $lib->selectall_arrayref('select uuid, imagePath from RKMaster') } )
@@ -205,9 +228,10 @@ sub extractStarRatings {
         # This goes wrong if there are masters outside the .aplibrary folder
         my ( $m, $path ) = @$_;
         my ( $a, $b, $c, $d, $e ) = split m#/#, $path;
-        $masters{$a}{$b}{$c}{$d}{$e} = $starsMaster{$m};
+        $masters{$a}{$b}{$c}{$d}{$e} =
+          [ $starsMaster{$m}, $keywords{$m} ? @{ $keywords{$m} } : () ];
     }
-    $self->[LIB_STARS_MASTERS] = \%masters;
+    $self->[LIB_MASTER_METADATA] = \%masters;
     $lib;
 }
 
@@ -221,9 +245,10 @@ sub updateJbz {
     $lib->extractStarRatings;
     my $jbz = {
         %{ $lib->[LIB_SCALAR] },
-        '/LIB_DIR'           => $lib->[LIB_DIR],
-        '/LIB_STARS_MASTERS' => $lib->[LIB_STARS_MASTERS],
-        '/LIB_STARS_UUID'    => $lib->[LIB_STARS_UUID],
+        '/LIB_DIR'             => $lib->[LIB_DIR],
+        '/LIB_KEYWORDS_UUID'   => $lib->[LIB_KEYWORDS_UUID],
+        '/LIB_MASTER_METADATA' => $lib->[LIB_MASTER_METADATA],
+        '/LIB_STARS_UUID'      => $lib->[LIB_STARS_UUID],
     };
     require FileMgt106::Tools;
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
@@ -279,7 +304,8 @@ sub getFilteredScalar {
                     foreach my $d ( keys %{ $o->{$a}{$b}{$c} } ) {
                         foreach my $e ( keys %{ $o->{$a}{$b}{$c}{$d} } ) {
                             my $s =
-                              $lib->[LIB_STARS_MASTERS]{$a}{$b}{$c}{$d}{$e};
+                              $lib->[LIB_MASTER_METADATA]{$a}{$b}{$c}{$d}{$e}
+                              [0];
                             $n->{$a}{$b}{$c}{$d}{$e} = $o->{$a}{$b}{$c}{$d}{$e}
                               if defined $s
                               && $s >= $minStars
