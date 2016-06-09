@@ -181,14 +181,15 @@ sub extractStarRatings {
     foreach (
         @{
             $lib->selectall_arrayref(
-                    'select uuid, mainRating, '
+                    'select uuid, mainRating, isOriginal '
                   . 'masterUuid, rawMasterUuid, nonRawMasterUuid '
                   . ' from RKVersion'
             )
         }
       )
     {
-        my ( $v, $stars, @masters ) = @$_;
+        my ( $v, $stars, $isOriginal, @masters ) = @$_;
+        next unless $stars || !$isOriginal;
         $stars ||= 0;
         $starsVersion{$v} = $stars;
         foreach my $m ( grep { $_ } @masters ) {
@@ -228,9 +229,11 @@ sub updateJbz {
     FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
 
-    foreach ( 1
-        ? ( [ 3, 3 ], [ 4, 5 ] )
-        : ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] ) )
+    foreach (
+        1
+        ? ( [ 0, 0 ], [ 1, 2 ], [ 3, 3 ], [ 4, 5 ] )
+        : ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] )
+      )
     {
         FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
             $lib->getFilteredScalar(@$_) );
