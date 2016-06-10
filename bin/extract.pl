@@ -118,17 +118,23 @@ foreach (@ARGV) {
         my $missingCompilation;
         require FileMgt106::Tools;
         FileMgt106::Tools::setNormalisation('win');
-        local $/ = "\n";
-        while (<STDIN>) {
-            chomp;
-            if ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-                warn "Filtering $_";
-                my $missing = $processScal->( FileMgt106::Tools::loadJbz($_) );
-                $missingCompilation->{$_} ||= $missing if $missing;
-            }
-            else {
-                warn "Not processed: $_";
-            }
+        local $_ = <STDIN>;
+        foreach (
+            eval { decode_json($_); } || map {
+                if ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
+                    warn "Filtering $_";
+                    FileMgt106::Tools::loadJbz($_);
+                }
+                else {
+                    warn "Not processed: $_";
+                    ();
+                }
+            } split /[\r\n]+/
+          )
+        {
+            my $missing =
+              $processScal->( FileMgt106::Tools::normaliseHash($_) );
+            $missingCompilation->{$_} = $missing if $missing;
         }
         if ( $missingCompilation
             && ( my $numKeys = keys %$missingCompilation ) )
