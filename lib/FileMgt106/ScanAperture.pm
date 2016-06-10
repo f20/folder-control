@@ -235,39 +235,6 @@ sub extractStarRatings {
     $lib;
 }
 
-sub updateJbz {
-    my ( $lib, $hints, $startFolder, $jbzDir ) = @_;
-    return
-      unless defined $lib->[LIB_JBZ]
-      || $lib->setPathsCheckUpToDate( $startFolder, $jbzDir );
-    $lib->repairPermissions;
-    $lib->scan($hints);
-    $lib->extractStarRatings;
-    my $jbz = {
-        %{ $lib->[LIB_SCALAR] },
-        '/LIB_DIR'             => $lib->[LIB_DIR],
-        '/LIB_KEYWORDS_UUID'   => $lib->[LIB_KEYWORDS_UUID],
-        '/LIB_MASTER_METADATA' => $lib->[LIB_MASTER_METADATA],
-        '/LIB_STARS_UUID'      => $lib->[LIB_STARS_UUID],
-    };
-    require FileMgt106::Tools;
-    FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
-    rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
-
-    foreach (
-        1
-        ? ( [ 0, 0 ], [ 1, 2 ], [ 3, 3 ], [ 4, 5 ] )
-        : ( [ -1, -1 ], [ -1, 5 ], [ 0, 0 ], [ 3, 5 ], [ 4, 5 ] )
-      )
-    {
-        FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
-            $lib->getFilteredScalar(@$_) );
-        rename $lib->[LIB_JBZ] . $$,
-          $lib->[LIB_JBZ] . '.' . join( 'to', @$_ ) . '.aplibrary.jbz';
-    }
-
-}
-
 sub getFilteredScalar {
 
     my ( $lib, $minStars, $maxStars, $mainOnly ) = @_;
@@ -318,7 +285,8 @@ sub getFilteredScalar {
         $n ? ( $k => $n ) : ();
     };
 
-    {
+    $minStars
+      ? {
         'Aperture.aplib' => $lib->[LIB_SCALAR]{'Aperture.aplib'},
         'Info.plist'     => $lib->[LIB_SCALAR]{'Info.plist'},
         Database         => {
@@ -333,7 +301,40 @@ sub getFilteredScalar {
         },
         $filter->( Previews => $lib->[LIB_SCALAR]{Previews} ),
         $filterM->( Masters => $lib->[LIB_SCALAR]{Masters} ),
+      }
+      : {
+        %{ $lib->[LIB_SCALAR] },
+        $filter->( Previews => $lib->[LIB_SCALAR]{Previews} ),
+        $filterM->( Masters => $lib->[LIB_SCALAR]{Masters} ),
+      };
+
+}
+
+sub updateJbz {
+    my ( $lib, $hints, $startFolder, $jbzDir ) = @_;
+    return
+      unless defined $lib->[LIB_JBZ]
+      || $lib->setPathsCheckUpToDate( $startFolder, $jbzDir );
+    $lib->repairPermissions;
+    $lib->scan($hints);
+    $lib->extractStarRatings;
+    my $jbz = {
+        %{ $lib->[LIB_SCALAR] },
+        '/LIB_DIR'             => $lib->[LIB_DIR],
+        '/LIB_KEYWORDS_UUID'   => $lib->[LIB_KEYWORDS_UUID],
+        '/LIB_MASTER_METADATA' => $lib->[LIB_MASTER_METADATA],
+        '/LIB_STARS_UUID'      => $lib->[LIB_STARS_UUID],
     };
+    require FileMgt106::Tools;
+    FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
+    rename $lib->[LIB_JBZ] . $$, "$lib->[LIB_JBZ].aplibrary.jbz";
+
+    foreach ( [ 0, 5 ], [ 4, 5 ] ) {
+        FileMgt106::Tools::saveJbzPretty( $lib->[LIB_JBZ] . $$,
+            $lib->getFilteredScalar(@$_) );
+        rename $lib->[LIB_JBZ] . $$,
+          $lib->[LIB_JBZ] . '.' . join( 'to', @$_ ) . '.aplibrary.jbz';
+    }
 
 }
 
