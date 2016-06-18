@@ -54,7 +54,28 @@ sub new {
 sub libraries {
     my $class   = shift;
     my $hints   = shift;
-    my @liblist = map { /\.aplibrary\/*$/s ? decode_utf8($_) : (); } @_;
+    my @liblist = map { /\.aplibrary(\/*|\.jbz)$/s ? decode_utf8($_) : (); } @_;
+    foreach my $lib ( grep { s/\.jbz$//; } @liblist ) {
+        my @stat = stat "$lib.jbz";
+        unless (@stat) {
+            warn "Ignored: $lib.jbz";
+            next;
+        }
+        eval {
+            unless ( -d $lib ) {
+                mkdir $lib or die "Failed to mkdir $lib";
+            }
+            require FileMgt106::Tools;
+            my $target = FileMgt106::Tools::loadJbz("$lib.jbz");
+            delete $target->{$_} foreach grep { /\//; } keys %$target;
+            $hints->beginInteractive;
+            FileMgt106::Scanner->new( $lib, $hints,
+                $hints->statFromGid( $stat[STAT_GID] ) )->scan( 0, $target );
+            $hints->commit;
+            utime time, $stat[STAT_MTIME], $lib;
+        };
+        warn "Failed to rebuild $lib: $@" if $@;
+    }
     unless (@liblist) {
         my $path;
         my %paths;
@@ -90,17 +111,17 @@ sub libraries {
 }
 
 sub setPathsCheckUpToDate {
-    require Digest::SHA;
     my ( $lib, $startFolder, $jbzDir ) = @_;
     $jbzDir ||= getcwd();
     chdir $startFolder if $startFolder;
     chdir $lib->[LIB_DIR] or return;
     my $jbz = $lib->[LIB_DIR] = decode_utf8 getcwd();
+    require Digest::SHA;
     my $shapp = ' ' . substr( Digest::SHA::sha1_hex($jbz), 0, 6 );
     $jbz =~ s#.*/##gs;
     $jbz = 'long name.aplibrary' if length( encode_utf8 $jbz) > 63;
     $jbz .= $shapp unless $jbz =~ s/\.aplibrary/$shapp/;
-    $lib->[LIB_JBZ] = $jbz = "$startFolder/$jbz";
+    $lib->[LIB_JBZ] = $jbz = "$jbzDir/$jbz";
     my @stat = stat "$jbz.aplibrary.jbz";
     @stat and $stat[STAT_MTIME] > $lib->[LIB_MTIME] and return;
     $lib;

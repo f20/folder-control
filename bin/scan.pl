@@ -158,7 +158,7 @@ foreach (@ARGV) {
         my $jbzDir = $startFolder;
         if ($1) {
             chdir $startFolder;
-            chdir "$1" and $jbzDir = decode_utf8 getcwd();
+            chdir $1 and $jbzDir = decode_utf8 getcwd();
         }
         require FileMgt106::ScanAperture;
         $_->updateJbz( $hints, $startFolder, $jbzDir )
