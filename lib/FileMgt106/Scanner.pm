@@ -264,7 +264,7 @@ sub new {
         }
         if ($target) {
             my %list = map { $_ => undef } @list;
-            foreach ( grep { !exists $list{$_}; } keys %$target ) {
+            foreach ( grep { !/\// && !exists $list{$_}; } keys %$target ) {
                 if ( -e $_ ) {
                     warn "Unexpectedly found $_ in $dir/$path";
                 }
