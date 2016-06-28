@@ -297,6 +297,7 @@ foreach (@ARGV) {
         );
         $target = FileMgt106::Tools::parseText( $root . $ext )
           if !$target && $ext =~ /txt|yml/i;
+        delete $target->{$_} foreach grep { /\//; } keys %$target;
     }
     elsif ( -d _ && defined $grabFrom && chdir $_ ) {
         $root = decode_utf8 getcwd();
