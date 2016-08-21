@@ -567,7 +567,7 @@ sub new {
                           }
                         : $forceReadOnlyTimeLimit,
                         /^[OWXZ]_/si
-                          || !/^Y_/si
+                          || !/^Y_/si && !/\.mirror/
                           && $stat[STAT_MTIME] > $timeLimitAutowatch
                         ? $watchMaster || $reserveWatchMaster
                         : undef,
