@@ -65,7 +65,7 @@ my ( $remoteName, $remoteTime, $remoteScalar );
 
 {
     require FileMgt106::Tools;
-    my ( $local, $remote, $projectFolder ) = @ARGV;
+    my ( $local, $remote ) = @ARGV;
     die "Usage:\n\tmerge.pl Local.jbz Remote.jbz [Folder]\n"
       unless defined $local
       and -f $local
@@ -77,7 +77,6 @@ my ( $remoteName, $remoteTime, $remoteScalar );
       and $remoteTime   = ( stat _ )[9]
       and ($remoteName) = ( $remote =~ /(\S+)\.jbz/ )
       and $remoteScalar = FileMgt106::Tools::loadJbz($remote);
-    chdir $projectFolder if defined $projectFolder;
 }
 
 my %byCore;
@@ -86,7 +85,7 @@ while ( my ( $key, $value ) = each %$localScalar ) {
     next unless ref $value eq 'HASH' && keys %$value;
     if ( $key =~ s/\s*\.mirror.*//si ) {
         next unless ref $value->{source} eq 'HASH';
-        $byCore{$1}{ ( values %{ $value->{MIRROR_SOURCE} } )[0] } = $value;
+        $byCore{$1}{ ( values %{ $value->{_SOURCE} } )[0] } = $value;
     }
     if ( $key =~ s/\s*(\+|\.addition).*//si ) {
         push @{ $byCore{$key}{additions} }, $value;
@@ -100,7 +99,7 @@ while ( my ( $key, $value ) = each %$remoteScalar ) {
     next unless ref $value eq 'HASH' && keys %$value;
     if ( $key =~ s/\s*\.mirror.*//si ) {
         next unless ref $value->{source} eq 'HASH';
-        $byCore{$1}{ ( values %{ $value->{MIRROR_SOURCE} } )[0] } = $value;
+        $byCore{$1}{ ( values %{ $value->{_SOURCE} } )[0] } = $value;
     }
     if ( $key =~ s/\s*(\+|\.addition).*//si ) {
         push @{ $byCore{$key}{additions} }, $value;
@@ -108,7 +107,7 @@ while ( my ( $key, $value ) = each %$remoteScalar ) {
     else {
         $key .= " ($remoteName)" while $byCore{$key}{master};
         $byCore{$key}{$remoteTime} =
-          { %$value, MIRROR_SOURCE => { "$remoteName" => "$remoteTime", } };
+          { %$value, _SOURCE => { "$remoteName" => "$remoteTime", } };
     }
 }
 
@@ -125,7 +124,7 @@ while ( my ( $key, $map ) = each %byCore ) {
         $key2 .= ' .mirrored';
     }
     if ($additions) {
-        delete $lead->{MIRROR_SOURCE};
+        delete $lead->{_SOURCE};
         my $counter = '';
         foreach (@$additions) {
             while ( my ( $k, $v ) = each %$_ ) {
