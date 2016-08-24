@@ -121,6 +121,8 @@ while ( my ( $key, $map ) = each %byCore ) {
             $lead = $map->{$topKey};
         }
         $lead ||= {};
+
+        # Problem: crap compulsory name
         $key2 .= ' .mirrored';
     }
     if ($additions) {
@@ -132,7 +134,10 @@ while ( my ( $key, $map ) = each %byCore ) {
                 --$c while _conflicts( $lead->{"$k$c"}, $v );
                 $lead->{"$k$c"} = $v;
             }
-            $mergedScalar->{"$key .additions$counter"} = $_;
+
+            # Problems: crap compulsory names;
+            # failure to remove things that have been incorporated in the master
+            $mergedScalar->{"$key .additions$counter"} = $_;    #
             --$counter;
         }
     }

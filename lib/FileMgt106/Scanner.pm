@@ -567,7 +567,8 @@ sub new {
                           }
                         : $forceReadOnlyTimeLimit,
                         /^[OWXZ]_/si
-                          || !/^Y_/si && !/\.mirror/
+                          || !/^Y_/si
+                          && !/\.mirror/i
                           && $stat[STAT_MTIME] > $timeLimitAutowatch
                         ? $watchMaster || $reserveWatchMaster
                         : undef,
@@ -577,7 +578,9 @@ sub new {
                         $stasher ? $makeChildStasher->( $stasher, $_ ) : undef,
                         $backuper ? $makeChildBackuper->( $backuper, $_ )
                         : undef,
-                        /^Y_/si ? undef : $watchMaster || $reserveWatchMaster,
+                        /^Y_/si
+                          || /\.mirror/i ? undef : $watchMaster
+                          || $reserveWatchMaster,
                     );
                     delete $target->{$_}
                       if $mustBeTargeted && !keys %{ $target->{$_} };
