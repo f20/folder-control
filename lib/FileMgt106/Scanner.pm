@@ -566,10 +566,9 @@ sub new {
                               : $now - 13;
                           }
                         : $forceReadOnlyTimeLimit,
-                        /^[OWXZ]_/si
-                          || !/^Y_/si
-                          && !/\.mirror/i
-                          && $stat[STAT_MTIME] > $timeLimitAutowatch
+                        /^Y_/si || /\.mirror/i ? undef
+                        : /^[OWXZ]_/si
+                          || $stat[STAT_MTIME] > $timeLimitAutowatch
                         ? $watchMaster || $reserveWatchMaster
                         : undef,
                         $mustBeTargeted      ? $target->{$_}
