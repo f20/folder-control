@@ -357,7 +357,8 @@ foreach (@ARGV) {
             chmod 0770, $dir;
             chdir $dir or die "chdir $dir: $!";
             $dir = decode_utf8 getcwd();
-            warn "Rebuilding $dir with rgid=$rgid and $ext file";
+            warn "Rebuilding $dir with rgid=$rgid"
+              . ( $ext ? " and $ext file" : '' );
             $hints->beginInteractive;
             eval {
                 (
