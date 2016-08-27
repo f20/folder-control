@@ -47,7 +47,7 @@ sub new {
     my $self = bless {}, $className;
     my $regexIgnoreEntirely = qr/(?:
         ^~\$|^\._|
-        ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^:2eDS_Store$|
+        ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^Icon\r|^:2eDS_Store$|
         \.pyc$
       )/sx;
     my $regexIgnoreFolder =
