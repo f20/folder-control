@@ -47,7 +47,7 @@ BEGIN {
         my ($sig) = @_;
         die "Died on $sig signal\n";
     };
-    $startFolder = getcwd();
+    $startFolder = decode_utf8 getcwd();
     my $homedir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
         $perl5dir = catdir( $homedir, 'lib' );
@@ -132,7 +132,7 @@ foreach (@ARGV) {
     elsif (/^-+repo=?(.*)/) {
         local $_ = $1;
         if ( /^auto$/ && chdir catdir( dirname($perl5dir), '~$' ) ) {
-            my $repoDir = getcwd();
+            my $repoDir = decode_utf8 getcwd();
             push @applyScanMasterConfig, sub {
                 my ( $scanner, $dir ) = @_;
                 if (   $repoDir

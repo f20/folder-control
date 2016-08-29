@@ -32,9 +32,8 @@ use strict;
 use utf8;
 use Carp;
 $SIG{__DIE__} = \&Carp::confess;
-binmode STDERR, ':utf8';
 use Encode 'decode_utf8';
-
+binmode STDERR, ':utf8';
 use File::Spec::Functions qw(catfile catdir rel2abs);
 use File::Basename qw(dirname basename);
 use Cwd;
@@ -45,7 +44,7 @@ BEGIN {
         my ($sig) = @_;
         die "Died on $sig signal\n";
     };
-    $startFolder = getcwd();
+    $startFolder = decode_utf8 getcwd();
     my $homedir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
         $perlFolder = catdir( $homedir, 'lib' );
