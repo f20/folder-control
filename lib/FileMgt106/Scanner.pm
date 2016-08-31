@@ -45,6 +45,7 @@ sub new {
     $rstat = FileMgt106::FileSystem->justLookingStat
       unless $allowActions;
     my $self = bless {}, $className;
+
     my $regexIgnoreEntirely = qr/(?:
         ^~\$|^\._|
         ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^Icon\r|^:2eDS_Store$|
@@ -56,7 +57,11 @@ sub new {
       -e '/System/Library'
       ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|pptx|py|txt|yml)$/isx
       : qr/\.(?:R|c|cpp|css|do      |h|java|js|json|m|pl|pm     |py|txt|yml)$/isx;
-    my $regexCheckThisFile = qr/\.xls$/is;
+    my $regexCheckThisFile    = qr/\.xls$/is;
+    my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
+    my $regexMakeReadOnly     = qr/^[XY]_/is;
+    my $regexDoNotWatchFolder = qr/(?:^Y_|[.(]mirror)/is;
+
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
     {
@@ -451,7 +456,7 @@ sub new {
 
                 delete $oldChildrenHashref->{$_};
 
-                if ( $allowActions && $stasher && /^Z_/si && -w _ ) {
+                if ( $allowActions && $stasher && /^Z_/is && -w _ ) {
 
                     if ($watchMaster) {
                         $watchMaster->watchFolder( $scanDir, $locid, $path,
@@ -464,7 +469,7 @@ sub new {
                     if ( my @items = _listDirectory() ) {
                         my ( $stashLocid, $stash ) = $stasher->();
                         my $name = $_;
-                        $name =~ s/^Z_/Y_/i;
+                        $name =~ s/^Z_/Y_/is;
                         $name .=
                           POSIX::strftime( ' %Y-%m-%d %a %H%M%S', localtime );
                         my $binName = $name;
@@ -503,7 +508,7 @@ sub new {
                         }
                         chdir "$stash/$binName"
                           or die "chdir $stash/$binName: $!";
-                        unless (/^Z_(?:Infill|Rubbish)/i) {
+                        unless (/^Z_(?:Infill|Rubbish)/is) {
                             require FileMgt106::Tools;
                             FileMgt106::Tools::normaliseFileNames('.');
                         }
@@ -520,7 +525,7 @@ sub new {
                                     : $stash
                                   )
                                   . "/$binName/",
-                                /^Z_(?:Archive|Cellar)/i
+                                /^Z_(?:Archive|Cellar)/is
                                 ? 2_000_000_000    # This will go wrong in 2033
                                 : $forceReadOnlyTimeLimit
                             ),
@@ -554,33 +559,47 @@ sub new {
                         next;
                     }
 
+                    my ( $reserveWatchMasterForChild, $watchMasterForChild );
+                    $reserveWatchMasterForChild =
+                      ( $watchMaster || $reserveWatchMaster )
+                      unless /$regexDoNotWatchFolder/is;
+                    $watchMasterForChild = $reserveWatchMasterForChild
+                      if $reserveWatchMasterForChild
+                      and /$regexWatchThisFolder/is
+                      || $stat[STAT_MTIME] > $timeLimitAutowatch;
+
+                    my $forceReadOnlyTimeLimitForChild =
+                      $forceReadOnlyTimeLimit;
+                    if ( $allowActions && /$regexMakeReadOnly/is ) {
+                        my $now = time;
+                        $forceReadOnlyTimeLimitForChild = $now - 13
+                          unless $forceReadOnlyTimeLimit
+                          && $forceReadOnlyTimeLimit > $now;
+                    }
+
+                    my ( $targetForChild, $stasherForChild, $backuperForChild );
+                    if ($mustBeTargeted) {
+                        $targetForChild = $target->{$_};
+                    }
+                    elsif ( ref $hashref->{$_} ) {
+                        $targetForChild = $hashref->{$_};
+                    }
+                    $stasherForChild = $makeChildStasher->( $stasher, $_ )
+                      if $stasher;
+                    $backuperForChild = $makeChildBackuper->( $backuper, $_ )
+                      if $backuper;
+
                     $hashref->{$_} = $scanDir->(
                         $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] ),
                         "$path$_/",
-                        $allowActions && /^[XY]_/si
-                        ? do {
-                            my $now = time;
-                            $forceReadOnlyTimeLimit
-                              && $forceReadOnlyTimeLimit > $now
-                              ? $forceReadOnlyTimeLimit
-                              : $now - 13;
-                          }
-                        : $forceReadOnlyTimeLimit,
-                        /^Y_/si || /\.mirror/i ? undef
-                        : /^[OWXZ]_/si
-                          || $stat[STAT_MTIME] > $timeLimitAutowatch
-                        ? $watchMaster || $reserveWatchMaster
-                        : undef,
-                        $mustBeTargeted      ? $target->{$_}
-                        : ref $hashref->{$_} ? $hashref->{$_}
-                        : undef,
-                        $stasher ? $makeChildStasher->( $stasher, $_ ) : undef,
-                        $backuper ? $makeChildBackuper->( $backuper, $_ )
-                        : undef,
-                        /^Y_/si
-                          || /\.mirror/i ? undef : $watchMaster
-                          || $reserveWatchMaster,
+                        $forceReadOnlyTimeLimitForChild,
+                        $watchMasterForChild,
+                        $targetForChild,
+                        $stasherForChild,
+                        $backuperForChild,
+                        $reserveWatchMasterForChild,
                     );
+
                     delete $target->{$_}
                       if $mustBeTargeted && !keys %{ $target->{$_} };
 
@@ -613,7 +632,7 @@ sub new {
             undef my $filter;
             while ( my ( $binName, $binDataArrayRef ) = each %binned ) {
 
-                if ( !$target && $backuper && $binName =~ /^Y_Archive/i ) {
+                if ( !$target && $backuper && $binName =~ /^Y_Archive/is ) {
                     warn "Archiving from $dir/$path: $binName";
                     my $missing = $createTree->(
                         { $binName => $binDataArrayRef->[0] },
@@ -626,7 +645,7 @@ sub new {
                     }
                 }
 
-                if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/i ) {
+                if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/is ) {
                     warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
                         require FileMgt106::Tools;
