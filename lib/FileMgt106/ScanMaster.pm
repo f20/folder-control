@@ -39,6 +39,8 @@ use overload
 use Storable qw(freeze);
 use Digest::SHA qw(sha1 sha1_base64);
 require POSIX;
+use File::Basename qw(basename dirname);
+use File::Spec::Functions qw(catdir catfile splitdir);
 use FileMgt106::Scanner;
 use FileMgt106::Tools;
 use FileMgt106::FileSystem;
@@ -65,47 +67,51 @@ sub new {
     bless [ $dir, $hints ], $class;
 }
 
-sub setRepo {
-    my ( $self, $repository ) = @_;
-    if ($repository) {
-        unless ( -e $repository ) {
-            mkdir $repository;
-            chmod 02770, $repository;
-        }
-        if ( -d $repository && -w _ ) {
-            $self->[REPO] = [ $repository, 'No date' ];
-        }
-    }
-    else {
-        delete $self->[REPO];
-    }
-    $self;
-}
+sub setRepoloc {
 
-sub setCatalogue {
-    my ( $self, $gitFolder, $jbzFolder ) = @_;
+    my ( $self, $repolocs ) = @_;
+    return unless defined $repolocs;
+
+    my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
+    my @components =
+      splitdir( $self->[HINTS]->{canonicalPath}->( $self->[DIR] ) );
+    map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
+    my $name = pop(@components) || 'No name';
+    $name = "_$name" if $name =~ /^\./s;
+    my $category = join( '.', map { length $_ ? $_ : '_' } @components )
+      || 'No category';
+
+    my ( $repoFolder, $gitFolder, $jbzFolder ) =
+      ref $repolocs
+      ? @{$repolocs}{qw(repo git jbz)}
+      : ( $repolocs, undef, $repolocs );
+
+    foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
+        $gitFolder, $jbzFolder )
+    {
+        $_ = catdir( $_, $category );
+        unless ( -e $_ ) {
+            mkdir $_ or warn "mkdir $_: $!";
+            chown -1, $gid, $_;
+            chmod 02750, $_;
+        }
+    }
+    if ( defined $repoFolder && -d $repoFolder ) {
+        $repoFolder = catdir( $repoFolder, $name );
+        unless ( -e $repoFolder ) {
+            mkdir $repoFolder or warn "mkdir $repoFolder: $!";
+            chown -1, $gid, $repoFolder;
+            chmod 02750, $repoFolder;
+        }
+        if ( -d $repoFolder && -w _ ) {
+            $self->[REPO] = [ $repoFolder, 'No date' ];
+        }
+    }
     unless ( defined $gitFolder && -d $gitFolder ) {
         unless ( defined $jbzFolder && -d $jbzFolder ) {
             return $self;
         }
-        my ($name) = ( $self->[DIR] =~ m#([^/]+)/*$#s );
-        $name ||= 'No name';
-        $name = "_$name" if $name =~ /^\./s;
-        $name = "$jbzFolder/$name.jbz";
-        return $self->addScalarTaker(
-            sub {
-                FileMgt106::Tools::saveBzOctets( $name . $$, ${ $_[1] } );
-                if ( my $mtime = ( lstat $name )[STAT_MTIME] ) {
-                    $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z',
-                        localtime($mtime) );
-                    my $njbz = $name;
-                    $njbz =~ s/.jbz$/ $mtime.jbz/;
-                    $njbz = '~$stash/' . $njbz if -e '~$stash';
-                    link $name, $njbz;
-                }
-                rename $name . $$, $name;
-            }
-        );
+        return $self->addJbzName("$jbzFolder/$name.jbz");
     }
     $self->addScalarTaker(
         sub {
@@ -123,8 +129,6 @@ sub setCatalogue {
 
                 if ( chdir $gitFolder ) {
                     warn "Catalogue update for $self";
-                    my ($name) = ( $gitFolder =~ m#([^/]+)/*$#s );
-                    $name ||= 'No name';
                     open my $f, '>', "$name.txt.$$";
                     binmode $f;
                     print {$f} $$blobref;
@@ -162,7 +166,34 @@ sub setCatalogue {
             }
         }
     );
+
     $self;
+
+}
+
+sub addJbzName {
+    my ( $self, $jbzName ) = @_;
+    $self->addScalarTaker(
+        sub {
+            FileMgt106::Tools::saveBzOctets( $jbzName . $$, ${ $_[1] } );
+            if ( my $mtime = ( lstat $jbzName )[STAT_MTIME] ) {
+                $mtime =
+                  POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
+                my $njbz = $jbzName;
+                $njbz =~ s/.jbz$/ $mtime.jbz/;
+                $njbz = '~$stash/' . $njbz if -e '~$stash';
+                link $jbzName, $njbz;
+            }
+            rename $jbzName . $$, $jbzName;
+        }
+    );
+}
+
+sub addJbzFolder {
+    my ( $self, $jbzFolder ) = @_;
+    my $name = basename( $self->[DIR] );
+    $name =~ s/^\./_./s;
+    $self->addJbzName( catfile( $jbzFolder, "$name.jbz" ) );
 }
 
 sub setWatch {

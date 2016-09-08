@@ -2,7 +2,7 @@ package Daemon112::TestWatch;
 
 =head Copyright licence and disclaimer
 
-Copyright 2013-2015 Franck Latrémolière.
+Copyright 2013-2016 Franck Latrémolière.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -37,25 +37,30 @@ use Cwd;
 use Encode 'decode_utf8';
 use FileMgt106::Database;
 use Daemon112::TopMaster;
-require Daemon112::Watcher; # used but not loaded by TopMaster
+require Daemon112::Watcher;    # used but not loaded by TopMaster
 
 sub new {
-    my ( $class, $qu, $pq, $kq ) = @_;
-    my ($backupDir) = map {
-        my $x = dirname($_);
-        -e catdir( $x, '~$' ) ? $x : ();
-    } @INC;
-    die "No backupDir discovered in @INC"
-      unless defined $backupDir && -d $backupDir;
-    my $repoDir;
-    $repoDir = decode_utf8 getcwd() if chdir catdir( $backupDir, '~$' );
+    my ( $class, $qu, $pq, $kq, $home ) = @_;
+    mkdir $home = catdir( $home, 'testarea.tmp' );
+    mkdir my $git = catdir( $home, 'git' );
+    chdir $git && `git init`;
+    mkdir my $jbz  = catdir( $home, 'jbz' );
+    mkdir my $repo = catdir( $home, 'repo' );
+    chdir $repo && `git init`;
+    mkdir my $top = catdir( $home, 'top' );
+    mkdir catdir( $top, 'mid' );
+    mkdir catdir( $top, 'test1' );
+    mkdir catdir( $top, 'mid', 'test2' );
     bless {
-        qu        => $qu,
-        pq        => $pq,
-        kq        => $kq,
-        backupDir => $backupDir,
-        repoDir   => $repoDir,
-        hints => FileMgt106::Database->new( catfile( $backupDir, '~$hints' ) ),
+        # The following fields are used by TopMaster
+        hints => FileMgt106::Database->new( catfile( $home, '~$hints' ) ),
+        kq    => $kq,
+        pq    => $pq,
+        qu    => $qu,
+        locs => { repo => $repo, git => $git, jbz => $jbz },
+
+        # The following fields are private
+        top => $top,
     }, $class;
 }
 
@@ -73,7 +78,11 @@ sub start {
         $self->{topMaster} ||= Daemon112::TopMaster->new(
             '/kq' => $self->{kq},
             '/pq' => $self->{pq},
-        )->attach( catdir( $self->{backupDir}, 'top.tmp' ) )
+            'mid' => Daemon112::TopMaster->new(
+                '/kq' => $self->{kq},
+                '/pq' => $self->{pq},
+            ),
+        )->attach( $self->{top} )
     );
     $self;
 }

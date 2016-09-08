@@ -2,7 +2,7 @@ package Daemon112::Daemon;
 
 =head Copyright licence and disclaimer
 
-Copyright 2008-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2008-2016 Franck Latrémolière and Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -29,7 +29,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =head Documentation
 
-Daemon112::Daemon->run($module, $optionalNickname, $logging);
+Daemon112::Daemon->run($module, $nickname, $logging, @args);
 
 Things to do are either:
 1. Scheduled in a POE::Queue:
@@ -37,7 +37,7 @@ Things to do are either:
 2. Watched in a Daemon112::KQueue (Darwin/BSD only):
     closures, or objects capable of running the "kevented" method.
 
-Both closures and methods receive $runner initialised as $module->new( $qu, $pq, $kq).
+Both closures and methods receive $runner initialised as $module->new( $qu, $pq, $kq, @args).
 For KQueue events, the kevent structure (array reference) is an extra parameter.
 
 =cut
@@ -59,7 +59,7 @@ sub reloadMyModules {
 }
 
 sub run {
-    my ( $self, $module, $nickName, $logging ) = @_;
+    my ( $self, $module, $nickName, $logging, @args ) = @_;
 
     # NB: "perl:" is needed to avoid confusing the rc.d script.
     $0 = 'perl: Daemon112 ' . ( $nickName ||= $module );
@@ -129,10 +129,13 @@ sub run {
             }
             if ( $signalQueue{USR1} ) {
                 warn 'Restarting ' . __PACKAGE__ . ' with ' . $module;
-                map { s/(['\\])/\\$1/g; } $module, $nickName, $logging;
-                my %inc = map { ( "-I$_" => undef ); } @INC;
-                exec $^X, keys %inc, '-M' . __PACKAGE__, '-e',
-                  __PACKAGE__ . "->run('$module', '$nickName', '$logging')";
+                require Data::Dumper;
+                exec $^X, ( map { "-I$_"; } @INC ), '-M' . __PACKAGE__, '-e',
+                    __PACKAGE__
+                  . '->run(@{'
+                  . Data::Dumper::Dumper(
+                    [ $module, $nickName, $logging, @args ] )
+                  . '})';
             }
             if ( $signalQueue{USR2} ) {
                 warn 'Dumping ' . __PACKAGE__ . ' state with ' . $module;
@@ -165,7 +168,7 @@ sub run {
                 }
                 warn "Loaded $module";
                 if ( !$runner ) {
-                    eval { $runner = $module->new( $qu, $pq, $kq ); };
+                    eval { $runner = $module->new( $qu, $pq, $kq, @args ); };
                     if ( !$runner || $@ ) {
                         warn "Error or false result from $module->new: $@";
                         reloadMyModules();

@@ -2,7 +2,7 @@
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -77,11 +77,9 @@ my (
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
     if (/^-+testwatch/) {
-        mkdir catdir( dirname($perl5dir), '~$' );
-        mkdir catdir( dirname($perl5dir), 'top.tmp' );
-        mkdir catdir( dirname($perl5dir), 'top.tmp', 'test' );
         require Daemon112::Daemon;
-        Daemon112::Daemon->run('Daemon112::TestWatch');
+        Daemon112::Daemon->run( 'Daemon112::TestWatch', undef, undef,
+            $startFolder );
     }
     elsif (/^-+sync=(.+)$/) {
         chdir $startFolder;
@@ -131,24 +129,8 @@ foreach (@ARGV) {
     }
     elsif (/^-+repo=?(.*)/) {
         local $_ = $1;
-        if ( /^auto$/ && chdir catdir( dirname($perl5dir), '~$' ) ) {
-            my $repoDir = decode_utf8 getcwd();
-            push @applyScanMasterConfig, sub {
-                my ( $scanner, $dir ) = @_;
-                if (   $repoDir
-                    && $dir !~ m#/\~\$#
-                    && substr( $dir, 0, length($repoDir) ) ne $repoDir )
-                {
-                    my $repo = $hints->{repositoryPath}->( $dir, $repoDir );
-                    $scanner->setRepo($repo)->setCatalogue( $repo, '../%jbz' );
-                }
-            };
-        }
-        else {
-            my $repoDir = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-            push @applyScanMasterConfig,
-              sub { $_[0]->setCatalogue( undef, $repoDir ); };
-        }
+        my $jbzLoc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+        push @applyScanMasterConfig, sub { $_[0]->addJbzFolder($jbzLoc); };
         next;
     }
     $hints ||=
@@ -179,16 +161,8 @@ foreach (@ARGV) {
             $mtime =
               POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
             $oldFileName = '~$hints ' . $mtime;
-            if (undef) {
-                system qw(cp -p --), '~$hints', $oldFileName
-                  and die "Cannot copy hints file to $oldFileName: $!";
-                rename '~$hints', '~$hints-old'
-                  or die "Cannot move ~\$hints to ~\$hints-old: $!";
-            }
-            else {
-                rename '~$hints', $oldFileName
-                  or die "Cannot move ~\$hints to $oldFileName: $!";
-            }
+            rename '~$hints', $oldFileName
+              or die "Cannot move ~\$hints to $oldFileName: $!";
         }
         $hints = FileMgt106::Database->new('~$hints')
           or die "Cannot create new database";

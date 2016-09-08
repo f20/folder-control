@@ -2,7 +2,7 @@ package Daemon112::TopMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2016 Franck Latrémolière and Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -46,104 +46,110 @@ sub new {
 }
 
 sub dumpState {
-    my ( $master, $prefix ) = @_;
-    $prefix ||= "$master/";
-    foreach ( sort keys %$master ) {
-        warn "$prefix$_: $master->{$_}\n";
-        $master->{$_}->dumpState("$prefix$_/")
-          if UNIVERSAL::can( $master->{$_}, 'dumpState' );
+    my ( $topMaster, $prefix ) = @_;
+    $prefix ||= "$topMaster/";
+    foreach ( sort keys %$topMaster ) {
+        warn "$prefix$_: $topMaster->{$_}\n";
+        $topMaster->{$_}->dumpState("$prefix$_/")
+          if UNIVERSAL::can( $topMaster->{$_}, 'dumpState' );
     }
 }
 
 sub attach {
 
-    my ( $master, $root, $runner ) = @_;
+    my ( $topMaster, $root ) = @_;
 
-    my $rescan = $master->{'/RESCANNER'} ||= sub {
-        warn "Scanning $root for $master";
+    return $topMaster if $topMaster->{'/RESCANNER'};
+
+    $topMaster->{'/RESCANNER'} = sub {
+        warn "Scanning $root for $topMaster";
         my ($runner) = @_;
         my $hints    = $runner->{hints};
-        my @list     = $master->_listDirectory($root);
+        my @list     = $topMaster->_listDirectory($root);
+        @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
         my %list = map { ( $_ => 1 ); } @list;
-        if (
-            my @missing =
+        foreach (
             grep {
                 !exists $list{$_}
-                  && UNIVERSAL::isa( $master->{$_}, 'FileMgt106::ScanMaster' );
-            } keys %$master
+                  && UNIVERSAL::isa( $topMaster->{$_},
+                    'FileMgt106::ScanMaster' );
+            } keys %$topMaster
           )
         {
-            $master->{$_}->unwatchAll foreach @missing;
-            delete @{$master}{@missing};
-            $hints->enqueue(
-                $runner->{qu},
-                sub {
-                    my ($hints) = @_;
-                    my $doclocid =
-                      $hints->{topFolder}
-                      ->( $root, ( stat $root )[ STAT_DEV, STAT_INO ] );
-                    die unless $doclocid;
-                    my $oldChildrenHashref = $hints->{children}->($doclocid);
-                    my @expected           = keys %$oldChildrenHashref;
-                    @expected = $master->{'/filter'}->(@expected)
-                      if $master->{'/filter'};
-                    $hints->{uproot}->( $oldChildrenHashref->{$_} )
-                      foreach grep { !exists $list{$_} } @expected;
-                }
-            );
+            $topMaster->{$_}->unwatchAll;
+            warn "Stopped watching $topMaster->{$_}";
+            delete $topMaster->{$_};
         }
+        $hints->enqueue(
+            $runner->{qu},
+            sub {
+                my ($hints) = @_;
+                my $doclocid =
+                  $hints->{topFolder}
+                  ->( $root, ( stat $root )[ STAT_DEV, STAT_INO ] );
+                die unless $doclocid;
+                my $oldChildrenHashref = $hints->{children}->($doclocid);
+                my @expected           = keys %$oldChildrenHashref;
+                $hints->{uproot}->( $oldChildrenHashref->{$_} )
+                  foreach grep { !exists $list{$_} } @expected;
+            }
+        );
         my $time;
         foreach (@list) {
             my $dir = catdir( $root, $_ );
-            if ( $master->{$_} ) {
-                $master->{$_}->attach( $dir, $runner )
-                  if UNIVERSAL::isa( $master->{$_}, __PACKAGE__ )
-                  and -d $dir;
-                next;
+            if ( -d $dir ) {
+                my $scanMaster = $topMaster->{$_};
+                if ( !$scanMaster ) {
+                    $scanMaster = $topMaster->{$_} =
+                      FileMgt106::ScanMaster->new( $hints, catdir( $root, $_ ) )
+                      ->setRepoloc( $runner->{locs} );
+                    $scanMaster->setWatch( 'Daemon112::Watcher',
+                        $topMaster->{'/kq'} )
+                      if $topMaster->{'/kq'};
+                    $topMaster->{'/postwatch'}->( $scanMaster, $_ )
+                      if $topMaster->{'/postwatch'};
+                }
+                elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
+                    $scanMaster->attach( $dir, $runner );
+                }
+                else {
+                    next;
+                }
+                $time ||= time + 2;
+                $runner->{qu}->enqueue( ++$time, $scanMaster );
             }
-            my $repo = $hints->{repositoryPath}->( $dir, $runner->{repoDir} );
-            my $scanm = $master->{$_} =
-              FileMgt106::ScanMaster->new( $hints, catdir( $root, $_ ) )
-              ->setRepo($repo)->setCatalogue( $repo, '../%jbz' );
-            $scanm->setWatch( 'Daemon112::Watcher', $master->{'/kq'} )
-              if $master->{'/kq'};
-            $master->{'/postwatch'}->( $scanm, $_ ) if $master->{'/postwatch'};
-            $time ||= time + 2;
-            $runner->{qu}->enqueue( ++$time, $scanm );
         }
     };
 
-    Daemon112::Watcher->new( $rescan, "Watcher: $root" )
-      ->startWatching( $master->{'/kq'}, $root )
-      if $master->{'/kq'};
+    Daemon112::Watcher->new( $topMaster->{'/RESCANNER'}, "Watcher: $root" )
+      ->startWatching( $topMaster->{'/kq'}, $root )
+      if $topMaster->{'/kq'};
 
-    $rescan->($runner) if $runner;
-
-    $master;
+    $topMaster;
 
 }
 
 sub dequeued {
-    my ( $master, $runner ) = @_;
-    $master->{'/RESCANNER'}->($runner);
+    my ( $topMaster, $runner ) = @_;
+    $topMaster->{'/RESCANNER'}->($runner);
     my $time         = time;
     my @refLocaltime = localtime( $time - 17_000 );
     my $nextRun =
       $time -
       int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) +
       3_600 * ( ( ( $refLocaltime[2] < 18 ? 23 : 47 ) - $refLocaltime[2] ) );
-    $runner->{qu}->enqueue( $nextRun, $master );
+    $runner->{qu}->enqueue( $nextRun, $topMaster );
 }
 
 sub _listDirectory {
-    my ( $master, $dir ) = @_;
+    my ( $topMaster, $dir ) = @_;
     defined $dir and chdir($dir) || return;
     my $handle;
     opendir $handle, '.' or return;
     my @list =
       map { decode_utf8 $_; }
       grep { !/^\.\.?$/s && !-l $_ && -d _ } readdir $handle;
-    @list = $master->{'/filter'}->(@list) if $master->{'/filter'};
+    @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
     @list;
 }
 

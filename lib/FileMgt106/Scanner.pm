@@ -51,7 +51,7 @@ sub new {
         ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^Icon\r|^:2eDS_Store$|
         \.pyc$
       )/sx;
-    my $regexIgnoreFolder =
+    my $regexIgnoreFolderContents =
       qr/(?:^\.(?:git|svn)|\.(?:download|tmp|app|AppleDouble|aplibrary))$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
@@ -60,7 +60,7 @@ sub new {
     my $regexCheckThisFile    = qr/\.xls$/is;
     my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
     my $regexMakeReadOnly     = qr/^[XY]_/is;
-    my $regexDoNotWatchFolder = qr/(?:^Y_|[.(]mirror)/is;
+    my $regexDoNotWatchFolder = qr/(?:^Y_|\(mirror)/is;
 
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
@@ -549,7 +549,7 @@ sub new {
                         }
                     }
 
-                    if (/$regexIgnoreFolder/s) {
+                    if (/$regexIgnoreFolderContents/s) {
                         $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] );
                         next;
                     }

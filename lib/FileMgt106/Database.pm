@@ -29,7 +29,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =head Interface
 
-my $hints = FileMgt106::Database->new( $sqliteFilePath ); 
+my $hints = FileMgt106::Database->new( $sqliteFilePath );
 
 $hints->beginInteractive;
 $hints->commit;
@@ -39,7 +39,7 @@ $hints->dequeued($runner);
 
 my $locid = $hints->{folder}->( $parid, $name, $dev, $ino );
 
-# {folder} will automatically duplicate and uproot trees for a folder found by dev/ino. 
+# {folder} will automatically duplicate and uproot trees for a folder found by dev/ino.
 
 my $locid = $hints->{topFolder}->( $path, $dev, $ino );
 
@@ -72,8 +72,7 @@ use warnings;
 use utf8;
 use Encode qw(decode_utf8);
 use DBI;
-use File::Spec::Functions qw(catdir abs2rel splitdir);
-use File::Basename 'dirname';
+use File::Spec::Functions qw(abs2rel);
 
 use constant {
     STAT_DEV   => 0,
@@ -418,33 +417,12 @@ EOL
             my ( $sqlitePath, $mountPointPath, $mountPointId ) = $oldDbPath->();
             if ( $sqlitePath eq $sqliteFile ) {
                 my $dev = ( stat( $mountPointPath ||= '/' ) )[STAT_DEV];
-                $self->{repositoryPath} = sub {
-
-                    my ( $dir, $repoDir ) = @_;
-                    return unless $repoDir;
+                $self->{canonicalPath} = sub {
+                    my ($dir) = @_;
                     my @stat = stat $dir;
-                    my @dirs = splitdir(
-                        @stat && $stat[STAT_DEV] == $dev
-                        ? abs2rel( $dir, $mountPointPath )
-                        : $dir
-                    );
-                    map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @dirs;
-                    my $name = pop @dirs;
-                    my $repoCat =
-                      catdir( $repoDir, join '.',
-                        map { length $_ ? $_ : '_' } @dirs );
-                    my $repoFolder = catdir( $repoCat, $name || 'No name' );
-
-                    foreach ( $repoCat, $repoFolder ) {
-                        unless ( -d $_ ) {
-                            mkdir $_ or return;
-                            chown -1, ( stat( dirname($dir) ) )[STAT_GID], $_;
-                            chmod 02750, $_;
-                        }
-                    }
-
-                    $repoFolder;
-
+                    @stat && $stat[STAT_DEV] == $dev
+                      ? abs2rel( $dir, $mountPointPath )
+                      : $dir;
                 };
                 last;
             }
