@@ -127,10 +127,24 @@ foreach (@ARGV) {
         };
         next;
     }
-    elsif (/^-+repo=?(.*)/) {
+    elsif (/^-+(?:jbz|repo)=?(.*)/) {
         local $_ = $1;
-        my $jbzLoc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-        push @applyScanMasterConfig, sub { $_[0]->addJbzFolder($jbzLoc); };
+        my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+        push @applyScanMasterConfig, sub { $_[0]->addJbzFolder($loc); };
+        next;
+    }
+    elsif (/^-+backup=?(.*)/) {
+        local $_ = $1;
+        my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+        push @applyScanMasterConfig,
+          sub { $_[0]->setRepoloc( { repo => $loc } ); };
+        next;
+    }
+    elsif (/^-+git=?(.*)/) {
+        local $_ = $1;
+        my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+        push @applyScanMasterConfig,
+          sub { $_[0]->setRepoloc( { git => $loc } ); };
         next;
     }
     $hints ||=
