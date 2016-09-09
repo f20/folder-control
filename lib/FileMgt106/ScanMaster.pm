@@ -84,7 +84,7 @@ sub setRepoloc {
     my ( $repoFolder, $gitFolder, $jbzFolder ) =
       ref $repolocs
       ? @{$repolocs}{qw(repo git jbz)}
-      : ( $repolocs, undef, $repolocs );
+      : ( $repolocs, $repolocs );
 
     foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
         $gitFolder, $jbzFolder )
