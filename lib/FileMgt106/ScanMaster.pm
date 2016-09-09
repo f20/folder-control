@@ -70,7 +70,7 @@ sub new {
 sub setRepoloc {
 
     my ( $self, $repolocs ) = @_;
-    return unless defined $repolocs;
+    return $self unless defined $repolocs;
 
     my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
     my @components =
