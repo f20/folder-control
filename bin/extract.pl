@@ -111,7 +111,7 @@ foreach (@ARGV) {
                 FileMgt106::Extract::makeExtractAcceptor(@ARGV) );
         }
     }
-    if (/^(-+)$/) {
+    if (/^-$/) {
         local undef $/;
         binmode STDIN;
         my $missingCompilation;
@@ -120,9 +120,17 @@ foreach (@ARGV) {
         local $_ = <STDIN>;
         foreach (
             eval { decode_json($_); } || map {
-                if ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
+                if ( -f $_ && /(?:.*)\.(jbz|json\.bz2|txt|json)$/s ) {
                     warn "Filtering $_";
-                    FileMgt106::Tools::loadJbz($_);
+                    if ( $1 eq 'txt' || $1 eq 'json' ) {
+                        open my $fh, '<', $_;
+                        binmode $fh;
+                        local undef $/;
+                        decode_json(<$fh>);
+                    }
+                    else {
+                        FileMgt106::Tools::loadJbz($_);
+                    }
                 }
                 else {
                     warn "Not processed: $_";
