@@ -106,7 +106,8 @@ sub run {
     my $pq = new POE::Queue::Array;
     my $qu = new POE::Queue::Array;
     my $kq;
-    $kq = new Daemon112::KQueue if eval { require Daemon112::KQueue; };
+    $kq ||= new Daemon112::KQueue  if eval { require Daemon112::KQueue; };
+    $kq ||= new Daemon112::Inotify if eval { require Daemon112::Inotify; };
     my $runner;
 
     my %signalQueue = ( needsLoading => 1 );
@@ -213,13 +214,13 @@ sub run {
             next;
         }
         eval {
-            foreach ( $kq->kevent( 1_000 * $nextTime ) ) {
-                my $obj = $_->[ Daemon112::KQueue::KQ_UDATA() ];
+            foreach ( $kq->events($nextTime) ) {
+                my ( $obj, $e ) = @$_;
                 next unless ref $obj;
                 $time = time;
                 ref $obj eq 'CODE'
-                  ? $obj->( $runner, $_ )
-                  : $obj->kevented( $runner, $_ );
+                  ? $obj->( $runner, $e )
+                  : $obj->kevented( $runner, $e );
                 warn "Slow kevent ($time seconds) $obj"
                   if ( $time = time - $time ) > 4;
             }

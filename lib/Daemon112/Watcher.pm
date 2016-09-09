@@ -2,7 +2,7 @@ package Daemon112::Watcher;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -35,21 +35,6 @@ use overload
   '0+' => sub { $_[0] },
   fallback => 1;
 
-use Scalar::Util qw(weaken);
-use Daemon112::KQueue qw(:constants);
-use BSD::Resource;
-
-my $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
-
-# RLIM_INFINITY does not work on Mac OS X 10.5
-if ( $thresholdWatchCount < 2345 ) {
-    setrlimit( RLIMIT_NOFILE, 2345, 2345 );
-    $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
-}
-$thresholdWatchCount = int( 0.8 * $thresholdWatchCount );
-our %watchedByFileno;
-our %priorityByFileno;
-
 sub new {
     my ( $className, $action, $name, $delay ) = @_;
     bless {
@@ -62,63 +47,19 @@ sub new {
 
 sub startWatching {
     my ( $self, $kqueue, $path, $priority ) = @_;
-    if ( keys %watchedByFileno > $thresholdWatchCount ) {
-        warn "thresholdWatchCount ($thresholdWatchCount) reached";
-        my @todelete = (
-            sort {
-                ( $priorityByFileno{$a} || 0 )
-                  <=> ( $priorityByFileno{$b} || 0 );
-            } keys %watchedByFileno
-        )[ 0 .. 15 ];
-        warn "Stop watching filenos @todelete";
-        $watchedByFileno{$_}->stopWatching( $kqueue, $_ ) foreach @todelete;
-    }
-    my $sh;
-    sysopen $sh, $path, O_EVTONLY
-      or do {
-        warn "sysopen '$path': $! in " . `pwd`;
-        return;
-      };
-    my $no = fileno $sh;
-    $kqueue->EV_SET(
-        $no, EVFILT_VNODE,
-        EV_ADD | EV_CLEAR,
-        NOTE_WRITE | NOTE_DELETE | NOTE_RENAME,
-        0, $self
-    );
-    $self->{timestamp} = time;
-    $self->{sysHandle}{$sh} = $sh;
-    weaken( $watchedByFileno{$no} = $self );
-    $priorityByFileno{$no} = ( $priority || 0 ) + rand();
+    $kqueue->startWatching( $self, $path, $priority );
     $self;
 }
 
 sub stopWatching {
     my ( $self, $kqueue, $fileno ) = @_;
-    my %remainingSysHandles;
-    foreach ( grep { $_ } values %{ $self->{sysHandle} } ) {
-        my $no = fileno $_;
-        if ( !defined $fileno || $no == $fileno ) {
-            $kqueue->EV_SET( $no, EVFILT_VNODE, EV_DELETE,
-                NOTE_WRITE | NOTE_DELETE | NOTE_RENAME,
-                0, $self );
-            close $_;
-            delete $watchedByFileno{$no};
-        }
-        else {
-            $remainingSysHandles{$_} = $_;
-        }
-    }
-    $kqueue->delete_objects( sub { !( $_[0] - $self ); } )
-      unless %remainingSysHandles;
-    $self->{sysHandle} = \%remainingSysHandles;
+    $kqueue->stopWatching( $self, $fileno );
     $self;
 }
 
 sub kevented {
     my ( $self, $runner, $kevent ) = @_;
-    $self->stopWatching( $runner->{kq}, $kevent->[KQ_IDENT] )
-      if ( ( NOTE_DELETE | NOTE_RENAME ) & $kevent->[KQ_FFLAGS] );
+    $runner->{kq}->stopWatchingIfDead( $self, $kevent );
     $self->schedule( ( $self->{timestamp} = time ) + $self->{delay},
         $runner->{pq} );
 }

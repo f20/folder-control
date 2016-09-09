@@ -37,7 +37,7 @@ use Cwd;
 use Encode 'decode_utf8';
 use FileMgt106::Database;
 use Daemon112::TopMaster;
-require Daemon112::Watcher;    # used but not loaded by TopMaster
+require Daemon112::Watcher;    # used but not loaded by TopMaster
 
 sub new {
     my ( $class, $qu, $pq, $kq, $home ) = @_;
@@ -49,17 +49,27 @@ sub new {
     chdir $repo && `git init`;
     mkdir my $top = catdir( $home, 'top' );
     mkdir catdir( $top, 'mid' );
-    mkdir catdir( $top, 'test1' );
-    mkdir catdir( $top, 'mid', 'test2' );
+    mkdir my $test1 = catdir( $top, 'test1' );
+    mkdir my $test2 = catdir( $top, 'mid', 'test2' );
+    my $makeRandoms;
+    $makeRandoms = sub {
+        my $file = rand();
+        chdir $test1;
+        `dd if=/dev/random of=test1-$file count=1`;
+        chdir $test2;
+        `dd if=/dev/random of=test2-$file count=1`;
+        $qu->enqueue( time + 8, $makeRandoms );
+    };
+    $pq->enqueue( time + 10, $makeRandoms );
     bless {
-        # The following fields are used by TopMaster
+        # The following fields are used by TopMaster and others
         hints => FileMgt106::Database->new( catfile( $home, '~$hints' ) ),
         kq    => $kq,
         pq    => $pq,
         qu    => $qu,
         locs => { repo => $repo, git => $git, jbz => $jbz },
 
-        # The following fields are private
+        # The following field is private
         top => $top,
     }, $class;
 }
