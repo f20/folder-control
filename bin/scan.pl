@@ -76,10 +76,10 @@ my (
 
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
-    if (/^-+watch/) {
+    if (/^-+watch=?(.*)/) {
         my $module   = 'Daemon112::SimpleWatch';
         my $nickname = 'watch';
-        my $logging;
+        my $logging  = $1;
         my ( $hintsFile, $top, $repo, $git, $jbz, $testParent ) =
           map { /^-+watch/ ? () : /^-/ ? undef : $_; } @ARGV;
         $_ = rel2abs($_)
