@@ -74,9 +74,9 @@ sub new {
         $makeRandoms = sub {
             my $file = rand();
             chdir $test1;
-            `dd if=/dev/random of=test1-$file count=1`;
+            `dd if=/dev/urandom of=test1-$file count=1`;
             chdir $test2;
-            `dd if=/dev/random of=test2-$file count=1`;
+            `dd if=/dev/urandom of=test2-$file count=1`;
             $qu->enqueue( time + 8, $makeRandoms );
         };
         $pq->enqueue( time + 10, $makeRandoms );
