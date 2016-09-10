@@ -77,9 +77,14 @@ my (
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
     if (/^-+testwatch/) {
+        my $module = 'Daemon112::SimpleWatch';
+        my ( $nickname, $logging, $hintsFile, $top, $repo, $git, $jbz );
+        my $testParent = $startFolder;
         require Daemon112::Daemon;
-        Daemon112::Daemon->run( 'Daemon112::TestWatch', undef, undef,
-            $startFolder );
+        Daemon112::Daemon->run(
+            $module, $nickname, $logging, $hintsFile, $top,
+            $repo,   $git,      $jbz,     $testParent
+        );
     }
     elsif (/^-+sync=(.+)$/) {
         chdir $startFolder;

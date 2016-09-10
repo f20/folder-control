@@ -1,4 +1,4 @@
-package Daemon112::TestWatch;
+package Daemon112::SimpleWatch;
 
 =head Copyright licence and disclaimer
 
@@ -40,34 +40,38 @@ use Daemon112::TopMaster;
 require Daemon112::Watcher;    # used but not loaded by TopMaster
 
 sub new {
-    my ( $class, $qu, $pq, $kq, $home ) = @_;
-    mkdir $home = catdir( $home, 'testarea.tmp' );
-    mkdir my $git = catdir( $home, 'git' );
-    chdir $git && `git init`;
-    mkdir my $jbz  = catdir( $home, 'jbz' );
-    mkdir my $repo = catdir( $home, 'repo' );
-    chdir $repo && `git init`;
-    mkdir my $top = catdir( $home, 'top' );
-    mkdir catdir( $top, 'mid' );
-    mkdir my $test1 = catdir( $top, 'test1' );
-    mkdir my $test2 = catdir( $top, 'mid', 'test2' );
-    my $makeRandoms;
-    $makeRandoms = sub {
-        my $file = rand();
-        chdir $test1;
-        `dd if=/dev/random of=test1-$file count=1`;
-        chdir $test2;
-        `dd if=/dev/random of=test2-$file count=1`;
-        $qu->enqueue( time + 8, $makeRandoms );
-    };
-    $pq->enqueue( time + 10, $makeRandoms );
+    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz,
+        $testParent )
+      = @_;
+    if ($testParent) {
+        mkdir my $home = catdir( $testParent, 'testarea.tmp' );
+        $hintsFile = catfile( $home, '~$hints' );
+        mkdir $git = catdir( $home, 'git' );
+        chdir $git && `git init`;
+        mkdir $jbz  = catdir( $home, 'jbz' );
+        mkdir $repo = catdir( $home, 'repo' );
+        mkdir $top  = catdir( $home, 'top' );
+        mkdir catdir( $top, 'mid' );
+        mkdir my $test1 = catdir( $top, 'test1' );
+        mkdir my $test2 = catdir( $top, 'mid', 'test2' );
+        my $makeRandoms;
+        $makeRandoms = sub {
+            my $file = rand();
+            chdir $test1;
+            `dd if=/dev/random of=test1-$file count=1`;
+            chdir $test2;
+            `dd if=/dev/random of=test2-$file count=1`;
+            $qu->enqueue( time + 8, $makeRandoms );
+        };
+        $pq->enqueue( time + 10, $makeRandoms );
+    }
     bless {
         # The following fields are used by TopMaster and others
-        hints => FileMgt106::Database->new( catfile( $home, '~$hints' ) ),
+        hints => FileMgt106::Database->new($hintsFile),
         kq    => $kq,
         pq    => $pq,
         qu    => $qu,
-        locs => { repo => $repo, git => $git, jbz => $jbz },
+        locs  => { repo => $repo, git => $git, jbz => $jbz },
 
         # The following field is private
         top => $top,
