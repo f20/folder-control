@@ -32,7 +32,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Daemon112::Daemon->run($module, $nickname, $logging, @args);
 
 Things to do are either:
-1. Scheduled in a POE::Queue:
+1. Scheduled in an ArrayQueue:
     closures, or objects capable of running the "dequeued" method.
 2. Watched in a Daemon112::KQueue (Darwin/BSD only):
     closures, or objects capable of running the "kevented" method.
@@ -45,7 +45,7 @@ For KQueue events, the kevent structure (array reference) is an extra parameter.
 use strict;
 use warnings;
 use utf8;
-use POE::Queue::Array;
+use Daemon112::ArrayQueue;
 
 sub reloadMyModules {
     my $myInc = $INC{'Daemon112/Daemon.pm'};
@@ -103,8 +103,8 @@ sub run {
         }
     }
 
-    my $pq = new POE::Queue::Array;
-    my $qu = new POE::Queue::Array;
+    my $pq = new Daemon112::ArrayQueue;
+    my $qu = new Daemon112::ArrayQueue;
     my $kq;
     $kq ||= new Daemon112::KQueue  if eval { require Daemon112::KQueue; };
     $kq ||= new Daemon112::Inotify if eval { require Daemon112::Inotify; };
