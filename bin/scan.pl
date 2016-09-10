@@ -69,7 +69,7 @@ use FileMgt106::FileSystem;
 
 my (
     $hints,                 $filter,       @baseScalars,
-    $missing,               %scanners,     $grabFrom,
+    $missing,               %scanners,     @grabFrom,
     @applyScanMasterConfig, $cleaningFlag, $filterFlag,
     $syncDestination,
 );
@@ -116,7 +116,7 @@ foreach (@ARGV) {
         next;
     }
     elsif (/^-+grab=?(.*)/) {
-        $grabFrom = $1 || '';
+        push @grabFrom, $1 || '';
         next;
     }
     elsif (/^-+read-?only/) {
@@ -265,7 +265,7 @@ foreach (@ARGV) {
     if (/^-+missing=(.*)/) {
         chdir $startFolder;
         $missing = FileMgt106::Tools::loadJbz($1);
-        $grabFrom ||= '';
+        push @grabFrom, '';
         next;
     }
     if (/^-+known=(.*)/) {
@@ -298,7 +298,7 @@ foreach (@ARGV) {
           if !$target && $ext =~ /txt|yml/i;
         delete $target->{$_} foreach grep { /\//; } keys %$target;
     }
-    elsif ( -d _ && defined $grabFrom && chdir $_ ) {
+    elsif ( -d _ && @grabFrom && chdir $_ ) {
         $root = decode_utf8 getcwd();
         $ext  = '';
         $hints->beginInteractive;
@@ -374,7 +374,7 @@ foreach (@ARGV) {
         $missingFile =~ s/\+missing\+missing/+missing/;
         unlink $missingFile;
         if ( ref $target && keys %$target ) {
-            if ( defined $grabFrom ) {
+            if (@grabFrom) {
                 $missing->{$dir} = $target;
             }
             else {
@@ -442,63 +442,78 @@ foreach (@ARGV) {
 }
 
 if ($missing) {
-    my ( $cellarScanner, $cellarDir );
-    unless ($grabFrom) {
-        my $missingFile = "$startFolder/+missing.jbz";
-        FileMgt106::Tools::saveJbz( $missingFile, $missing );
-        die "Do your own grab: $missingFile";
-    }
-    unless ( $grabFrom eq 'done' ) {
-        $cellarDir = dirname($perl5dir);
-        if ( -d ( my $d = $cellarDir . '/~$grab' ) ) {
-            $cellarDir = $d;
+    my @rmdirList;
+    foreach my $grabFrom (@grabFrom) {
+        unless ($grabFrom) {
+            my $missingFile = "$startFolder/+missing.jbz";
+            FileMgt106::Tools::saveJbz( $missingFile, $missing );
+            die "Do your own grab: $missingFile";
         }
-        $cellarDir .=
-            '/Y_Cellar '
-          . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime )
-          . ' grabbed';
-        mkdir $cellarDir;
-        chdir $cellarDir;
-        {
-            my ( $host, $extract ) =
-                $grabFrom =~ /^([a-zA-Z0-9._-]+)$/s ? ( $1, 'extract.pl' )
-              : $grabFrom =~ m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._-]+)$#s
-              ? ( $1, $2 )
-              : die $grabFrom;
-            open my $fh, qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
-            binmode $fh;
-            print {$fh} encode_json($missing);
-        };
-        $hints->beginInteractive(1);
-        FileMgt106::Tools::deepClean('.');
-        $hints->commit;
-        $cellarScanner =
-          FileMgt106::ScanMaster->new( $hints, decode_utf8 getcwd() );
-        $cellarScanner->dequeued;
+        my ( $cellarScanner, $cellarDir );
+        unless ( $grabFrom eq 'done' ) {
+            $cellarDir = dirname($perl5dir);
+            if ( -d ( my $d = $cellarDir . '/~$grab' ) ) {
+                $cellarDir = $d;
+            }
+            {
+                my ( $host, $extract ) =
+                    $grabFrom =~ /^([a-zA-Z0-9._-]+)$/s ? ( $1, 'extract.pl' )
+                  : $grabFrom =~ m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._-]+)$#s
+                  ? ( $1, $2 )
+                  : die $grabFrom;
+                $cellarDir .=
+                    '/Y_Cellar '
+                  . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime )
+                  . ' '
+                  . $host;
+                mkdir $cellarDir;
+                chdir $cellarDir;
+                open my $fh,
+                  qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
+                binmode $fh;
+                print {$fh} encode_json($missing);
+            }
+            $hints->beginInteractive(1);
+            FileMgt106::Tools::deepClean('.');
+            $hints->commit;
+            $cellarScanner =
+              FileMgt106::ScanMaster->new( $hints, decode_utf8 getcwd() );
+            $cellarScanner->dequeued;
+        }
+        while ( my ( $dir, $scalar ) = each %$missing ) {
+            $hints->beginInteractive;
+            eval {
+                $scalar = (
+                    $scanners{$dir} || FileMgt106::Scanner->new(
+                        $dir, $hints,
+                        $hints->statFromGid( ( stat $dir )[STAT_GID] )
+                    )
+                )->infill($scalar);
+            };
+            warn "infill $dir: $@" if $@;
+            $hints->commit;
+            if ($scalar) {
+                $missing->{$dir} = $scalar;
+            }
+            else {
+                delete $missing->{$dir};
+            }
+        }
+        if ( defined $cellarDir ) {
+            $hints->beginInteractive(1);
+            FileMgt106::Tools::deepClean($cellarDir);
+            $hints->commit;
+            $cellarScanner->dequeued;
+            push @rmdirList, $cellarDir;
+        }
+        last unless %$missing;
     }
-    while ( my ( $dir, $scalar ) = each %$missing ) {
-        $hints->beginInteractive;
-        my $stillMissing = eval {
-            (
-                $scanners{$dir} || FileMgt106::Scanner->new(
-                    $dir, $hints,
-                    $hints->statFromGid( ( stat $dir )[STAT_GID] )
-                )
-            )->infill($scalar);
-        };
-        warn "infill $dir: $@" if $@;
-        $hints->commit;
+    while ( my ( $dir, $stillMissing ) = each %$missing ) {
         FileMgt106::Tools::saveJbzPretty( catfile( $dir, "\N{U+26A0}.jbz" ),
             $stillMissing )
           if $stillMissing;
     }
-    if ( defined $cellarDir ) {
-        $hints->beginInteractive(1);
-        FileMgt106::Tools::deepClean($cellarDir);
-        $hints->commit;
-        $cellarScanner->dequeued;
-        rmdir $cellarDir;
-    }
+    rmdir $_ foreach @rmdirList;
 }
 
 $hints->disconnect if $hints;
