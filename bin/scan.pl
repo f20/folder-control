@@ -76,10 +76,16 @@ my (
 
 foreach (@ARGV) {
     local $_ = decode_utf8 $_;
-    if (/^-+testwatch/) {
-        my $module = 'Daemon112::SimpleWatch';
-        my ( $nickname, $logging, $hintsFile, $top, $repo, $git, $jbz );
-        my $testParent = $startFolder;
+    if (/^-+watch/) {
+        my $module   = 'Daemon112::SimpleWatch';
+        my $nickname = 'watch';
+        my $logging;
+        my ( $hintsFile, $top, $repo, $git, $jbz, $testParent ) =
+          map { /^-+watch/ ? () : /^-/ ? undef : $_; } @ARGV;
+        $_ = rel2abs($_)
+          foreach grep { defined $_; } $hintsFile, $top, $repo, $git, $jbz,
+          $testParent;
+        $testParent ||= $startFolder;
         require Daemon112::Daemon;
         Daemon112::Daemon->run(
             $module, $nickname, $logging, $hintsFile, $top,

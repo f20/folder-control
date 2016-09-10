@@ -43,8 +43,21 @@ sub new {
     my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz,
         $testParent )
       = @_;
+    warn 'Daemon112::SimpleWatch started with'
+      . '$hintsFile'
+      . ( defined $hintsFile ? " = $hintsFile" : ' undefined' )
+      . '; $top'
+      . ( defined $top ? " = $top" : ' undefined' )
+      . '; $repo'
+      . ( defined $repo ? " = $repo" : ' undefined' )
+      . '; $git'
+      . ( defined $git ? " = $git" : ' undefined' )
+      . '; $jbz'
+      . ( defined $jbz ? " = $jbz" : ' undefined' )
+      . '; $testParent'
+      . ( defined $testParent ? " = $testParent" : ' undefined' );
     my @extras;
-    if ($testParent) {
+    if ( !$hintsFile && $testParent ) {
         mkdir my $home = catdir( $testParent, 'testarea.tmp' );
         $hintsFile = catfile( $home, '~$hints' );
         mkdir $git = catdir( $home, 'git' );
