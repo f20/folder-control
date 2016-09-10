@@ -43,6 +43,7 @@ sub new {
     my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz,
         $testParent )
       = @_;
+    my @extras;
     if ($testParent) {
         mkdir my $home = catdir( $testParent, 'testarea.tmp' );
         $hintsFile = catfile( $home, '~$hints' );
@@ -52,6 +53,8 @@ sub new {
         mkdir $repo = catdir( $home, 'repo' );
         mkdir $top  = catdir( $home, 'top' );
         mkdir catdir( $top, 'mid' );
+        @extras =
+          ( 'mid' => Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, ) );
         mkdir my $test1 = catdir( $top, 'test1' );
         mkdir my $test2 = catdir( $top, 'mid', 'test2' );
         my $makeRandoms;
@@ -74,7 +77,9 @@ sub new {
         locs  => { repo => $repo, git => $git, jbz => $jbz },
 
         # The following field is private
-        top => $top,
+        topMaster =>
+          Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, @extras )
+          ->attach($top),
     }, $class;
 }
 
@@ -87,17 +92,7 @@ sub dumpState {
 
 sub start {
     my ($self) = @_;
-    $self->{qu}->enqueue(
-        time,
-        $self->{topMaster} ||= Daemon112::TopMaster->new(
-            '/kq' => $self->{kq},
-            '/pq' => $self->{pq},
-            'mid' => Daemon112::TopMaster->new(
-                '/kq' => $self->{kq},
-                '/pq' => $self->{pq},
-            ),
-        )->attach( $self->{top} )
-    );
+    $self->{qu}->enqueue( time, $self->{topMaster} );
     $self;
 }
 
