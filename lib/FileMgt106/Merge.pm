@@ -45,25 +45,13 @@ sub new {
 }
 
 sub listLocalFolders {
-    my ( $self ) = @_;
+    my ($self) = @_;
     die 'Not implemented yet';
 }
 
 sub getLocalFolderContents {
     my ( $self, $folder ) = @_;
     die 'Not implemented yet';
-}
-
-sub _conflicts {
-    return unless defined $_[0] && defined $_[1];
-    goto &_hasNewItems;
-}
-
-sub _hasNewItems {
-    my ( $existing, $new ) = @_;
-    my $filter = FileMgt106::Tools::makeInfillFilter();
-    $filter->($existing);
-    return $filter->($new);
 }
 
 sub setLocalFolderContents {
@@ -79,6 +67,18 @@ sub loadRemote {
 sub performMerge {
     my ($self) = @_;
     die 'Not implemented yet';
+}
+
+sub _conflicts {
+    return unless defined $_[0] && defined $_[1];
+    goto &_hasNewItems;
+}
+
+sub _hasNewItems {
+    my ( $existing, $new ) = @_;
+    my $filter = FileMgt106::Tools::makeInfillFilter();
+    $filter->($existing);
+    return $filter->($new);
 }
 
 1;

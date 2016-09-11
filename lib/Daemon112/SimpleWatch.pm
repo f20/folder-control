@@ -31,7 +31,7 @@ use warnings;
 use strict;
 use utf8;
 
-use File::Spec::Functions qw(catfile catdir rel2abs);
+use File::Spec::Functions qw(catfile catdir);
 use File::Basename 'dirname';
 use Cwd;
 use Encode 'decode_utf8';

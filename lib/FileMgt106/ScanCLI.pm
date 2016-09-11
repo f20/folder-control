@@ -35,7 +35,7 @@ require POSIX;
 use Cwd qw(getcwd);
 use Encode 'decode_utf8';
 use File::Basename qw(dirname basename);
-use File::Spec::Functions qw(catfile);
+use File::Spec::Functions qw(catdir catfile rel2abs);
 use JSON;
 
 use FileMgt106::Database;
@@ -67,6 +67,47 @@ Usage:
     scan.pl -migrate <old-hints-file>
     scan.pl <legacy-arguments>
 EOW
+}
+
+sub autograb {
+    my ( $self,        @arguments ) = @_;
+    my ( $startFolder, $perl5dir )  = @$self;
+    my ( $processScalar, $processCwd, $finish ) =
+      $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
+    my @fileList = map {
+        /^-$/s
+          ? eval {
+            local $/ = "\n";
+            map { chomp; $_; } <STDIN>;
+          }
+          : $_;
+    } @arguments;
+    foreach (@fileList) {
+        chdir $startFolder;
+        my @targetStat = stat;
+        -f _ or next;
+        my @components = split /\/+/;
+        my $canonical  = pop @components;
+        next unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
+        $canonical .= " in $components[1]";
+
+        next if -e "$canonical.txt";
+        if ( -d $canonical ) {
+            my $target = FileMgt106::Tools::loadNormalisedScalar(
+                $_,
+                sub {
+                    $_[0] !~ /^~WRL[0-9]+\.tmp$/s
+                      and $_[0] !~ /\.dta$/s;
+                }
+            );
+            delete $target->{$_} foreach grep { /\//; } keys %$target;
+            $processScalar->( $target, $canonical, $1, \@targetStat );
+        }
+        else {
+            symlink $_, "$canonical.txt";
+        }
+    }
+    $finish->();
 }
 
 sub migrate {
@@ -153,6 +194,8 @@ sub makeProcessor {
 
     my $processScalar = sub {
         my ( $scalar, $path, $fileExtension, $targetStatRef ) = @_;
+        $hints ||=
+          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         if ( $filterFlag && $filterFlag =~ /split/ ) {
             while ( my ( $k, $v ) = each %$scalar ) {
                 local $_ = $k;
@@ -232,6 +275,8 @@ sub makeProcessor {
 
     my $processCwd = sub {
         my (@scanMasterConfigClosures) = @_;
+        $hints ||=
+          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         my $dir = decode_utf8 getcwd();
         if ($syncDestination) {
             my $destination = catdir( $syncDestination, basename($dir) );
@@ -416,7 +461,8 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             elsif (/^-+base=(.*)/) {
                 $filterFlag .= 'nodb';
                 @baseScalars =
-                  map { FileMgt106::Tools::loadJbz($_); } split /:/,
+                  map { FileMgt106::Tools::loadNormalisedScalar($_); }
+                  split /:/,
                   $1;
                 next;
             }
@@ -498,14 +544,14 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             }
             if (/^-+missing=(.*)/) {
                 chdir $startFolder;
-                $missing = FileMgt106::Tools::loadJbz($1);
+                $missing = FileMgt106::Tools::loadNormalisedScalar($1);
                 push @grabSources, '';
                 next;
             }
             if (/^-+known=(.*)/) {
                 $filterFlag ||= 'known';
                 undef $filter;
-                push @baseScalars, FileMgt106::Tools::loadJbz($1);
+                push @baseScalars, FileMgt106::Tools::loadNormalisedScalar($1);
                 next;
             }
 
@@ -524,13 +570,8 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 and ( $root, $ext ) =
                 /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
             {
-                $target = FileMgt106::Tools::loadJbz(
-                    $root . $ext,
-                    $filter ? undef : sub {
-                        $_[0] !~ /^~WRL[0-9]+\.tmp$/s
-                          and $_[0] !~ /\.dta$/s;
-                    }
-                );
+                $target =
+                  FileMgt106::Tools::loadNormalisedScalar( $root . $ext );
                 $target = FileMgt106::Tools::parseText( $root . $ext )
                   if !$target && $ext =~ /txt|yml/i;
                 delete $target->{$_} foreach grep { /\//; } keys %$target;

@@ -112,7 +112,7 @@ sub process {
                             decode_json(<$fh>);
                         }
                         else {
-                            FileMgt106::Tools::loadJbz($_);
+                            FileMgt106::Tools::loadNormalisedScalar($_);
                         }
                     }
                     else {
@@ -150,7 +150,9 @@ sub process {
         }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
             require FileMgt106::Tools;
-            if ( my $s = $processScal->( FileMgt106::Tools::loadJbz($_) ) ) {
+            if ( my $s =
+                $processScal->( FileMgt106::Tools::loadNormalisedScalar($_) ) )
+            {
                 s/(\.jbz|json\.bz2)$/+missing$1/s;
                 FileMgt106::Tools::saveJbz( $_, $s );
             }

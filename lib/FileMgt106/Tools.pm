@@ -98,7 +98,8 @@ sub parseText {
     local $_;
     my $obj = {};
     while (<$fh>) {
-        next unless my ( $path, $sha1 ) = /([^=:" ][^=:"\t]*).*([a-fA-F0-9]{40})/;
+        next
+          unless my ( $path, $sha1 ) = /([^=:" ][^=:"\t]*).*([a-fA-F0-9]{40})/;
         my $o = $obj;
         my @pathEl = split /\/+/, $path;
         while ( @pathEl > 1 ) {
@@ -109,7 +110,7 @@ sub parseText {
     $obj;
 }
 
-sub loadJbz {
+sub loadNormalisedScalar {
     ( local $_, my $keyFilter ) = @_;
     my $obj;
     eval {

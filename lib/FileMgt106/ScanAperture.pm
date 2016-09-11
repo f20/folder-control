@@ -66,7 +66,7 @@ sub libraries {
                 mkdir $lib or die "Failed to mkdir $lib";
             }
             require FileMgt106::Tools;
-            my $target = FileMgt106::Tools::loadJbz("$lib.jbz");
+            my $target = FileMgt106::Tools::loadNormalisedScalar("$lib.jbz");
             delete $target->{$_} foreach grep { /\//; } keys %$target;
             $hints->beginInteractive;
             FileMgt106::Scanner->new( $lib, $hints,
