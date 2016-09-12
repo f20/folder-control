@@ -72,8 +72,10 @@ EOW
 sub autograb {
     my ( $self,        @arguments ) = @_;
     my ( $startFolder, $perl5dir )  = @$self;
-    my ( $processScalar, $processCwd, $finish ) =
+    my ( $processScalar, $processCwd, $finish, undef, $chooserMaker ) =
       $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
+    my $chooser =
+      $chooserMaker->( map { /^-+caseid=([0-9-]+)/ ? $1 : (); } @arguments );
     my @fileList = map {
         /^-$/s
           ? eval {
@@ -82,29 +84,18 @@ sub autograb {
           }
           : $_;
     } @arguments;
+
     foreach (@fileList) {
         chdir $startFolder;
         my @targetStat = stat;
         -f _ or next;
         my @components = split /\/+/;
         my $canonical  = pop @components;
-        next unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
+        next
+          unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         $canonical .= " in $components[1]";
-
-        next if -e "$canonical.txt";
-        if ( -d $canonical ) {
-            my $target = FileMgt106::Tools::loadNormalisedScalar(
-                $_,
-                sub {
-                    $_[0] !~ /^~WRL[0-9]+\.tmp$/s
-                      and $_[0] !~ /\.dta$/s;
-                }
-            );
-            delete $target->{$_} foreach grep { /\//; } keys %$target;
-            $processScalar->( $target, $canonical, $1, \@targetStat );
-        }
-        else {
-            symlink $_, "$canonical.txt";
+        if ( my @targetScalarAndFolder = $chooser->( $_, $canonical ) ) {
+            $processScalar->( @targetScalarAndFolder, $1, \@targetStat );
         }
     }
     $finish->();
@@ -429,7 +420,8 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 my ( $hintsFile, $top, $repo, $git, $jbz, $testParent ) =
                   map { /^-+watch/ ? () : /^-/ ? undef : $_; } @_;
                 $_ = rel2abs($_)
-                  foreach grep { defined $_; } $hintsFile, $top, $repo, $git,
+                  foreach grep { defined $_; } $hintsFile, $top, $repo,
+                  $git,
                   $jbz,
                   $testParent;
                 $testParent ||= $startFolder;
@@ -597,8 +589,66 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
         }
     };
 
-    $processScalar, $processCwd, $finish, $processLegacyArguments;
+    my $chooserMaker = sub {
+        my ($caseidRoot) = @_;
+        return \&_chooserNoCaseid unless $caseidRoot;
+        return \&_chooserNoCaseid
+          unless $hints ||=
+          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
+        $hints->beginInteractive;
+        my $caseidMap = $hints->{childrenSha1}->($caseidRoot);
+        $hints->commit;
+        return \&_chooserNoCaseid unless %$caseidMap;
+        sub {
+            my ( $catalogue, $canonical ) = @_;
+            my $target = FileMgt106::Tools::loadNormalisedScalar(
+                $catalogue,
+                sub {
+                    $_[0] !~ /^~WRL[0-9]+\.tmp$/s
+                      and $_[0] !~ /\.dta$/s;
+                }
+            );
+            delete $target->{$_} foreach grep { /\//; } keys %$target;
+            my @caseids = FileMgt106::Tools::extractCaseids($target);
+            foreach my $caseid (@caseids) {
+                foreach my $folder ( keys %$caseidMap ) {
+                    next unless $caseidMap->{$folder} eq $caseid;
+                    $folder =~ s#//[0-9]+$##s;
+                    next unless -d $folder;
+                    return ( $target,
+                        catdir( $folder, "$canonical (mirrored)" ) );
+                }
+            }
+            return if -e "$canonical.txt";
+            if ( !-d $canonical ) {
+                symlink $catalogue, "$canonical.txt";
+                return;
+            }
+            $target, $canonical;
+        };
+    };
 
+    $processScalar, $processCwd, $finish, $processLegacyArguments,
+      $chooserMaker;
+
+}
+
+sub _chooserNoCaseid {
+    my ( $catalogue, $canonical ) = @_;
+    return if -e "$canonical.txt";
+    if ( !-d $canonical ) {
+        symlink $catalogue, "$canonical.txt";
+        return;
+    }
+    my $target = FileMgt106::Tools::loadNormalisedScalar(
+        $catalogue,
+        sub {
+            $_[0] !~ /^~WRL[0-9]+\.tmp$/s
+              and $_[0] !~ /\.dta$/s;
+        }
+    );
+    delete $target->{$_} foreach grep { /\//; } keys %$target;
+    $target, $canonical;
 }
 
 1;
