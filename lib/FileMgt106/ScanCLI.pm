@@ -616,7 +616,12 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                     next unless $caseidMap->{$folder} eq $caseid;
                     $folder =~ s#//[0-9]+$##s;
                     next unless -d $folder;
-                    return ( $target, catdir( $folder, $canonical ) );
+                    my $destination = catdir( $folder, $canonical );
+                    lstat $canonical;
+                    unlink $canonical if -l _;
+                    rename $canonical, $destination if -d _;
+                    symlink $destination, $canonical;
+                    return ( $target, $destination );
                 }
             }
             return if -e $canonical . $fileExtension;
