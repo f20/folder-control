@@ -542,4 +542,18 @@ sub categoriseByDay {
     }
 }
 
+sub extractCaseids {
+    my ($hashref) = @_;
+    my @caseids;
+    while ( my ( $k, $v ) = each %$hashref ) {
+        if ( 'HASH' eq ref $v ) {
+            push @caseids, extractCaseids($v);
+        }
+        elsif ( $k =~ /\.caseid$/is && $v =~ /^[0-9a-f]{40}$/is ) {
+            push @caseids, pack( 'H*', $v );
+        }
+    }
+    @caseids;
+}
+
 1;

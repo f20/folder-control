@@ -45,7 +45,6 @@ my $locid = $hints->{topFolder}->( $path, $dev, $ino );
 
 # Like {folder}, but finds the parent itself.
 
-my ( $locid, $sha1 ) = $hints->{file}->( $parid, $name );
 my ( $locid, $sha1, $looksChanged ) = $hints->{file}->( $parid, $name, $dev, $ino, $size, $mtime );
 
 # $sha1 will only be set if dev/ino/size/mtime passed as arguments agreed with the database,
@@ -225,7 +224,7 @@ update or replace locations set rootid=? where locid=?
 update or replace locations set ino=? where locid=?
 insert or replace into locations (parid, name, rootid, ino) values (?, ?, ?, ?)
 insert or replace into locations (parid, name, rootid, ino, size, mtime) values (?, ?, ?, ?, ?, ?)
-select locid, name, rootid, ino from locations where parid=?
+select locid, name, sha1 from locations where parid=?
 update or replace locations set rootid=?, ino=?, size=?, mtime=? where locid=?
 update locations set sha1=? where locid=?
 update locations set sha1=? where ( sha1 is null or sha1<>? ) and locid=?
@@ -595,6 +594,15 @@ EOL
         my %hash;
         while ( my ( $locid, $name ) = $qGetChildren->fetchrow_array ) {
             $hash{ decode_utf8($name) } = $locid;
+        }
+        \%hash;
+    };
+
+    $self->{childrenSha1} = sub {
+        $qGetChildren->execute(@_);
+        my %hash;
+        while ( my ( undef, $name, $sha1 ) = $qGetChildren->fetchrow_array ) {
+            $hash{ decode_utf8($name) } = $sha1;
         }
         \%hash;
     };

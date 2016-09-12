@@ -60,6 +60,7 @@ use constant {
     SHA1        => 10,
     FROTL       => 11,
     SCALARTAKER => 12,
+    CASEIDS     => 13,
 };
 
 sub new {
@@ -72,6 +73,43 @@ sub setRepoloc {
     my ( $self, $repolocs ) = @_;
     return $self unless defined $repolocs;
 
+    my ( $repoFolder, $gitFolder, $jbzFolder, $caseidRoot ) =
+      ref $repolocs
+      ? @{$repolocs}{qw(repo git jbz caseid)}
+      : ( $repolocs, $repolocs );
+
+    if ($caseidRoot) {
+        $self->[CASEIDS] = ['uninitialised'];
+        my $dev = ( stat $self->[DIR] )[STAT_DEV];
+        $self->addScalarTaker(
+            sub {
+                my ( $scalar, undef, $runner ) = @_;
+                my @caseids =
+                  sort ( FileMgt106::Tools::extractCaseids($scalar) );
+                return if "@caseids" eq "@{$self->[CASEIDS]}";
+                $self->[CASEIDS] = \@caseids;
+                my $updateHintsDb = sub {
+                    my ($hints) = @_;
+                    my $children = $hints->{children}->($caseidRoot);
+                    while ( my ( $folder, $locid ) = each %$children ) {
+                        $folder =~ s#//([0-9]+)$##s;
+                        next if $1 && $1 < @caseids;
+                        $hints->{uproot}->($locid)
+                          if $folder eq $self->[DIR];
+                    }
+                    for ( my $i = 0 ; $i < @caseids ; ++$i ) {
+                        my ( $locid, $sha1 ) =
+                          $hints->{file}
+                          ->( $caseidRoot, "$self->[DIR]//$i", $dev, 0, 0, 0 );
+                        $hints->{updateSha1}->( $caseids[$i], $locid );
+                    }
+                    $hints->commit;
+                };
+                $self->[HINTS]->enqueue( $runner->{pq}, $updateHintsDb );
+            }
+        );
+    }
+
     my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
     my @components =
       splitdir( $self->[HINTS]->{canonicalPath}->( $self->[DIR] ) );
@@ -80,11 +118,6 @@ sub setRepoloc {
     $name = "_$name" if $name =~ /^\./s;
     my $category = join( '.', map { length $_ ? $_ : '_' } @components )
       || 'No category';
-
-    my ( $repoFolder, $gitFolder, $jbzFolder ) =
-      ref $repolocs
-      ? @{$repolocs}{qw(repo git jbz)}
-      : ( $repolocs, $repolocs );
 
     foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
         $gitFolder, $jbzFolder )
