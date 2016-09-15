@@ -602,6 +602,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
         return \&_chooserNoCaseids unless %$caseidMap;
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
+            unlink $canonical . $fileExtension;
             my $target = FileMgt106::Tools::loadNormalisedScalar(
                 $catalogue,
                 sub {
@@ -624,7 +625,6 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                     return ( $target, $destination );
                 }
             }
-            return if -e $canonical . $fileExtension;
             if ( !-d $canonical ) {
                 symlink rel2abs($catalogue), $canonical . $fileExtension;
                 return;
@@ -640,7 +640,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
 
 sub _chooserNoCaseids {
     my ( $catalogue, $canonical, $fileExtension ) = @_;
-    return if -e $canonical . $fileExtension;
+    unlink $canonical . $fileExtension;
     if ( !-d $canonical ) {
         symlink rel2abs($catalogue), $canonical . $fileExtension;
         return;
