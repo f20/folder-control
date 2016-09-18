@@ -66,7 +66,6 @@ sub attach {
         my ($runner) = @_;
         my $hints    = $runner->{hints};
         my @list     = $topMaster->_listDirectory($root);
-        @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
         my %list = map { ( $_ => 1 ); } @list;
         foreach (
             grep {
@@ -150,8 +149,8 @@ sub _listDirectory {
     my $handle;
     opendir $handle, '.' or return;
     my @list =
-      map { decode_utf8 $_; }
-      grep { !/^\.\.?$/s && !-l $_ && -d _ } readdir $handle;
+      map  { decode_utf8 $_; }
+      grep { !/^(?:\.\.?|\.DS_Store|Icon\r)$/s; } readdir $handle;
     @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
     @list;
 }
