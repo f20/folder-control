@@ -119,7 +119,7 @@ sub attach {
                 $runner->{qu}->enqueue( ++$time, $scanMaster );
             }
             else {
-                warn "Cannot watch $d: not a directory";
+                warn "Cannot watch $dir: not a directory";
             }
         }
     };
