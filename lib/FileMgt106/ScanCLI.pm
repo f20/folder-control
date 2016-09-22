@@ -95,8 +95,7 @@ sub autograb {
           unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         $canonical .= " (mirrored from $components[1])";
         if ( my ( $scalar, $folder ) = $chooser->( $_, $canonical, $1 ) ) {
-            $processScalar->( $scalar, $folder, $1, \@targetStat );
-            FileMgt106::Tools::restampFolder($folder);
+            $processScalar->( $scalar, $folder, $1, \@targetStat, 1 );
         }
     }
     $finish->();
@@ -181,11 +180,16 @@ sub makeProcessor {
 
     my ( $self,        @grabSources ) = @_;
     my ( $startFolder, $perl5dir )    = @$self;
-    my ( $hints, $filter, @baseScalars, $missing, %scanners,
-        $cleaningFlag, $filterFlag, $syncDestination );
+    my (
+        $hints,      $filter,          @baseScalars,
+        $missing,    %scanners,        $cleaningFlag,
+        $filterFlag, $syncDestination, @toRestamp
+    );
 
     my $processScalar = sub {
-        my ( $scalar, $path, $fileExtension, $targetStatRef ) = @_;
+        my ( $scalar, $path, $fileExtension, $targetStatRef, $restampFlag ) =
+          @_;
+        push @toRestamp, $path if $restampFlag;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         if ( $filterFlag && $filterFlag =~ /split/ ) {
@@ -404,6 +408,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
+        FileMgt106::Tools::restampFolder($_) foreach @toRestamp;
     };
 
     my $processLegacyArguments = sub {
