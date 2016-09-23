@@ -47,16 +47,23 @@ sub new {
     my $self = bless {}, $className;
 
     my $regexIgnoreEntirely = qr/(?:
-        ^~\$|^\._|
-        ^write-lock$|^cyrus\.cache$|^\.DS_Store$|^Icon\r|^:2eDS_Store$|
+        ^:2eDS_Store$|
+        ^Icon\r|
+        ^\.DS_Store$|
+        ^\._|
+        ^\.git$|
+        ^\.svn$|
+        ^cyrus\.cache$|
+        ^write-lock$|
+        ^~\$|
         \.pyc$
       )/sx;
     my $regexIgnoreFolderContents =
-      qr/(?:^\.(?:git|svn)|\.(?:download|tmp|app|AppleDouble|aplibrary))$/s;
+      qr/\.(?:download|tmp|app|AppleDouble|aplibrary)$/s;
     my $regexWatchThisFile =
       -e '/System/Library'
-      ? qr/\.(?:R|c|cpp|css|doc|docx|h|java|js|json|m|pl|pm|pptx|py|txt|yml)$/isx
-      : qr/\.(?:R|c|cpp|css|do      |h|java|js|json|m|pl|pm     |py|txt|yml)$/isx;
+      ? qr/\.(?:R|c|cpp|css   |doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
+      : qr/\.(?:R|c|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
     my $regexCheckThisFile    = qr/\.xls$/is;
     my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
     my $regexMakeReadOnly     = qr/^[XY]_/is;
