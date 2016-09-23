@@ -137,12 +137,15 @@ sub new {
                 }
             }
             while ( !@stat && @wouldNeedToCopy ) {
-                system qw(cp -p --), pop @wouldNeedToCopy, $fileName;
+                my $source = pop @wouldNeedToCopy;
+                system qw(cp -p --), $source, $fileName;
                 @stat = $rstat->(
                     $fileName, 2_000_000_000    # This will go wrong in 2033
                 );
-                unless ( $sha1 eq _sha1File($fileName) ) {
-                    warn "SHA1 mismatch after copy to $fileName in " . `pwd`;
+                my $newsha1 = _sha1File($fileName);
+                unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
+                    warn 'SHA1 mismatch after trying to copy '
+                      . "$source to $fileName in " . `pwd`;
                     @stat = ();
                     unlink $fileName;
                 }
@@ -371,9 +374,11 @@ sub new {
                         if ($backuper) {
                             $backuper->( $_, $locid, $sha1 ) if defined $sha1;
                             unless ( $backuper->( $_, $locid, $newsha1 ) ) {
-                                $updateSha1->( undef, $fileLocid );    # undo
+                                $updateSha1->( undef, $fileLocid )
+                                  ;    # undo sha1 storage
                                 warn "Could not backup $dir/$path$_";
-                                next;
+                                sleep 1;
+                                redo;
                             }
                         }
                         $sha1 = $newsha1;
