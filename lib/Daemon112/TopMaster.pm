@@ -96,30 +96,29 @@ sub attach {
         my $time;
         foreach (@list) {
             my $dir = catdir( $root, $_ );
-            if ( -d $dir ) {
-                my $scanMaster = $topMaster->{$_};
-                if ( !$scanMaster ) {
-                    $scanMaster = $topMaster->{$_} =
-                      FileMgt106::ScanMaster->new( $hints, catdir( $root, $_ ) )
-                      ->setRepoloc( $runner->{locs} );
-                    $scanMaster->setWatch( 'Daemon112::Watcher',
-                        $topMaster->{'/kq'} )
-                      if $topMaster->{'/kq'};
-                    $topMaster->{'/postwatch'}->( $scanMaster, $_ )
-                      if $topMaster->{'/postwatch'};
-                }
-                elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
-                    $scanMaster->attach( $dir, $runner );
-                }
-                else {
-                    next;
-                }
-                $time ||= time + 2;
-                $runner->{qu}->enqueue( ++$time, $scanMaster );
+            if ( -l $dir || !-d _ ) {
+                warn "Cannot watch $dir: not a directory";
+                next;
+            }
+            my $scanMaster = $topMaster->{$_};
+            if ( !$scanMaster ) {
+                $scanMaster = $topMaster->{$_} =
+                  FileMgt106::ScanMaster->new( $hints, catdir( $root, $_ ) )
+                  ->setRepoloc( $runner->{locs} );
+                $scanMaster->setWatch( 'Daemon112::Watcher',
+                    $topMaster->{'/kq'} )
+                  if $topMaster->{'/kq'};
+                $topMaster->{'/postwatch'}->( $scanMaster, $_ )
+                  if $topMaster->{'/postwatch'};
+            }
+            elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
+                $scanMaster->attach( $dir, $runner );
             }
             else {
-                warn "Cannot watch $dir: not a directory";
+                next;
             }
+            $time ||= time + 2;
+            $runner->{qu}->enqueue( ++$time, $scanMaster );
         }
     };
 
