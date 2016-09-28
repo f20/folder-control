@@ -1,17 +1,17 @@
 #!/bin/sh
 
 # Copyright 2016 Franck Latrémolière, Reckon LLP.
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice,
 # this list of conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice,
 # this list of conditions and the following disclaimer in the documentation
 # and/or other materials provided with the distribution.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY AUTHORS AND CONTRIBUTORS "AS IS" AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 # WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -27,9 +27,9 @@ if [ "$*" != "" ]
 then
 	find "$@" -type f -links 1 -not -perm -0220 -not -name .DS_Store -exec chmod ug+w {} \;
 	find "$@" -type f -not -perm -0220 -not -name .DS_Store | while read x
-	do	
+	do
 		echo $x
-		cat "$x" > "$x$$"
+		cp "$x" "$x$$"
 		chmod ug+w "$x$$"
 		if [ -x "$x" ]; then chmod +x "$x$$"; fi
 		mv -f "$x$$" "$x"

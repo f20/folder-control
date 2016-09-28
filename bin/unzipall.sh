@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2014-2015 Franck Latrémolière, Reckon LLP.
+# Copyright 2014-2016 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -23,8 +23,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# FreeBSD/macOS version (BSD sed does not understand --regexp-extended)
-
 if [ "$ZIP_FOLDER_NAME" == "" ]; then ZIP_FOLDER_NAME=Z_Zip; fi
 
 unzipper ( ) {
@@ -32,7 +30,8 @@ unzipper ( ) {
     do
         if [ "`echo "$x" | egrep '/(^|\/)(Z_|~\$)'`" == "" ]
         then
-            y=`echo "$x" | sed -E 's/\.[zZ][iI][pP]$//'`
+            y="${x%.zip}"
+            y="${y%.ZIP}"
             while [ -e "$y" ]; do y="$y"_; done
             if mkdir "$y"
             then
