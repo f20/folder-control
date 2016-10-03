@@ -381,11 +381,15 @@ sub new {
                         if ($backuper) {
                             $backuper->( $_, $locid, $sha1 ) if defined $sha1;
                             unless ( $backuper->( $_, $locid, $newsha1 ) ) {
-                                $updateSha1->( undef, $fileLocid )
-                                  ;    # undo sha1 storage
+
+                                # undo sha1 storage
+                                $updateSha1->( undef, $fileLocid );
+
+                                # inform file system watcher
+                                mkdir "Could not backup $_";
                                 warn "Could not backup $dir/$path$_";
-                                sleep 1;
-                                redo;
+                                rmdir "Could not backup $_";
+
                             }
                         }
                         $sha1 = $newsha1;
