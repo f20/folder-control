@@ -70,7 +70,7 @@ sub startWatching {
 
 sub stopWatching {
     my ( $me, $obj ) = @_;
-    $me->{ 0 + $obj }->cancel;
+    eval { $_->cancel; } foreach grep { $_; } $me->{ 0 + $obj };
 }
 
 sub stopWatchingIfDead { }
