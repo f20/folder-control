@@ -108,7 +108,9 @@ sub run {
     my $kq;
     $kq ||= new Daemon112::KQueue  if eval { require Daemon112::KQueue; };
     $kq ||= new Daemon112::Inotify if eval { require Daemon112::Inotify; };
-    warn 'Install IO::KQueue or Linux::Inotify2 to enable watching' unless $kq;
+    warn 'Install BSD::Resource and IO::KQueue, '
+      . 'or Linux::Inotify2, to enable watching'
+      unless $kq;
 
     my $runner;
 
