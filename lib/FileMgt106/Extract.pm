@@ -59,6 +59,7 @@ sub makeExtractAcceptor {
             unless ( defined $_[0] ) {
                 print map { "$_->[0]\n" }
                   sort    { $a->[1] <=> $b->[1] } @list;
+                @list = ();
                 return;
             }
             my $size = -s $_[0];
@@ -107,13 +108,13 @@ sub makeHintsExtractor {
     my $processScal;
     $processScal = sub {
         my ($what) = @_;
-        if ( $needsNap || !$what ) {
+        if ( $needsNap || !defined $what ) {
             undef $needsNap;
             undef $searchSha1;
             $hints->{dbHandle}->disconnect if $hints && $hints->{dbHandle};
             undef $hints;
         }
-        return $acceptor->() unless $what;
+        return $acceptor->() unless defined $what;
         unless ($searchSha1) {
             $hints = FileMgt106::Database->new( $hintsFile, 1 );
             $searchSha1 = $hints->{searchSha1};
