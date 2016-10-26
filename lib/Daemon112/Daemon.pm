@@ -147,19 +147,13 @@ sub run {
                 delete $signalQueue{USR2};
                 warn '`pwd` = ' . `pwd`;
                 if ($pq) {
-                    warn 'Priority queue';
-                    warn "@$_\n" foreach @$pq;
+                    warn 'Priority queue: ' . ( 0 + @$pq ) . ' entries';
                 }
                 if ($qu) {
-                    warn 'Standard queue';
-                    warn "@$_\n" foreach @$qu;
+                    warn 'Standard queue' . ( 0 + @$qu ) . ' entries';
                 }
                 if ($kq) {
-                    warn 'Kernel queue';
-                    warn "$_: $kq->{$_}\n" foreach sort {
-                        ( $a =~ /^[0-9]+/s ? $a : -1 )
-                          <=> ( $b =~ /^[0-9]+/s ? $b : -1 );
-                    } keys %$kq;
+                    warn 'Watch queue: ' . ( 0 + keys %$kq ) . ' keys';
                 }
                 $runner->dumpState if UNIVERSAL::can( $runner, 'dumpState' );
             }
