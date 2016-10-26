@@ -150,7 +150,7 @@ sub stopWatching {
     $obj->{sysHandle} = \%remainingSysHandles;
 }
 
-sub stopWatchingIfDead {
+sub stopWatchingOnDeath {
     my ( $me, $obj, $kevent ) = @_;
     $me->stopWatching( $obj, $kevent->[KQ_IDENT] )
       if ( ( NOTE_DELETE | NOTE_RENAME ) & $kevent->[KQ_FFLAGS] );

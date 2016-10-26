@@ -59,7 +59,7 @@ sub stopWatching {
 
 sub kevented {
     my ( $self, $runner, $kevent ) = @_;
-    $runner->{kq}->stopWatchingIfDead( $self, $kevent );
+    $runner->{kq}->stopWatchingOnDeath( $self, $kevent );
     $self->schedule( ( $self->{timestamp} = time ) + $self->{delay},
         $runner->{pq} );
 }

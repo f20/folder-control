@@ -150,7 +150,7 @@ sub run {
                     warn 'Priority queue: ' . ( 0 + @$pq ) . ' entries';
                 }
                 if ($qu) {
-                    warn 'Standard queue' . ( 0 + @$qu ) . ' entries';
+                    warn 'Standard queue: ' . ( 0 + @$qu ) . ' entries';
                 }
                 if ($kq) {
                     warn 'Watch queue: ' . ( 0 + keys %$kq ) . ' keys';

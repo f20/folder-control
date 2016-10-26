@@ -70,15 +70,16 @@ sub startWatching {
       )
     {
         $me->{ 0 + $watcher } = $obj;
-        $me->{ 0 + $obj }     = $watcher;
+        $me->{ 0 + $obj }{$path} = $watcher;
     }
 }
 
 sub stopWatching {
     my ( $me, $obj ) = @_;
-    eval { $_->cancel; } foreach grep { $_; } $me->{ 0 + $obj };
+    eval { $_->cancel; }
+      foreach map { values %$_; } grep { $_; } $me->{ 0 + $obj };
 }
 
-sub stopWatchingIfDead { }
+sub stopWatchingOnDeath { }
 
 1;
