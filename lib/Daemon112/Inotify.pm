@@ -76,8 +76,10 @@ sub startWatching {
 
 sub stopWatching {
     my ( $me, $obj ) = @_;
-    eval { $_->cancel; }
-      foreach map { values %$_; } grep { $_; } $me->{ 0 + $obj };
+    eval {
+        delete $me->{ 0 + $_ };
+        $_->cancel;
+    } foreach map { values %$_; } grep { $_; } delete $me->{ 0 + $obj };
 }
 
 sub stopWatchingOnDeath { }
