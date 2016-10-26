@@ -48,6 +48,8 @@ sub new {
 sub dumpState {
     my ( $topMaster, $prefix ) = @_;
     $prefix ||= "$topMaster/";
+    warn "TopMaster $prefix " . ( 0 + keys %$topMaster ) . ' keys';
+    return;
     foreach ( sort keys %$topMaster ) {
         warn "$prefix$_: $topMaster->{$_}\n";
         $topMaster->{$_}->dumpState("$prefix$_/")
