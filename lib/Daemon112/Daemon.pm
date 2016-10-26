@@ -144,6 +144,7 @@ sub run {
             }
             if ( $signalQueue{USR2} ) {
                 warn 'Dumping ' . __PACKAGE__ . ' state with ' . $module;
+                warn '`pwd` = ' . `pwd`;
                 delete $signalQueue{USR2};
                 if ($pq) {
                     warn 'Priority queue';

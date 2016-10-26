@@ -40,8 +40,7 @@ use Daemon112::TopMaster;
 require Daemon112::Watcher;    # used but not loaded by TopMaster
 
 sub new {
-    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz,
-        $testParent )
+    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent )
       = @_;
     warn 'Daemon112::SimpleWatch started with'
       . '$hintsFile'
@@ -54,11 +53,11 @@ sub new {
       . ( defined $git ? " = $git" : ' undefined' )
       . '; $jbz'
       . ( defined $jbz ? " = $jbz" : ' undefined' )
-      . '; $testParent'
-      . ( defined $testParent ? " = $testParent" : ' undefined' );
+      . '; $parent'
+      . ( defined $parent ? " = $parent" : ' undefined' );
     my @extras;
-    if ( !$hintsFile && $testParent ) {
-        mkdir my $home = catdir( $testParent, 'testarea.tmp' );
+    if ( !$hintsFile && $parent ) {
+        mkdir my $home = catdir( $parent, 'testarea.tmp' );
         $hintsFile = catfile( $home, '~$hints' );
         mkdir $git = catdir( $home, 'git' );
         chdir $git && `git init`;

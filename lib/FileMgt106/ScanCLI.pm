@@ -330,26 +330,26 @@ sub makeProcessor {
     my $finish = sub {
         if ($missing) {
             my @rmdirList;
-            foreach my $grabSources (@grabSources) {
-                unless ($grabSources) {
+            foreach my $grabSource (@grabSources) {
+                unless ($grabSource) {
                     my $missingFile = "$startFolder/+missing.jbz";
                     FileMgt106::Tools::saveJbz( $missingFile, $missing );
                     die "Do your own grab: $missingFile";
                 }
                 my ( $cellarScanner, $cellarDir );
-                unless ( $grabSources eq 'done' ) {
+                unless ( $grabSource eq 'done' ) {
                     $cellarDir = dirname($perl5dir);
                     if ( -d ( my $d = $cellarDir . '/~$grab' ) ) {
                         $cellarDir = $d;
                     }
                     {
                         my ( $host, $extract ) =
-                          $grabSources =~ /^([a-zA-Z0-9._-]+)$/s
+                          $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
                           ? ( $1, 'extract.pl' )
-                          : $grabSources =~
+                          : $grabSource =~
                           m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._-]+)$#s
                           ? ( $1, $2 )
-                          : die $grabSources;
+                          : die $grabSource;
                         $cellarDir .=
                             '/Y_Cellar '
                           . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime )
@@ -423,19 +423,18 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 my $module   = 'Daemon112::SimpleWatch';
                 my $nickname = 'watch';
                 my $logging  = $1;
-                my ( $hintsFile, $top, $repo, $git, $jbz, $testParent ) =
+                my ( $hintsFile, $top, $repo, $git, $jbz, $parent ) =
                   map { /^-+watch/ ? () : /^-/ ? undef : $_; } @_;
                 $_ = rel2abs($_)
                   foreach grep { defined $_; } $hintsFile, $top, $repo,
                   $git,
                   $jbz,
-                  $testParent;
-                $testParent ||= $startFolder;
+                  $parent;
+                $parent ||= $startFolder;
                 require Daemon112::Daemon;
                 Daemon112::Daemon->run(
-                    $module,    $nickname, $logging,
-                    $hintsFile, $top,      $repo,
-                    $git,       $jbz,      $testParent
+                    $module, $nickname, $logging, $hintsFile, $top,
+                    $repo,   $git,      $jbz,     $parent
                 );
             }
             elsif (/^-+sync=(.+)$/) {
