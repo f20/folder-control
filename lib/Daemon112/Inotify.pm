@@ -61,11 +61,17 @@ sub events {
 
 sub startWatching {
     my ( $me, $obj, $path ) = @_;
-    my $watcher = $me->{queue}->watch( $path,
-        IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO | IN_CREATE | IN_DELETE |
-          IN_DELETE_SELF | IN_MOVE_SELF );
-    $me->{ 0 + $watcher } = $obj;
-    $me->{ 0 + $obj }     = $watcher;
+    if (
+        my $watcher = $me->{queue}->watch(
+            $path,
+            IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO | IN_CREATE | IN_DELETE |
+              IN_DELETE_SELF | IN_MOVE_SELF
+        )
+      )
+    {
+        $me->{ 0 + $watcher } = $obj;
+        $me->{ 0 + $obj }     = $watcher;
+    }
 }
 
 sub stopWatching {
