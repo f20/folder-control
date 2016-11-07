@@ -179,7 +179,9 @@ sub makeCsvWriter {
     binmode $c, ':utf8';
     sub {
         if (@_) {
-            print {$c} join( ',', map { /[" ]/ ? _escapeCsv($_) : $_; } @_ )
+            print {$c} join( ',',
+                map { /[" ]/ ? _escapeCsv($_) : $_; }
+                map { ref $_ ? $_->[0]        : $_; } @_ )
               . "\n";
         }
         else {
@@ -224,20 +226,34 @@ sub makeSpreadsheetWriter {
         my @colWidth = qw(8 24 12 8 48 48 8 12 12);
         $ws->set_column( $_, $_, $colWidth[$_] ) foreach 0 .. $#colWidth;
 
-        my $dateFormat;
+        my ( $dateFormat, $sizeFormat );
         my $wsWrite = sub {
             ( my $ws, my $row, my $col, local $_ ) = @_;
-            if (/^([0-9]+-[0-9]+-[0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s) {
-                $ws->write_date_time(
-                    $row, $col,
-                    $1 . 'T' . $2,
-                    $dateFormat ||= $wb->add_format(
-                        num_format => 'ddd d mmm yyyy HH:MM:SS'
-                    )
-                );
+            if ( ref $_ ) {
+                ( local $_ ) = @$_;
+                if (/^([0-9]+-[0-9]+-[0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s) {
+                    $ws->write_date_time(
+                        $row, $col,
+                        $1 . 'T' . $2,
+                        $dateFormat ||= $wb->add_format(
+                            num_format => 'ddd d mmm yyyy HH:MM:SS'
+                        )
+                    );
+                }
+                elsif (/^[0-9]+$/s) {
+                    $ws->write(
+                        $row, $col, $_,
+                        $sizeFormat ||= $wb->add_format(
+                            num_format => '#,##0'
+                        )
+                    );
+                }
+                else {
+                    $ws->write( $row, $col, $_ );
+                }
             }
             else {
-                $ws->write( $row, $col, $_ );
+                $ws->write_string( $row, $col, $_ );
             }
         };
 
@@ -307,8 +323,9 @@ sub makeDataExtractor {
             $mtime = POSIX::strftime( '%Y-%m-%d %H:%M:%S', gmtime $mtime );
             ++$row;
             $writer->(
-                $sha1, $mtime, $size, $ext, $name, $p,
-                qq%="'"&F$row&"/"&E$row&"'"%, $rootid, $inode
+                $sha1, [$mtime], [$size], $ext, $name, $p,
+                [qq%="'"&F$row&"/"&E$row&"'"%],
+                $rootid, $inode
             );
         }
         $writer->();
