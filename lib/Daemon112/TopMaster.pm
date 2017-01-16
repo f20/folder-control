@@ -66,9 +66,10 @@ sub attach {
     $topMaster->{'/RESCANNER'} = sub {
         my ($runner) = @_;
         if ( my $repo = $runner->{locs}{repo} ) {
-            if ( -d $repo ) {
-                warn "git gc --git-dir=$repo";
-                system qw(git gc), "--git-dir=$repo";
+            if ( chdir $repo ) {
+                warn "Running git gc in $repo";
+                system qw(git gc);
+                warn "Finished git gc in $repo";
             }
         }
         my $hints = $runner->{hints};
