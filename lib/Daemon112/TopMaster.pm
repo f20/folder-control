@@ -64,10 +64,16 @@ sub attach {
     return $topMaster if $topMaster->{'/RESCANNER'};
 
     $topMaster->{'/RESCANNER'} = sub {
-        warn "Scanning $root for $topMaster";
         my ($runner) = @_;
-        my $hints    = $runner->{hints};
-        my @list     = $topMaster->_listDirectory($root);
+        if ( my $repo = $runner->{locs}{repo} ) {
+            if ( -d $repo ) {
+                warn "git gc --git-dir=$repo";
+                system qw(git gc), "--git-dir=$repo";
+            }
+        }
+        my $hints = $runner->{hints};
+        warn "Scanning $root for $topMaster";
+        my @list = $topMaster->_listDirectory($root);
         my %list = map { ( $_ => 1 ); } @list;
         foreach (
             grep {
