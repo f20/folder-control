@@ -66,9 +66,13 @@ sub attach {
     $topMaster->{'/RESCANNER'} = sub {
         my ($runner) = @_;
         if ( my $gitrepo = $runner->{locs}{git} ) {
-            if ( chdir $gitrepo ) {
+            if ( !$runner->{locs}{gitLastGarbageCollection}
+                || time - $tunner->{locs}{gitLastGarbageCollection} > 86000
+                and chdir $gitrepo )
+            {
                 warn "Running git gc in $gitrepo";
                 system qw(git gc);
+                $runner->{locs}{gitLastGarbageCollection} = time;
                 warn "Finished git gc in $gitrepo";
             }
         }
