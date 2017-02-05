@@ -67,7 +67,7 @@ sub attach {
         my ($runner) = @_;
         if ( my $gitrepo = $runner->{locs}{git} ) {
             if ( !$runner->{locs}{gitLastGarbageCollection}
-                || time - $tunner->{locs}{gitLastGarbageCollection} > 86000
+                || time - $runner->{locs}{gitLastGarbageCollection} > 86000
                 and chdir $gitrepo )
             {
                 warn "Running git gc in $gitrepo";
