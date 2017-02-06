@@ -80,6 +80,9 @@ sub new {
         };
         $pq->enqueue( time + 10, $makeRandoms );
     }
+    my $heartbeat;
+    $heartbeat = sub { warn `pwd`; $qu->enqueue( time + 600, $heartbeat ); };
+    $heartbeat->();
     bless {
         # The following fields are used by TopMaster and others
         hints => FileMgt106::Database->new($hintsFile),
