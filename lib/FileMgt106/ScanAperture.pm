@@ -2,7 +2,7 @@ package FileMgt106::ScanAperture;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2016 Franck Latrémolière.
+Copyright 2011-2017 Franck Latrémolière.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -171,6 +171,12 @@ sub repairPermissions {
     my @list = grep { !/^\.\.?|Masters$/s; } readdir DIR;
     closedir DIR;
     $repairer->(@list);
+    {
+        local $_ = $lib->[LIB_DIR];
+        s/\.aplibrary$/ (Masters)/;
+        unlink $_;
+        symlink "$lib->[LIB_DIR]/Masters", $_;
+    }
     $lib;
 }
 
