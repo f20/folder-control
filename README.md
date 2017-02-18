@@ -6,5 +6,6 @@ synchronisation and file-level deduplication.
 
 Sorry no documentation.
 
+Pre-requisites from CPAN: JSON and DBD:SQLite.
+
 Franck Latrémolière
-6 December 2015
