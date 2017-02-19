@@ -195,11 +195,14 @@ sub explodeByType {
               || $ext eq 'bz2'
               || $ext eq 'tgz'
               || $ext eq 'tbz';
-            $cat = 'Image'
+            $cat = 'Picture'
               if $ext eq 'jpg'
               || $ext eq 'png'
               || $ext eq 'gif'
-              || $ext eq 'jpeg';
+              || $ext eq 'jpeg'
+              || $ext eq 'nef'
+              || $ext eq 'raw'
+              || $ext eq 'arw';
             $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
