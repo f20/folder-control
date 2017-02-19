@@ -175,6 +175,7 @@ sub explodeByType {
             $ext = lc $ext;
             $ext =~ s/^\.+//s;
             my $cat = 'Other';
+            $cat = 'JBZ'  if $ext eq 'jbz';
             $cat = 'PDF'  if $ext eq 'pdf';
             $cat = 'Perl' if $ext eq 'pl' || $ext eq 'pm';
             $cat = 'Text' if $ext eq 'txt';
