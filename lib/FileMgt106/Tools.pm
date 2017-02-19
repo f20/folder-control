@@ -200,10 +200,12 @@ sub explodeByType {
               || $ext eq 'png'
               || $ext eq 'gif'
               || $ext eq 'jpeg';
-            $cat = 'Sound'
+            $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
-              || $ext eq 'm4a';
+              || $ext eq 'm4a'
+              || $ext eq 'aa'
+              || $ext eq 'aax';
             $cat = 'Video'
               if $ext eq 'mov'
               || $ext eq 'mp4'
