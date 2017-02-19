@@ -175,7 +175,10 @@ sub explodeByType {
             $ext = lc $ext;
             $ext =~ s/^\.+//s;
             my $cat = 'Other';
-            $cat = 'JBZ'  if $ext eq 'jbz';
+            $cat = 'JBZ' if $ext eq 'jbz';
+            $cat = 'IPA' if $ext eq 'ipa';
+            $cat = 'Volume'
+              if $ext eq 'dmg' || $ext eq 'img' || $ext eq 'iso';
             $cat = 'PDF'  if $ext eq 'pdf';
             $cat = 'Perl' if $ext eq 'pl' || $ext eq 'pm';
             $cat = 'Text' if $ext eq 'txt';
