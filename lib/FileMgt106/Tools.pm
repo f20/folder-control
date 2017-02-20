@@ -228,7 +228,10 @@ sub explodeByType {
             $cat = 'Text'
               if $ext eq 'txt';
             $cat = 'Video'
-              if $ext eq 'mov' || $ext eq 'mp4' || $ext eq 'm4v';
+              if $ext eq 'mov'
+              || $ext eq 'mp4'
+              || $ext eq 'm4v'
+              || $ext eq 'avi';
             $cat = 'Volume'
               if $ext eq 'dmg' || $ext eq 'img' || $ext eq 'iso';
             $cat = 'Web'
