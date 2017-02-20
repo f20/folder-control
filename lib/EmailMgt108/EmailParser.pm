@@ -148,12 +148,10 @@ sub parseMessage {
             my ($item) = @_;
             return if $eaten{ 0 + $item } || $item->subparts;
             $eaten{ 0 + $item } = 1;
-            my $fn            = $item->filename;
+            my $fn = $item->filename;
+            $fn =~ tr/\000-\037\/\\/ / if $fn;
             my $encodingLayer = ':raw';
-            if (  !$fn
-                || $fn !~ /^[a-zA-Z\&0-9_ \.,;\+\-'"\(\)\[\]]+$/s
-                || -e $fn )
-            {
+            if ( !$fn || -e $fn ) {
                 my $ext = '.dat';
                 $ext = $1
                   if $fn && $fn =~ /(\.[a-zA-Z0-9\+\-_]+)$/s;
