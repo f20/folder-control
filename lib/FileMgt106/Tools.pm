@@ -175,49 +175,69 @@ sub explodeByType {
             $ext = lc $ext;
             $ext =~ s/^\.+//s;
             my $cat = 'Other';
-            $cat = 'JBZ' if $ext eq 'jbz';
-            $cat = 'IPA' if $ext eq 'ipa';
-            $cat = 'Volume'
-              if $ext eq 'dmg' || $ext eq 'img' || $ext eq 'iso';
-            $cat = 'PDF'  if $ext eq 'pdf';
-            $cat = 'Perl' if $ext eq 'pl' || $ext eq 'pm';
-            $cat = 'Text' if $ext eq 'txt';
-            $cat = 'Web'
-              if $ext eq 'htm'
-              || $ext eq 'html'
-              || $ext eq 'css'
-              || $ext eq 'php';
+
+            $cat = 'Aperture'
+              if $ext eq 'apalbum'
+              || $ext eq 'apfolder'
+              || $ext eq 'apmaster'
+              || $ext eq 'apversion';
             $cat = 'Archive'
               if $ext eq 'zip'
-              || $ext eq 'tar'
               || $ext eq 'gz'
-              || $ext eq 'rar'
               || $ext eq 'bz2'
+              || $ext eq 'xz'
+              || $ext eq 'tar'
               || $ext eq 'tgz'
-              || $ext eq 'tbz';
-            $cat = 'Picture'
-              if $ext eq 'jpg'
-              || $ext eq 'png'
-              || $ext eq 'gif'
-              || $ext eq 'jpeg'
-              || $ext eq 'nef'
-              || $ext eq 'raw'
-              || $ext eq 'arw';
+              || $ext eq 'tbz'
+              || $ext eq 'rar';
             $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
               || $ext eq 'm4a'
               || $ext eq 'aa'
               || $ext eq 'aax';
-            $cat = 'Video'
-              if $ext eq 'mov'
-              || $ext eq 'mp4'
-              || $ext eq 'm4v';
-            $cat = 'Spreadsheet'
-              if $ext eq 'csv' || $ext eq 'raw' || $ext =~ /^xl/s;
-            $cat = 'Presentation' if $ext eq 'ppt' || $ext eq 'pptx';
+            $cat = 'Camera'
+              if $ext eq 'nef' || $ext eq 'raw' || $ext eq 'arw';
+            $cat = 'Config'
+              if $ext eq 'conf' || $ext eq 'xml' || $ext eq 'plist';
+            $cat = 'Database'
+              if $ext eq 'db' || $ext eq 'apdb';
             $cat = 'Document'
-              if $ext eq 'doc' || $ext eq 'docx' || $ext eq 'rtf';
+              if $ext =~ /^doc/s || $ext eq 'rtf' || $ext eq 'odt';
+            $cat = 'IPA'
+              if $ext eq 'ipa';
+            $cat = 'Image'
+              if $ext eq 'jpg'
+              || $ext eq 'jpeg'
+              || $ext eq 'png'
+              || $ext eq 'gif';
+            $cat = 'JBZ'
+              if $ext eq 'jbz';
+            $cat = 'PDF'
+              if $ext eq 'pdf';
+            $cat = 'Perl'
+              if $ext eq 'pl' || $ext eq 'pm';
+            $cat = 'Presentation'
+              if $ext eq 'ppt' || $ext eq 'pptx';
+            $cat = 'Python'
+              if $ext eq 'py' || $ext eq 'pyc';
+            $cat = 'Spreadsheet'
+              if $ext =~ /^xl/s || $ext eq 'csv' || $ext eq 'ods';
+            $cat = 'TIFF'
+              if || $ext eq 'tif' || $ext eq 'tiff';
+            $cat = 'Text'
+              if $ext eq 'txt';
+            $cat = 'Video'
+              if $ext eq 'mov' || $ext eq 'mp4' || $ext eq 'm4v';
+            $cat = 'Volume'
+              if $ext eq 'dmg' || $ext eq 'img' || $ext eq 'iso';
+            $cat = 'Web'
+              if $ext eq 'htm'
+              || $ext eq 'js'
+              || $ext eq 'html'
+              || $ext eq 'css'
+              || $ext eq 'php';
+
             $newHash{$cat}{$key} = $val;
         }
     }
