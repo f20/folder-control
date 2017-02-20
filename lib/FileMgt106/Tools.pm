@@ -224,7 +224,7 @@ sub explodeByType {
             $cat = 'Spreadsheet'
               if $ext =~ /^xl/s || $ext eq 'csv' || $ext eq 'ods';
             $cat = 'TIFF'
-              if || $ext eq 'tif' || $ext eq 'tiff';
+              if $ext eq 'tif' || $ext eq 'tiff';
             $cat = 'Text'
               if $ext eq 'txt';
             $cat = 'Video'
