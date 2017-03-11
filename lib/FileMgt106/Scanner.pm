@@ -2,7 +2,7 @@ package FileMgt106::Scanner;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -72,9 +72,9 @@ sub new {
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
     {
-        my @stat = lstat $dir or die "$dir: cannot stat";
+        my @stat = stat $dir or die "$dir: cannot stat";
         $dev = $stat[STAT_DEV];
-        $rootLocid = $hints->{topFolder}->( $dir, @stat[ STAT_DEV, STAT_INO ] )
+        $rootLocid = $hints->{topFolder}->( $dir, $dev, $stat[STAT_INO] )
           or die "$dir: no root locid";
     }
 
@@ -303,19 +303,20 @@ sub new {
         foreach (@list) {
 
             if (/$regexIgnoreEntirely/s) {
-                if ( my @stat = lstat ) {
-                    -d _
-                      ? $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] )
-                      : $file->(
-                        $locid, $_,
-                        @stat[ STAT_DEV, STAT_INO, STAT_SIZE, STAT_MTIME ]
-                      );
-                }
                 delete $oldChildrenHashref->{$_};
+                my @stat = lstat or next;
+                $stat[STAT_DEV] == $dev or next;
+                -d _
+                  ? $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] )
+                  : $file->(
+                    $locid, $_,
+                    @stat[ STAT_DEV, STAT_INO, STAT_SIZE, STAT_MTIME ]
+                  );
                 next;
             }
 
             my @stat = $rstat->( $_, $forceReadOnlyTimeLimit );
+            next unless $stat[STAT_DEV] == $dev;
 
             my $mustBeTargeted = $target && !exists $targetHasBeenApplied{$_};
             undef $targetHasBeenApplied{$_};
