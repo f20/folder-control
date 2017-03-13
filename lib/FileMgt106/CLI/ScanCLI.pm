@@ -191,40 +191,28 @@ sub makeProcessor {
         push @toRestamp, $path if $restampFlag;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
-        if ( $filterFlag && $filterFlag =~ /specific/ ) {
-            my ($module) =
-              grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
-            unless ($module) {
-                warn 'No filter factory found';
-                return;
-            }
-            unless ( eval "require $module" ) {
-                warn "Cannot load $module: $@";
-                return;
-            }
-            my $exploded = $module->new($scalar)->exploded;
-            $path =~ s/\.aplibrary$//s;
-            while ( my ( $k, $v ) = each %$exploded ) {
-                FileMgt106::LoadSave::saveJbzPretty( "$path.$k.jbz", $v )
-                  if ref $v;
-            }
-            return;
-        }
-        elsif ( $filterFlag && $filterFlag =~ /split/ ) {
+        if ( $filterFlag && $filterFlag =~ /split/ ) {
             while ( my ( $k, $v ) = each %$scalar ) {
                 local $_ = $k;
                 s#/#..#g;
-                FileMgt106::LoadSave::saveJbzPretty( "$path.$_.jbz",
+                FileMgt106::LoadSave::saveJbzPretty( "$path\[$_\].jbz",
                     ref $v ? $v : { $k => $v } );
             }
             return;
         }
         elsif ( $filterFlag && $filterFlag =~ /explode/ ) {
-            require FileMgt106::FilterFactory::ByType;
+            my ($module) =
+              grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
             my $exploded =
-              FileMgt106::FilterFactory::ByType::explodeByType($scalar);
+                $module && eval "require $module"
+              ? $module->new($scalar)->exploded
+              : (
+                require FileMgt106::FilterFactory::ByType,
+                FileMgt106::FilterFactory::ByType::explodeByType($scalar)
+              );
+            $path =~ s/\.aplibrary$//s;
             while ( my ( $k, $v ) = each %$exploded ) {
-                FileMgt106::LoadSave::saveJbzPretty( "$path.$k.jbz", $v )
+                FileMgt106::LoadSave::saveJbzPretty( "$path\[$k\].jbz", $v )
                   if ref $v;
             }
             return;
@@ -486,7 +474,7 @@ sub makeProcessor {
                 $filterFlag = $1;
                 next;
             }
-            elsif (/^-+((?:split|explode|specific).*)$/) {
+            elsif (/^-+((?:split|explode).*)$/) {
                 $filterFlag = $1 . 'nodb';
                 next;
             }
