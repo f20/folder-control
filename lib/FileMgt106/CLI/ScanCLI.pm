@@ -195,7 +195,7 @@ sub makeProcessor {
             while ( my ( $k, $v ) = each %$scalar ) {
                 local $_ = $k;
                 s#/#..#g;
-                FileMgt106::LoadSave::saveJbzPretty( "$path\$$_.jbz",
+                FileMgt106::LoadSave::saveJbzPretty( "$path \$$_.jbz",
                     ref $v ? $v : { $k => $v } );
             }
             return;
@@ -212,7 +212,7 @@ sub makeProcessor {
               );
             $path =~ s/\.aplibrary$//s;
             while ( my ( $k, $v ) = each %$exploded ) {
-                FileMgt106::LoadSave::saveJbzPretty( "$path\$$k.jbz", $v )
+                FileMgt106::LoadSave::saveJbzPretty( "$path \$$k.jbz", $v )
                   if ref $v;
             }
             return;
