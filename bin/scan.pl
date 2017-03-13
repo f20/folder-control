@@ -59,6 +59,6 @@ BEGIN {
 }
 use lib $perl5dir;
 
-use FileMgt106::ScanCLI;
-FileMgt106::ScanCLI->new( $startFolder, $perl5dir )->process(@ARGV);
+use FileMgt106::CLI::ScanCLI;
+FileMgt106::CLI::ScanCLI->new( $startFolder, $perl5dir )->process(@ARGV);
 

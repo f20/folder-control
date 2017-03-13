@@ -1,8 +1,8 @@
-package FileMgt106::ScanCLI;
+package FileMgt106::CLI::ScanCLI;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -33,16 +33,15 @@ use utf8;
 
 require POSIX;
 use Cwd qw(getcwd);
-use Encode 'decode_utf8';
+use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs);
 use JSON;
-
 use FileMgt106::Database;
-use FileMgt106::Scanner;
-use FileMgt106::Tools;
-use FileMgt106::ScanMaster;
 use FileMgt106::FileSystem;
+use FileMgt106::LoadSave;
+use FileMgt106::ScanMaster;
+use FileMgt106::Scanner;
 
 sub new {
     my $class = shift;
@@ -192,25 +191,51 @@ sub makeProcessor {
         push @toRestamp, $path if $restampFlag;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
-        if ( $filterFlag && $filterFlag =~ /split/ ) {
+        if ( $filterFlag && $filterFlag =~ /specific/ ) {
+            my ($module) =
+              grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
+            unless ($module) {
+                warn 'No filter factory found';
+                return;
+            }
+            unless ( eval "require $module" ) {
+                warn "Cannot load $module: $@";
+                return;
+            }
+            my $exploded = $module->new($scalar)->exploded;
+            $path =~ s/\.aplibrary$//s;
+            while ( my ( $k, $v ) = each %$exploded ) {
+                FileMgt106::LoadSave::saveJbzPretty( "$path.$k.jbz", $v )
+                  if ref $v;
+            }
+            return;
+        }
+        elsif ( $filterFlag && $filterFlag =~ /split/ ) {
             while ( my ( $k, $v ) = each %$scalar ) {
                 local $_ = $k;
                 s#/#..#g;
-                FileMgt106::Tools::saveJbzPretty( "$path.$_.jbz",
+                FileMgt106::LoadSave::saveJbzPretty( "$path.$_.jbz",
                     ref $v ? $v : { $k => $v } );
             }
             return;
         }
         elsif ( $filterFlag && $filterFlag =~ /explode/ ) {
-            FileMgt106::Tools::saveJbzPretty( "$path.exploded.jbz",
-                FileMgt106::Tools::explodeByType($scalar) );
+            require FileMgt106::FilterFactory::ByType;
+            my $exploded =
+              FileMgt106::FilterFactory::ByType::explodeByType($scalar);
+            while ( my ( $k, $v ) = each %$exploded ) {
+                FileMgt106::LoadSave::saveJbzPretty( "$path.$k.jbz", $v )
+                  if ref $v;
+            }
             return;
         }
+        delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
         if ($filterFlag) {
             unless ($filter) {
+                require FileMgt106::CLI::Miscellaneous;
                 $filter =
-                  FileMgt106::Tools::makeHintsFilterQuick( $hints,
+                  FileMgt106::CLI::Miscellaneous::makeHintsFilterQuick( $hints,
                     $filterFlag );
                 $filter->($_) foreach @baseScalars;
             }
@@ -264,7 +289,7 @@ sub makeProcessor {
                 $missing->{$dir} = $scalar;
             }
             else {
-                FileMgt106::Tools::saveJbz( $missingFile, $scalar );
+                FileMgt106::LoadSave::saveJbz( $missingFile, $scalar );
             }
         }
     };
@@ -284,40 +309,46 @@ sub makeProcessor {
               if $dir =~ m#^/Volumes/#;
             my ($s) =
               FileMgt106::Scanner->new( $dir, $hints, @extrasSource )->scan;
+            require FileMgt106::CLI::Miscellaneous;
             FileMgt106::Scanner->new( $destination, $hints, @extrasDestination )
-              ->scan( 0, FileMgt106::Tools::simpleDedup($s) );
+              ->scan( 0, FileMgt106::CLI::Miscellaneous::simpleDedup($s) );
             $hints->commit;
             return;
         }
         if ($cleaningFlag) {
             if ( $cleaningFlag =~ /dayfolder/i ) {
                 warn "One folder per day for files in $dir";
-                FileMgt106::Tools::categoriseByDay($dir);
+                require FileMgt106::FolderTidy;
+                FileMgt106::FolderTidy::categoriseByDay($dir);
             }
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
-                FileMgt106::Tools::datemarkFolder($dir);
+                require FileMgt106::FolderTidy;
+                FileMgt106::FolderTidy::datemarkFolder($dir);
             }
             if ( $cleaningFlag =~ /restamp/i ) {
                 warn "Re-timestamping $dir";
-                FileMgt106::Tools::restampFolder($dir);
+                require FileMgt106::FolderTidy;
+                FileMgt106::FolderTidy::restampFolder($dir);
             }
             if ( $cleaningFlag =~ /flat/i ) {
                 warn "Flattening $dir";
+                require FileMgt106::FolderTidy;
                 $hints->beginInteractive(1);
-                FileMgt106::Tools::flattenCwd;
+                FileMgt106::FolderTidy::flattenCwd();
                 $hints->commit;
             }
             if ( $cleaningFlag =~ /rename/i ) {
                 warn "Renaming in $dir";
                 $hints->beginInteractive(1);
-                FileMgt106::Tools::normaliseFileNames('.');
+                FileMgt106::LoadSave::normaliseFileNames('.');
                 $hints->commit;
             }
             elsif ( $cleaningFlag =~ /clean/i ) {
                 warn "Deep cleaning $dir";
+                require FileMgt106::FolderTidy;
                 $hints->beginInteractive(1);
-                FileMgt106::Tools::deepClean('.');
+                FileMgt106::FolderTidy::deepClean('.');
                 $hints->commit;
             }
             return if $cleaningFlag =~ /only/i;
@@ -333,7 +364,7 @@ sub makeProcessor {
             foreach my $grabSource (@grabSources) {
                 unless ($grabSource) {
                     my $missingFile = "$startFolder/+missing.jbz";
-                    FileMgt106::Tools::saveJbz( $missingFile, $missing );
+                    FileMgt106::LoadSave::saveJbz( $missingFile, $missing );
                     die "Do your own grab: $missingFile";
                 }
                 my ( $cellarScanner, $cellarDir );
@@ -358,12 +389,14 @@ sub makeProcessor {
                         mkdir $cellarDir;
                         chdir $cellarDir;
                         open my $fh,
-qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
+                          qq^| ssh $host 'perl "$extract" -tar -'^
+                          . ' | tar -x -f -';
                         binmode $fh;
                         print {$fh} encode_json($missing);
                     }
+                    require FileMgt106::FolderTidy;
                     $hints->beginInteractive(1);
-                    FileMgt106::Tools::deepClean('.');
+                    FileMgt106::FolderTidy::deepClean('.');
                     $hints->commit;
                     $cellarScanner =
                       FileMgt106::ScanMaster->new( $hints,
@@ -391,8 +424,9 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                     }
                 }
                 if ( defined $cellarDir ) {
+                    require FileMgt106::FolderTidy;
                     $hints->beginInteractive(1);
-                    FileMgt106::Tools::deepClean($cellarDir);
+                    FileMgt106::FolderTidy::deepClean($cellarDir);
                     $hints->commit;
                     $cellarScanner->dequeued;
                     push @rmdirList, $cellarDir;
@@ -400,7 +434,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 last unless %$missing;
             }
             while ( my ( $dir, $stillMissing ) = each %$missing ) {
-                FileMgt106::Tools::saveJbzPretty(
+                FileMgt106::LoadSave::saveJbzPretty(
                     catfile( $dir, "\N{U+26A0}.jbz" ),
                     $stillMissing )
                   if $stillMissing;
@@ -408,7 +442,8 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
-        FileMgt106::Tools::restampFolder($_) foreach @toRestamp;
+        require FileMgt106::FolderTidy;
+        FileMgt106::FolderTidy::restampFolder($_) foreach @toRestamp;
     };
 
     my $processLegacyArguments = sub {
@@ -451,14 +486,14 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 $filterFlag = $1;
                 next;
             }
-            elsif (/^-+((?:split|explode).*)$/) {
+            elsif (/^-+((?:split|explode|specific).*)$/) {
                 $filterFlag = $1 . 'nodb';
                 next;
             }
             elsif (/^-+base=(.*)/) {
                 $filterFlag .= 'nodb';
                 @baseScalars =
-                  map { FileMgt106::Tools::loadNormalisedScalar($_); }
+                  map { FileMgt106::LoadSave::loadNormalisedScalar($_); }
                   split /:/,
                   $1;
                 next;
@@ -517,9 +552,10 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                     chdir $startFolder;
                     chdir $1 and $jbzDir = decode_utf8 getcwd();
                 }
-                require FileMgt106::ScanAperture;
-                $_->updateJbz( $hints, $startFolder, $jbzDir )
-                  foreach FileMgt106::ScanAperture->libraries( $hints, @_ );
+                require FileMgt106::ScanMasterAperture;
+                $_->updateJbz( $hints, $jbzDir )
+                  foreach FileMgt106::ScanMasterAperture
+                  ->findOrMakeApertureLibraries( $hints, @_ );
                 last;
             }
             elsif (/^-+migrate(?:=(.+))?/) {
@@ -528,9 +564,10 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             }
             if ( /^-+$/ && $filterFlag ) {
                 unless ($filter) {
+                    require FileMgt106::CLI::Miscellaneous;
                     $filter =
-                      FileMgt106::Tools::makeHintsFilterQuick( $hints,
-                        $filterFlag );
+                      FileMgt106::CLI::Miscellaneous::makeHintsFilterQuick(
+                        $hints, $filterFlag );
                     $filter->($_) foreach @baseScalars;
                 }
                 local undef $/;
@@ -541,14 +578,15 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
             }
             if (/^-+missing=(.*)/) {
                 chdir $startFolder;
-                $missing = FileMgt106::Tools::loadNormalisedScalar($1);
+                $missing = FileMgt106::LoadSave::loadNormalisedScalar($1);
                 push @grabSources, '';
                 next;
             }
             if (/^-+known=(.*)/) {
                 $filterFlag ||= 'known';
                 undef $filter;
-                push @baseScalars, FileMgt106::Tools::loadNormalisedScalar($1);
+                push @baseScalars,
+                  FileMgt106::LoadSave::loadNormalisedScalar($1);
                 next;
             }
 
@@ -568,10 +606,9 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
             {
                 $target =
-                  FileMgt106::Tools::loadNormalisedScalar( $root . $ext );
-                $target = FileMgt106::Tools::parseText( $root . $ext )
+                  FileMgt106::LoadSave::loadNormalisedScalar( $root . $ext );
+                $target = FileMgt106::LoadSave::parseText( $root . $ext )
                   if !$target && $ext =~ /txt|yml/i;
-                delete $target->{$_} foreach grep { /\//; } keys %$target;
             }
             elsif ( -d _ && @grabSources && chdir $_ ) {
                 $root = decode_utf8 getcwd();
@@ -607,7 +644,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
             unlink $canonical . $fileExtension;
-            my $target = FileMgt106::Tools::loadNormalisedScalar(
+            my $target = FileMgt106::LoadSave::loadNormalisedScalar(
                 $catalogue,
                 sub {
                     $_[0] !~ /^~WRL[0-9]+\.tmp$/s
@@ -615,7 +652,7 @@ qq^| ssh $host 'perl "$extract" -tar -' | tar -x -f -^;
                 }
             );
             delete $target->{$_} foreach grep { /\//; } keys %$target;
-            my @caseids = FileMgt106::Tools::extractCaseids($target);
+            my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
             foreach my $caseid (@caseids) {
                 foreach my $folder ( keys %$caseidMap ) {
                     next unless $caseidMap->{$folder} eq $caseid;
@@ -649,7 +686,7 @@ sub _chooserNoCaseids {
         symlink rel2abs($catalogue), $canonical . $fileExtension;
         return;
     }
-    my $target = FileMgt106::Tools::loadNormalisedScalar(
+    my $target = FileMgt106::LoadSave::loadNormalisedScalar(
         $catalogue,
         sub {
             $_[0] !~ /^~WRL[0-9]+\.tmp$/s

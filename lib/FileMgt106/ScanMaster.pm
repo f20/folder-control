@@ -2,7 +2,7 @@ package FileMgt106::ScanMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2012-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -42,7 +42,6 @@ require POSIX;
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile splitdir);
 use FileMgt106::Scanner;
-use FileMgt106::Tools;
 use FileMgt106::FileSystem;
 use JSON;
 
@@ -84,8 +83,7 @@ sub setRepoloc {
         $self->addScalarTaker(
             sub {
                 my ( $scalar, undef, $runner ) = @_;
-                my @caseids =
-                  sort ( FileMgt106::Tools::extractCaseids($scalar) );
+                my @caseids = extractCaseids($scalar);
                 return if "@caseids" eq "@{$self->[CASEIDS]}";
                 $self->[CASEIDS] = \@caseids;
                 my $updateHintsDb = sub {
@@ -208,7 +206,8 @@ sub addJbzName {
     my ( $self, $jbzName ) = @_;
     $self->addScalarTaker(
         sub {
-            FileMgt106::Tools::saveBzOctets( $jbzName . $$, ${ $_[1] } );
+            require FileMgt106::LoadSave;
+            FileMgt106::LoadSave::saveBzOctets( $jbzName . $$, ${ $_[1] } );
             if ( my $mtime = ( lstat $jbzName )[STAT_MTIME] ) {
                 $mtime =
                   POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
@@ -423,6 +422,20 @@ sub unwatchAll {
       foreach values %{ $self->[WATCHERS] };
     $self->[WATCHERS] = {};
     $self;
+}
+
+sub extractCaseids {
+    my ($hashref) = @_;
+    my @caseids;
+    while ( my ( $k, $v ) = each %$hashref ) {
+        if ( 'HASH' eq ref $v ) {
+            push @caseids, extractCaseids($v);
+        }
+        elsif ( $k =~ /\.caseid$/is && $v =~ /^[0-9a-f]{40}$/is ) {
+            push @caseids, pack( 'H*', $v );
+        }
+    }
+    sort @caseids;
 }
 
 1;

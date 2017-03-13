@@ -34,7 +34,6 @@ use utf8;
 use File::Spec::Functions qw(catfile catdir);
 use File::Basename 'dirname';
 use Cwd;
-use Encode 'decode_utf8';
 use FileMgt106::Database;
 use Daemon112::TopMaster;
 require Daemon112::Watcher;    # used but not loaded by TopMaster

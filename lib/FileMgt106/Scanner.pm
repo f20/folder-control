@@ -526,8 +526,8 @@ sub new {
                         chdir "$stash/$binName"
                           or die "chdir $stash/$binName: $!";
                         unless (/^Z_(?:Infill|Rubbish)/is) {
-                            require FileMgt106::Tools;
-                            FileMgt106::Tools::normaliseFileNames('.');
+                            require FileMgt106::LoadSave;
+                            FileMgt106::LoadSave::normaliseFileNames('.');
                         }
                         $binned{"$binName"} = [
                             $scanDir->(
@@ -656,8 +656,8 @@ sub new {
                         $repoDev, $backuper->()
                     );
                     if ($missing) {
-                        require FileMgt106::Tools;
-                        FileMgt106::Tools::saveJbzPretty(
+                        require FileMgt106::LoadSave;
+                        FileMgt106::LoadSave::saveJbzPretty(
                             "$dir/$path$binName-failed.jbz", $missing );
                     }
                 }
@@ -665,8 +665,7 @@ sub new {
                 if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/is ) {
                     warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
-                        require FileMgt106::Tools;
-                        $filter = FileMgt106::Tools::makeInfillFilter();
+                        $filter = _makeInfillFilter();
                         $hashref = $scanDir->( $locid, $path )
                           if $runningUnderWatcher;
                         $filter->($hashref);
@@ -840,6 +839,31 @@ my @_charset =
 
 sub _randomString {
     join '', map { $_charset[ rand(32) ] } 1 .. $_[0];
+}
+
+sub _makeInfillFilter {
+    my %done;
+    my $filter;
+    $filter = sub {
+        my ($hash) = @_;
+        my %newHash;
+        foreach ( sort { length $a <=> length $b } keys %$hash ) {
+            my $what = $hash->{$_};
+            if ( ref $what eq 'HASH' ) {
+                $what = $filter->($what);
+                $newHash{$_} = $what if $what;
+            }
+            elsif ( $what && !$done{$what} ) {
+                $done{$what} = 1;
+                s/\s+/ /gs;
+                s/^ //;
+                s/ \././g;
+                s/ $//;
+                $newHash{ $_ || ( '__' . rand() ) } = $what;
+            }
+        }
+        keys %newHash ? \%newHash : undef;
+    };
 }
 
 1;

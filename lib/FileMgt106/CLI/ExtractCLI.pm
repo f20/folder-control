@@ -1,4 +1,4 @@
-package FileMgt106::ExtractCLI;
+package FileMgt106::CLI::ExtractCLI;
 
 =head Copyright licence and disclaimer
 
@@ -31,10 +31,11 @@ use warnings;
 use strict;
 use utf8;
 
-use Encode 'decode_utf8';
+use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catfile);
 use JSON;
+use FileMgt106::LoadSave;
 
 sub process {
 
@@ -45,61 +46,61 @@ sub process {
     foreach (@args) {
         local $_ = decode_utf8 $_;
         if (/^-+nohints/i) {
-            require FileMgt106::Extract;
+            require FileMgt106::Extractor;
             $processScal =
-              FileMgt106::Extract::makeSimpleExtractor(
-                FileMgt106::Extract::makeExtractAcceptor(@args) );
+              FileMgt106::Extractor::makeSimpleExtractor(
+                FileMgt106::Extractor::makeExtractAcceptor(@args) );
             next;
         }
         elsif (/^-+csv=?(.*)/i) {
-            require FileMgt106::Extract;
+            require FileMgt106::Extractor;
             ( $processScal, $processQuery ) =
-              FileMgt106::Extract::makeDataExtractor(
+              FileMgt106::Extractor::makeDataExtractor(
                 catfile( dirname($perl5dir), '~$hints' ),
-                FileMgt106::Extract::makeCsvWriter($1)
+                FileMgt106::Extractor::makeCsvWriter($1)
               );
             next;
         }
         elsif (/^-+(xlsx?)=?(.*)/i) {
-            require FileMgt106::Extract;
+            require FileMgt106::Extractor;
             ( $processScal, $processQuery ) =
-              FileMgt106::Extract::makeDataExtractor(
+              FileMgt106::Extractor::makeDataExtractor(
                 catfile( dirname($perl5dir), '~$hints' ),
-                FileMgt106::Extract::makeSpreadsheetWriter(
+                FileMgt106::Extractor::makeSpreadsheetWriter(
                     $1, $2 || 'Extracted'
                 )
               );
             next;
         }
         elsif (/^-+info/i) {
-            require FileMgt106::Extract;
+            require FileMgt106::Extractor;
             ( $processScal, $processQuery ) =
-              FileMgt106::Extract::makeInfoExtractor(
+              FileMgt106::Extractor::makeInfoExtractor(
                 catfile( dirname($perl5dir), '~$hints' ) );
             next;
         }
         unless ($processScal) {
             my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
-            require FileMgt106::Extract;
+            require FileMgt106::Extractor;
             if ( grep { /^-+cwd/i } @args ) {
                 $processScal =
-                  FileMgt106::Extract::makeHintsBuilder($hintsFile);
+                  FileMgt106::Extractor::makeHintsBuilder($hintsFile);
             }
             elsif ( grep { /^-+filter/i } @args ) {
-                $processScal = FileMgt106::Extract::makeHintsFilter($hintsFile);
+                $processScal =
+                  FileMgt106::Extractor::makeHintsFilter($hintsFile);
             }
             else {
                 $processScal =
-                  FileMgt106::Extract::makeHintsExtractor( $hintsFile,
-                    FileMgt106::Extract::makeExtractAcceptor(@args) );
+                  FileMgt106::Extractor::makeHintsExtractor( $hintsFile,
+                    FileMgt106::Extractor::makeExtractAcceptor(@args) );
             }
         }
         if (/^-$/) {
             local undef $/;
             binmode STDIN;
             my $missingCompilation;
-            require FileMgt106::Tools;
-            FileMgt106::Tools::setNormalisation('win');
+            FileMgt106::LoadSave::setNormalisation('win');
             local $_ = <STDIN>;
             foreach (
                 eval { decode_json($_); } || map {
@@ -112,7 +113,7 @@ sub process {
                             decode_json(<$fh>);
                         }
                         else {
-                            FileMgt106::Tools::loadNormalisedScalar($_);
+                            FileMgt106::LoadSave::loadNormalisedScalar($_);
                         }
                     }
                     else {
@@ -123,7 +124,7 @@ sub process {
               )
             {
                 my $missing =
-                  $processScal->( FileMgt106::Tools::normaliseHash($_) );
+                  $processScal->( FileMgt106::LoadSave::normaliseHash($_) );
                 $missingCompilation->{$_} = $missing if $missing;
             }
             if ( $missingCompilation
@@ -138,8 +139,7 @@ sub process {
                       ->pretty->encode($missingCompilation);
                 }
                 else {
-                    require FileMgt106::Tools;
-                    FileMgt106::Tools::saveJbz( "+missing.jbz.$$",
+                    FileMgt106::LoadSave::saveJbz( "+missing.jbz.$$",
                         $missingCompilation );
                     rename "+missing.jbz.$$", '+missing.jbz';
                 }
@@ -149,12 +149,14 @@ sub process {
             $processScal->($_);
         }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-            require FileMgt106::Tools;
-            if ( my $s =
-                $processScal->( FileMgt106::Tools::loadNormalisedScalar($_) ) )
+            if (
+                my $s = $processScal->(
+                    FileMgt106::LoadSave::loadNormalisedScalar($_)
+                )
+              )
             {
                 s/(\.jbz|json\.bz2)$/+missing$1/s;
-                FileMgt106::Tools::saveJbz( $_, $s );
+                FileMgt106::LoadSave::saveJbz( $_, $s );
             }
         }
         elsif ($processQuery) {

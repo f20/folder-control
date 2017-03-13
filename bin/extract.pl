@@ -59,6 +59,6 @@ BEGIN {
 }
 use lib $perl5dir;
 
-use FileMgt106::ExtractCLI;
-FileMgt106::ExtractCLI::process( $startFolder, $perl5dir, @ARGV );
+use FileMgt106::CLI::ExtractCLI;
+FileMgt106::CLI::ExtractCLI::process( $startFolder, $perl5dir, @ARGV );
 
