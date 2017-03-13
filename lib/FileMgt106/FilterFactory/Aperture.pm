@@ -154,8 +154,8 @@ sub exploded {
         if ( my ( $k, $v ) = $self->masters( $_, $_ ) ) {
             $exploded{ $k . $_ } = $v;
         }
-        if ( my ( $k, $v ) = $self->database( $_, $_ ) ) {
-            $exploded{"apfiles$_"} = $v;
+        if ( my %v = $self->database( $_, $_ ) ) {
+            $exploded{"apfiles$_"} = \%v;
         }
         if ( my ( $k, $v ) = $self->previews( $_, $_ ) ) {
             $exploded{ $k . $_ } = $v;
