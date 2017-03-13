@@ -114,19 +114,17 @@ sub database {
         'Info.plist'     => $self->{'Info.plist'},
         Database         => $self->{Database},
     ) unless defined $minStars;
+    my @apfiles = $self->{'/filter'}->(
+        Versions => $self->{Database}{Versions},
+        $minStars, $maxStars
+    ) or return;
     my %db = %{ $self->{Database} };
     $db{apdb} = {};
     delete $db{$_}
       foreach grep { ref $db{$_} && ref $db{$_} ne 'HASH'; } keys %db;
     'Aperture.aplib' => $self->{'Aperture.aplib'},
       'Info.plist'   => $self->{'Info.plist'},
-      Database       => {
-        %db,
-        $self->{'/filter'}->(
-            Versions => $self->{Database}{Versions},
-            $minStars, $maxStars
-        ),
-      };
+      Database       => { %db, @apfiles, };
 }
 
 sub masters {
@@ -156,13 +154,16 @@ sub exploded {
         if ( my ( $k, $v ) = $self->masters( $_, $_ ) ) {
             $exploded{ $k . $_ } = $v;
         }
+        if ( my ( $k, $v ) = $self->database( $_, $_ ) ) {
+            $exploded{ $k . $_ } = $v;
+        }
         if ( my ( $k, $v ) = $self->previews( $_, $_ ) ) {
             $exploded{ $k . $_ } = $v;
         }
     }
     $exploded{'3to5.aplibrary'} = $self->subLibraryScalar( 3, 5 );
     $exploded{'0to5.aplibrary'} = $self->subLibraryScalar( 0, 5 );
-    $exploded{'all.aplibrary'}  = $self->subLibraryScalar;
+    $exploded{'-1to5.aplibrary'} = $self->subLibraryScalar;
     \%exploded;
 }
 
