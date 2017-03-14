@@ -316,7 +316,7 @@ sub new {
             }
 
             my @stat = $rstat->( $_, $forceReadOnlyTimeLimit );
-            next unless $stat[STAT_DEV] == $dev;
+            next if $stat[STAT_DEV] && $stat[STAT_DEV] != $dev;
 
             my $mustBeTargeted = $target && !exists $targetHasBeenApplied{$_};
             undef $targetHasBeenApplied{$_};
