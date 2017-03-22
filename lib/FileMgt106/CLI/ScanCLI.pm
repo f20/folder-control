@@ -203,8 +203,12 @@ sub makeProcessor {
         elsif ( $filterFlag && $filterFlag =~ /explode/ ) {
             my ($module) =
               grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
+            if ($module) {
+                undef $module unless eval "require $module";
+                warn $@ if $@;
+            }
             my $exploded =
-                $module && eval "require $module"
+                $module
               ? $module->new($scalar)->exploded
               : (
                 require FileMgt106::FilterFactory::ByType,

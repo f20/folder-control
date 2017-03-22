@@ -153,7 +153,7 @@ sub exploded {
     foreach my $rating ( -1 .. 5 ) {
         if ( my ( $k, $v ) = $self->masters( $rating, $rating ) ) {
             my $w = _explodeByLcExtension($v);
-            while ( my ( $e, $x ) = each %w ) {
+            while ( my ( $e, $x ) = each %$w ) {
                 $exploded{ $k . $rating . '_' . $e } = $x;
             }
         }
