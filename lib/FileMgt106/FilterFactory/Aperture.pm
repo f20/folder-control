@@ -150,21 +150,55 @@ sub subLibraryScalar {
 sub exploded {
     my ($self) = @_;
     my %exploded;
-    foreach ( -1 .. 5 ) {
-        if ( my ( $k, $v ) = $self->masters( $_, $_ ) ) {
-            $exploded{ $k . $_ } = $v;
+    foreach my $rating ( -1 .. 5 ) {
+        if ( my ( $k, $v ) = $self->masters( $rating, $rating ) ) {
+            my $w = _explodeByLcExtension($v);
+            while ( my ( $e, $x ) = each %w ) {
+                $exploded{ $k . $rating . '_' . $e } = $x;
+            }
         }
-        if ( my %v = $self->database( $_, $_ ) ) {
-            $exploded{"apfiles$_"} = \%v;
+        if ( my %v = $self->database( $rating, $rating ) ) {
+            $exploded{ 'apfiles' . $rating } = \%v;
         }
-        if ( my ( $k, $v ) = $self->previews( $_, $_ ) ) {
-            $exploded{ $k . $_ } = $v;
+        if ( my ( $k, $v ) = $self->previews( $rating, $rating ) ) {
+            $exploded{ $k . $rating } = $v;
         }
     }
     $exploded{'3to5.aplibrary'} = $self->subLibraryScalar( 3, 5 );
     $exploded{'0to5.aplibrary'} = $self->subLibraryScalar( 0, 5 );
     $exploded{'-1to5.aplibrary'} = $self->subLibraryScalar;
     \%exploded;
+}
+
+sub _explodeByLcExtension {
+    my ($what) = @_;
+    my %newHash;
+    while ( my ( $key, $val ) = each %$what ) {
+        if ( ref $val eq 'HASH' ) {
+            my $exploded = _explodeByLcExtension($val);
+            while ( my ( $ext, $con ) = each %$exploded ) {
+                if ( $key eq $ext && ref $con eq 'HASH' ) {
+                    foreach ( keys %$con ) {
+                        my $new = $_;
+                        $new .= '_' while exists $newHash{$key}{$new};
+                        $newHash{$key}{$new} = $con->{$_};
+                    }
+                }
+                else {
+                    $newHash{$ext}{$key} = $con;
+                }
+            }
+        }
+        else {
+            my ( $base, $ext ) = ( $key =~ m#(.*)(\.\S+)$#s );
+            ( $base, $ext ) = ( $key, '' )
+              unless defined $ext;
+            $ext = lc $ext;
+            $ext =~ s/^\.+//s;
+            $newHash{$ext}{$key} = $val;
+        }
+    }
+    \%newHash;
 }
 
 1;
