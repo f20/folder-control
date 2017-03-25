@@ -357,7 +357,7 @@ sub makeProcessor {
                 unless ($grabSource) {
                     my $missingFile = "$startFolder/+missing.jbz";
                     FileMgt106::LoadSave::saveJbz( $missingFile, $missing );
-                    die "Do your own grab: $missingFile";
+                    warn "Do your own grab: $missingFile\n";
                 }
                 my ( $cellarScanner, $cellarDir );
                 unless ( $grabSource eq 'done' ) {
@@ -366,6 +366,7 @@ sub makeProcessor {
                         $cellarDir = $d;
                     }
                     {
+                        warn "Grabbing from $grabSource\n";
                         my ( $host, $extract ) =
                           $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
                           ? ( $1, 'extract.pl' )
