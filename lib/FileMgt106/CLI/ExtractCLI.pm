@@ -183,11 +183,10 @@ sub process {
                     else { $missingCompilation->{$_} = $missing; }
                 }
             }
-            if ($missingCompilation) {
-                unlink '+missing.jbz';
-                FileMgt106::LoadSave::saveJbzPretty( '+missing.jbz',
-                    $missingCompilation );
-            }
+            unlink '+missing.jbz';
+            FileMgt106::LoadSave::saveJbzPretty( '+missing.jbz',
+                $missingCompilation )
+              if $missingCompilation;
         }
         elsif (/^[0-9a-f]{40}$/is) {
             $processScal->($_);
