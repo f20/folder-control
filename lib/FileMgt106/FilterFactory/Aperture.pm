@@ -42,11 +42,13 @@ sub new {
             my ( $k, $o, $minStars, $maxStars ) = @_;
             return unless $o;
             my $n;
-            foreach my $a ( keys %$o ) {
-                foreach my $b ( keys %{ $o->{$a} } ) {
-                    foreach my $c ( keys %{ $o->{$a}{$b} } ) {
-                        foreach my $d ( keys %{ $o->{$a}{$b}{$c} } ) {
-                            foreach my $e ( keys %{ $o->{$a}{$b}{$c}{$d} } ) {
+            foreach my $a ( eval { keys %$o; } ) {
+                foreach my $b ( eval { keys %{ $o->{$a} }; } ) {
+                    foreach my $c ( eval { keys %{ $o->{$a}{$b} }; } ) {
+                        foreach my $d ( eval { keys %{ $o->{$a}{$b}{$c} }; } ) {
+                            foreach
+                              my $e ( eval { keys %{ $o->{$a}{$b}{$c}{$d} }; } )
+                            {
                                 my $s = $starsById->{$e};
                                 $n->{$a}{$b}{$c}{$d}{$e} =
                                   $o->{$a}{$b}{$c}{$d}{$e}
@@ -70,11 +72,13 @@ sub new {
             my ( $k, $o, $minStars, $maxStars ) = @_;
             return unless $o;
             my $n;
-            foreach my $a ( keys %$o ) {
-                foreach my $b ( keys %{ $o->{$a} } ) {
-                    foreach my $c ( keys %{ $o->{$a}{$b} } ) {
-                        foreach my $d ( keys %{ $o->{$a}{$b}{$c} } ) {
-                            foreach my $e ( keys %{ $o->{$a}{$b}{$c}{$d} } ) {
+            foreach my $a ( eval { keys %$o; } ) {
+                foreach my $b ( eval { keys %{ $o->{$a} }; } ) {
+                    foreach my $c ( eval { keys %{ $o->{$a}{$b} }; } ) {
+                        foreach my $d ( eval { keys %{ $o->{$a}{$b}{$c} }; } ) {
+                            foreach
+                              my $e ( eval { keys %{ $o->{$a}{$b}{$c}{$d} }; } )
+                            {
                                 my $s = $starsByFile->{$a}{$b}{$c}{$d}{$e};
                                 $n->{$a}{$b}{$c}{$d}{$e} =
                                   $o->{$a}{$b}{$c}{$d}{$e}

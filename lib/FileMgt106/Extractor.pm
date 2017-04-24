@@ -2,7 +2,7 @@ package FileMgt106::Extractor;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -100,7 +100,7 @@ sub makeHintsExtractor {
     };
     alarm 20;
 
-    my $devNo = ( stat '.' )[STAT_DEV];
+    my $devNo = ( stat $hintsFile )[STAT_DEV];
     require Digest::SHA;
     my $sha1Machine = new Digest::SHA;
 
@@ -495,21 +495,29 @@ sub _copyFile {
 
 sub makeHintsFilter {
 
-    my ($hintsFile) = @_;
+    my ( $hintsFile, $devAnchor ) = @_;
+    my ( $devNo, $devOnly );
+    if ($devAnchor) {
+        $devNo   = ( stat $devAnchor )[STAT_DEV];
+        $devOnly = 1;
+    }
+    elsif ( defined $devAnchor ) {
+        $devNo = 0;
+    }
+    else {
+        $devNo = ( stat $hintsFile )[STAT_DEV];
+    }
     my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
     my %seen;
     my $sha1Machine;
+    if ($devNo) {
+        require Digest::SHA;
+        $sha1Machine = new Digest::SHA;
+    }
 
     my $filterTree;
     $filterTree = sub {
-
-        my ( $whatYouWant, $devNo ) = @_;
-        unless ($devNo) {
-            die "No device for ."
-              unless $devNo = ( stat '.' )[STAT_DEV];
-        }
-
-        # To contain a scalar representing missing objects (or false if none).
+        my ($whatYouWant) = @_;
         my $returnValue;
 
       ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
@@ -526,35 +534,34 @@ sub makeHintsFilter {
             next unless $what =~ /([0-9a-fA-F]{40})/;
             my $sha1 = pack( 'H*', $1 );
             my $iterator = $searchSha1->( $sha1, $devNo );
-            my ( @stat, @candidates, @reservelist );
-            while ( !@stat
-                && ( my ( $path, $statref, $locid ) = $iterator->() ) )
-            {
-                next unless -f _;
-                if (
-                    !$locid
-                    || ( $statref->[STAT_UID]
-                        && ( $statref->[STAT_MODE] & 0200 ) )
-                    || ( $statref->[STAT_MODE] & 022 )
-                  )
+            if ($devNo) {
+                my ( @stat, @candidates, @reservelist );
+                while ( !@stat
+                    && ( my ( $path, $statref, $locid ) = $iterator->() ) )
                 {
-                    push @reservelist, $path;
-                    next;
+                    next unless -f _;
+                    last if $devOnly && $statref->[STAT_DEV] != $devNo;
+                    if (
+                        !$locid
+                        || ( $statref->[STAT_UID]
+                            && ( $statref->[STAT_MODE] & 0200 ) )
+                        || ( $statref->[STAT_MODE] & 022 )
+                      )
+                    {
+                        push @reservelist, $path;
+                        next;
+                    }
+                    next ENTRY;
                 }
-                next ENTRY;
+                if ( @candidates || @reservelist ) {
+                    foreach ( @candidates, @reservelist ) {
+                        next ENTRY
+                          if $sha1 eq $sha1Machine->addfile($_)->digest;
+                    }
+                }
             }
-            if ( @candidates || @reservelist ) {
-                unless ($sha1Machine) {
-                    require Digest::SHA;
-                    $sha1Machine = new Digest::SHA;
-                }
-                foreach ( @candidates, @reservelist ) {
-                    next ENTRY if $sha1 eq $sha1Machine->addfile($_)->digest;
-                }
-            }
-
+            else { next if $iterator->(); }
             $returnValue->{$name} = $what;
-
         }
 
         $returnValue;

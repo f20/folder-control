@@ -179,11 +179,8 @@ sub makeProcessor {
 
     my ( $self,        @grabSources ) = @_;
     my ( $startFolder, $perl5dir )    = @$self;
-    my (
-        $hints,      $filter,          @baseScalars,
-        $missing,    %scanners,        $cleaningFlag,
-        $filterFlag, $syncDestination, @toRestamp
-    );
+    my ( $hints, $missing, %scanners, $cleaningFlag,
+        $syncDestination, @toRestamp );
 
     my $processScalar = sub {
         my ( $scalar, $path, $fileExtension, $targetStatRef, $restampFlag ) =
@@ -191,51 +188,9 @@ sub makeProcessor {
         push @toRestamp, $path if $restampFlag;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
-        if ( $filterFlag && $filterFlag =~ /split/ ) {
-            while ( my ( $k, $v ) = each %$scalar ) {
-                local $_ = $k;
-                s#/#..#g;
-                FileMgt106::LoadSave::saveJbzPretty( "$path \$$_.jbz",
-                    ref $v ? $v : { $k => $v } );
-            }
-            return;
-        }
-        elsif ( $filterFlag && $filterFlag =~ /explode/ ) {
-            my ($module) =
-              grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
-            if ($module) {
-                undef $module unless eval "require $module";
-                warn $@ if $@;
-            }
-            my $exploded =
-                $module
-              ? $module->new($scalar)->exploded
-              : (
-                require FileMgt106::FilterFactory::ByType,
-                FileMgt106::FilterFactory::ByType::explodeByType($scalar)
-              );
-            $path =~ s/\.aplibrary$//s;
-            while ( my ( $k, $v ) = each %$exploded ) {
-                FileMgt106::LoadSave::saveJbzPretty( "$path \$$k.jbz", $v )
-                  if ref $v;
-            }
-            return;
-        }
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
-        if ($filterFlag) {
-            unless ($filter) {
-                require FileMgt106::CLI::Miscellaneous;
-                $filter =
-                  FileMgt106::CLI::Miscellaneous::makeHintsFilterQuick( $hints,
-                    $filterFlag );
-                $filter->($_) foreach @baseScalars;
-            }
-            warn "Filtering '$path$fileExtension' with $filterFlag";
-            $scalar = $filter->($scalar);
-            undef $filter if $filterFlag =~ /separate/i;
-        }
-        elsif ( $dir =~ /(.+)\+missing$/s && -d $1 ) {
+        if ( $dir =~ /(.+)\+missing$/s && -d $1 ) {
             my $rgid = ( stat _ )[STAT_GID];
             chdir $1 or die "chdir $1: $!";
             $dir = decode_utf8 getcwd();
@@ -476,20 +431,11 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+((?:filter).*)$/) {
-                $filterFlag = $1;
-                next;
+                die 'scan.pl does not support -filter any more; use extract.pl';
             }
             elsif (/^-+((?:split|explode).*)$/) {
-                $filterFlag = $1 . 'nodb';
-                next;
-            }
-            elsif (/^-+base=(.*)/) {
-                $filterFlag .= 'nodb';
-                @baseScalars =
-                  map { FileMgt106::LoadSave::loadNormalisedScalar($_); }
-                  split /:/,
-                  $1;
-                next;
+                die
+'scan.pl does not support -split or -explode any more; use extract.pl';
             }
             elsif (/^-+grab=?(.*)/) {
                 push @grabSources, $1 || '';
@@ -537,8 +483,7 @@ sub makeProcessor {
             }
             $hints ||=
               FileMgt106::Database->new(
-                catfile( dirname($perl5dir), '~$hints' ) )
-              unless $filterFlag && $filterFlag =~ /nodb/i;
+                catfile( dirname($perl5dir), '~$hints' ) );
             if (/^-+aperture=?(.*)/) {
                 my $jbzDir = $startFolder;
                 if ($1) {
@@ -555,31 +500,10 @@ sub makeProcessor {
                 $self->migrate( undef, $1 );
                 next;
             }
-            if ( /^-+$/ && $filterFlag ) {
-                unless ($filter) {
-                    require FileMgt106::CLI::Miscellaneous;
-                    $filter =
-                      FileMgt106::CLI::Miscellaneous::makeHintsFilterQuick(
-                        $hints, $filterFlag );
-                    $filter->($_) foreach @baseScalars;
-                }
-                local undef $/;
-                binmode STDIN;
-                binmode STDOUT;
-                print encode_json( $filter->( decode_json(<STDIN>) ) || {} );
-                next;
-            }
             if (/^-+missing=(.*)/) {
                 chdir $startFolder;
                 $missing = FileMgt106::LoadSave::loadNormalisedScalar($1);
                 push @grabSources, '';
-                next;
-            }
-            if (/^-+known=(.*)/) {
-                $filterFlag ||= 'known';
-                undef $filter;
-                push @baseScalars,
-                  FileMgt106::LoadSave::loadNormalisedScalar($1);
                 next;
             }
 

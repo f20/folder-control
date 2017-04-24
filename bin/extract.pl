@@ -2,7 +2,7 @@
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -30,8 +30,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use warnings;
 use strict;
 use utf8;
-use Carp;
-$SIG{__DIE__} = \&Carp::confess;
 use Cwd qw(getcwd);
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname);
