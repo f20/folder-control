@@ -291,9 +291,21 @@ sub new {
                 else {
                     if ( $noMkDir && !$target->{"$_.jbz"} ) {
                         require FileMgt106::LoadSave;
-                        unlink "$_.jbz";
-                        FileMgt106::LoadSave::saveJbzPretty( "$_.jbz",
+                        my $tjbz = "$_.$$.jbz";
+                        FileMgt106::LoadSave::saveJbzPretty( $tjbz,
                             delete $target->{$_} );
+                        if (
+                            !-e "$_.jbz"
+                            || FileMgt106::FileSystem::filesDiffer(
+                                "$_.jbz", $tjbz
+                            )
+                          )
+                        {
+                            rename $tjbz, "$_.jbz";
+                        }
+                        else {
+                            unlink $tjbz;
+                        }
                         undef $targetHasBeenApplied{"$_.jbz"};
                     }
                     elsif ( mkdir $_ and $rstat->($_) ) {
