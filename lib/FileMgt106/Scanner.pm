@@ -41,6 +41,7 @@ my $_sha1Empty   = $_sha1Machine->digest;
 sub new {
 
     my ( $className, $dir, $hints, $rstat ) = @_;
+    my $noMkDir      = -e "$dir/" . '~$nomkdir';
     my $allowActions = $rstat;
     $rstat = FileMgt106::FileSystem->justLookingStat
       unless $allowActions;
@@ -288,7 +289,14 @@ sub new {
                     push @list, $_ if $create->( $_, $locid, $target, $dev );
                 }
                 else {
-                    if ( mkdir $_ and $rstat->($_) ) {
+                    if ( $noMkDir && !$target->{"$_.jbz"} ) {
+                        require FileMgt106::LoadSave;
+                        unlink "$_.jbz";
+                        FileMgt106::LoadSave::saveJbzPretty( "$_.jbz",
+                            delete $target->{$_} );
+                        undef $targetHasBeenApplied{"$_.jbz"};
+                    }
+                    elsif ( mkdir $_ and $rstat->($_) ) {
                         push @list, $_;
                     }
                     else {
