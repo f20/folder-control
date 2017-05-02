@@ -176,7 +176,10 @@ sub process {
                 my $missing =
                   $processScal->( FileMgt106::LoadSave::normaliseHash($_) );
                 if ($missing) {
-                    if ( keys %$missing == 1 ) {
+                    if ( !$missingCompilation ) {
+                        $missingCompilation = $missing;
+                    }
+                    elsif ( keys %$missing == 1 ) {
                         my ( $k, $v ) = %$missing;
                         $missingCompilation->{"$k $_"} = $v;
                     }
