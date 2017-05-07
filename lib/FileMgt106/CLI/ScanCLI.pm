@@ -491,9 +491,12 @@ sub makeProcessor {
                     chdir $1 and $jbzDir = decode_utf8 getcwd();
                 }
                 require FileMgt106::ScanMasterAperture;
-                $_->updateJbz( $hints, $jbzDir )
-                  foreach FileMgt106::ScanMasterAperture
-                  ->findOrMakeApertureLibraries( $hints, @_ );
+                eval {
+                    $_->updateJbz( $hints, $jbzDir )
+                      foreach FileMgt106::ScanMasterAperture
+                      ->findOrMakeApertureLibraries( $hints, @_ );
+                };
+                warn "Aperture scan: $@" if $@;
                 last;
             }
             elsif (/^-+migrate(?:=(.+))?/) {
