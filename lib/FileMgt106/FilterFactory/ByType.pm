@@ -78,7 +78,7 @@ sub explodeByType {
               || $ext eq 'm4a'
               || $ext eq 'aa'
               || $ext eq 'aax';
-            $cat = 'Camera'
+            $cat = "Camera_$ext"
               if $ext eq 'nef' || $ext eq 'raw' || $ext eq 'arw';
             $cat = 'Config'
               if $ext eq 'conf' || $ext eq 'xml' || $ext eq 'plist';
@@ -88,10 +88,11 @@ sub explodeByType {
               if $ext =~ /^doc/s || $ext eq 'rtf' || $ext eq 'odt';
             $cat = 'IPA'
               if $ext eq 'ipa';
-            $cat = 'Image'
+            $cat = 'Image_jpg'
               if $ext eq 'jpg'
-              || $ext eq 'jpeg'
-              || $ext eq 'png'
+              || $ext eq 'jpeg';
+            $cat = "Image_$ext"
+              if $ext eq 'png'
               || $ext eq 'gif';
             $cat = 'JBZ'
               if $ext eq 'jbz';
