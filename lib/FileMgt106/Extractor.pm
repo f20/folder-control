@@ -495,18 +495,8 @@ sub _copyFile {
 
 sub makeHintsFilter {
 
-    my ( $hintsFile, $devAnchor ) = @_;
-    my ( $devNo, $devOnly );
-    if ($devAnchor) {
-        $devNo   = ( stat $devAnchor )[STAT_DEV];
-        $devOnly = 1;
-    }
-    elsif ( defined $devAnchor ) {
-        $devNo = 0;
-    }
-    else {
-        $devNo = ( stat $hintsFile )[STAT_DEV];
-    }
+    my ( $hintsFile, $devNo, $devOnly ) = @_;
+
     my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
     my %seen;
     my $sha1Machine;

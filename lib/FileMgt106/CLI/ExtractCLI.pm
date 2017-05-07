@@ -37,6 +37,8 @@ use File::Spec::Functions qw(catfile);
 use JSON;
 use FileMgt106::LoadSave;
 
+use constant { STAT_DEV => 0, };
+
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
@@ -128,9 +130,25 @@ sub process {
         }
 
         if (/^-+filter=?(.*)/i) {
-            require FileMgt106::Extractor;
-            $processScal =
-              FileMgt106::Extractor::makeHintsFilter( $hintsFile, $1 );
+            my ( $devNo, $devOnly );
+            if ($1) {
+                if ( my @stat = stat $1 ) {
+                    $devNo   = $stat[STAT_DEV];
+                    $devOnly = 1;
+                }
+            }
+            elsif ( my @stat = stat $hintsFile ) {
+                $devNo = $stat[STAT_DEV];
+            }
+            if ($devNo) {
+                require FileMgt106::Extractor;
+                $processScal =
+                  FileMgt106::Extractor::makeHintsFilter( $hintsFile, $devNo,
+                    $devOnly );
+            }
+            else {
+                $processScal = FileMgt106::LoadSave::makeInfillFilter();
+            }
             next;
         }
 

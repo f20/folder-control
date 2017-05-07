@@ -685,7 +685,8 @@ sub new {
                 if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/is ) {
                     warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
-                        $filter = _makeInfillFilter();
+                        require FileMgt106::LoadSave;
+                        $filter = FileMgt106::LoadSave::makeInfillFilter();
                         $hashref = $scanDir->( $locid, $path )
                           if $runningUnderWatcher;
                         $filter->($hashref);
@@ -859,31 +860,6 @@ my @_charset =
 
 sub _randomString {
     join '', map { $_charset[ rand(32) ] } 1 .. $_[0];
-}
-
-sub _makeInfillFilter {
-    my %done;
-    my $filter;
-    $filter = sub {
-        my ($hash) = @_;
-        my %newHash;
-        foreach ( sort { length $a <=> length $b } keys %$hash ) {
-            my $what = $hash->{$_};
-            if ( ref $what eq 'HASH' ) {
-                $what = $filter->($what);
-                $newHash{$_} = $what if $what;
-            }
-            elsif ( $what && !$done{$what} ) {
-                $done{$what} = 1;
-                s/\s+/ /gs;
-                s/^ //;
-                s/ \././g;
-                s/ $//;
-                $newHash{ $_ || ( '__' . rand() ) } = $what;
-            }
-        }
-        keys %newHash ? \%newHash : undef;
-    };
 }
 
 1;
