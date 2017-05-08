@@ -163,7 +163,6 @@ sub process {
             local undef $/;
             binmode STDIN;
             my $missingCompilation;
-            FileMgt106::LoadSave::setNormalisation('win');
             my $stdin = <STDIN>;
             foreach (
                 eval { decode_json($stdin); } || map {
