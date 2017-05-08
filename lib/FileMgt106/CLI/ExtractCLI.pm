@@ -175,11 +175,10 @@ sub process {
                             +{ $_ => decode_json(<$fh>), };
                         }
                         else {
-                            +{
-                                $_ =>
-                                  FileMgt106::LoadSave::loadNormalisedScalar(
-                                    $_),
-                            };
+                            my $scalar =
+                              FileMgt106::LoadSave::loadNormalisedScalar($_);
+                            tr#/#|#;
+                            +{ $_ => $scalar };
                         }
                     }
                     else {
@@ -190,8 +189,7 @@ sub process {
                 $stdin
               )
             {
-                my $missing =
-                  $processScal->( FileMgt106::LoadSave::normaliseHash($_) );
+                my $missing = $processScal->($_);
                 if ($missing) {
                     if ( !$missingCompilation ) {
                         $missingCompilation = $missing;
