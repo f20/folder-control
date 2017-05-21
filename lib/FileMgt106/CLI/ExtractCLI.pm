@@ -172,6 +172,7 @@ sub process {
                             open my $fh, '<', $_;
                             binmode $fh;
                             local undef $/;
+                            tr#/#|#;
                             +{ $_ => decode_json(<$fh>), };
                         }
                         else {
