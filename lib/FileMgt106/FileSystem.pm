@@ -229,16 +229,15 @@ sub statFromGidAndMapping {
         # 0 = we know nothing about this gid.
         my $groupStatus = $groupStatusHashref->{ $stat[STAT_GID] } || 0;
 
-        if ( !$> && $groupStatus < 400 ) {
-            if (   $groupStatus == 279
-                || !$readOnlyFile
-                || !$allowGroupReadACL->( $name, $stat[STAT_DEV] ) )
-            {
-                chown( -1, $rgid, $name ) or return @stat;
-                $stat[STAT_GID]      = $rgid;
-                $stat[STAT_CHMODDED] = 1;
-                $groupStatus         = 431;
-            }
+        if (    $groupStatus < 400
+            and $groupStatus == 279
+            || !$readOnlyFile
+            || !$allowGroupReadACL->( $name, $stat[STAT_DEV] )
+            and chown( -1, $rgid, $name ) )
+        {
+            $stat[STAT_GID]      = $rgid;
+            $stat[STAT_CHMODDED] = 1;
+            $groupStatus         = 431;
         }
         if ( defined $force && -f _ && $force > $stat[STAT_MTIME] ) {
             $readOnlyFile = 1;
@@ -268,7 +267,7 @@ sub statFromGidAndMapping {
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
         }
         @stat;
-    };
+      }
 }
 
 1;
