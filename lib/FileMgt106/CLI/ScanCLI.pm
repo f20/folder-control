@@ -402,7 +402,7 @@ sub makeProcessor {
 
             local $_ = decode_utf8 $_;
 
-            if (/^-+watch=?(.*)/) {
+            if (/^-+watch(?:=(.*))?/) {
                 my $module   = 'Daemon112::SimpleWatch';
                 my $nickname = 'watch';
                 my $logging  = $1;

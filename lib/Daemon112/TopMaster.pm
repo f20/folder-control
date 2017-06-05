@@ -88,9 +88,10 @@ sub attach {
             } keys %$topMaster
           )
         {
-            $topMaster->{$_}->unwatchAll;
-            warn "Stopped watching $topMaster->{$_}";
-            delete $topMaster->{$_};
+            my $toBeDeleted = delete $topMaster->{$_};
+            $toBeDeleted->deleteCatalogue;
+            $toBeDeleted->unwatchAll;
+            warn "Stopped watching $toBeDeleted";
         }
         $hints->enqueue(
             $runner->{qu},

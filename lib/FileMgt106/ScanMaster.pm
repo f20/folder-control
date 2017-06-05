@@ -149,36 +149,46 @@ sub setRepoloc {
             my ( $scalar, $blobref, $runner ) = @_;
             my $run = sub {
                 my ($hints) = @_;
-                my $result =
-                  $hints->{updateSha1if}->( $self->[SHA1], $self->[ROOTLOCID] );
-                $hints->commit;
-                return if defined $result && $result == 0;
+                if ($scalar) {
+                    my $result =
+                      $hints->{updateSha1if}
+                      ->( $self->[SHA1], $self->[ROOTLOCID] );
+                    $hints->commit;
+                    return if defined $result && $result == 0;
+                }
 
                 # my $pid = fork;
                 # return if $pid;
                 # POSIX::setsid() if defined $pid;
 
                 if ( chdir $gitFolder ) {
-                    warn "Catalogue update for $self";
-                    open my $f, '>', "$name.txt.$$";
-                    binmode $f;
-                    print {$f} $$blobref;
-                    close $f;
-                    rename "$name.txt.$$", "$name.txt";
-
                     $ENV{PATH} =
                         '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                       . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                    system qw(git commit -q --untracked-files=no -m),
-                      $self->[DIR]
-                      if !system qw(git add), "$name.txt"
-                      or !system qw(git init)
-                      and !system qw(git add), "$name.txt";
-                    if ( defined $jbzFolder && -d $jbzFolder ) {
-                        system qw(bzip2), "$name.txt";
-                        rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
+                    if ($blobref) {
+                        warn "Catalogue update for $self";
+                        open my $f, '>', "$name.txt.$$";
+                        binmode $f;
+                        print {$f} $$blobref;
+                        close $f;
+                        rename "$name.txt.$$", "$name.txt";
+                        system qw(git commit -q --untracked-files=no -m),
+                          $self->[DIR]
+                          if !system qw(git add), "$name.txt"
+                          or !system qw(git init)
+                          and !system qw(git add), "$name.txt";
+                        if ( defined $jbzFolder && -d $jbzFolder ) {
+                            system qw(bzip2), "$name.txt";
+                            rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
+                        }
                     }
-
+                    else {
+                        warn "Removing catalogue for $self";
+                        unlink "$name.txt";
+                        system qw(git rm --cached), "$name.txt";
+                        system qw(git commit -q --untracked-files=no -m),
+                          "Removing $self->[DIR]";
+                    }
                 }
                 else {
                     warn "Cannot chdir to $gitFolder: $!";
@@ -338,6 +348,11 @@ sub dequeued {
 
 }
 
+sub deleteCatalogue {
+    my ($self) = @_;
+    $_->() foreach @{ $self->[SCALARTAKER] };
+}
+
 sub schedule {
     my ( $self, $ttr, $queue ) = @_;
     if ( exists $self->[QID] ) {
@@ -426,6 +441,7 @@ sub unwatchAll {
 
 sub extractCaseids {
     my ($hashref) = @_;
+    return unless $hashref;
     my @caseids;
     while ( my ( $k, $v ) = each %$hashref ) {
         if ( 'HASH' eq ref $v ) {

@@ -68,13 +68,19 @@ sub new {
           ( 'mid' => Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, ) );
         mkdir my $test1 = catdir( $top, 'test1' );
         mkdir my $test2 = catdir( $top, 'mid', 'test2' );
+        my $counter = 1002;
         my $makeRandoms;
         $makeRandoms = sub {
-            my $file = rand();
+            ++$counter;
+            unless ( $counter % 4 ) {
+                my $newtest1 = catdir( $top, 'test' . ( $counter / 4 ) );
+                rename $test1, $newtest1;
+                $test1 = $newtest1;
+            }
             chdir $test1;
-            `dd if=/dev/urandom of=test1-$file count=1`;
+            `dd if=/dev/urandom of=test1-$counter count=1`;
             chdir $test2;
-            `dd if=/dev/urandom of=test2-$file count=1`;
+            `dd if=/dev/urandom of=test2-$counter count=1`;
             $qu->enqueue( time + 8, $makeRandoms );
         };
         $pq->enqueue( time + 10, $makeRandoms );
