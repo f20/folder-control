@@ -89,7 +89,7 @@ sub attach {
           )
         {
             my $toBeDeleted = delete $topMaster->{$_};
-            $toBeDeleted->deleteCatalogue;
+            $toBeDeleted->updateCatalogue( undef, undef, $runner );
             $toBeDeleted->unwatchAll;
             warn "Stopped watching $toBeDeleted";
         }

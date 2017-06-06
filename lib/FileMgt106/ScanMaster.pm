@@ -348,9 +348,9 @@ sub dequeued {
 
 }
 
-sub deleteCatalogue {
-    my ($self) = @_;
-    $_->() foreach @{ $self->[SCALARTAKER] };
+sub updateCatalogue {
+    my ( $self, @args ) = @_;
+    $_->(@args) foreach @{ $self->[SCALARTAKER] };
 }
 
 sub schedule {
