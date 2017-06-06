@@ -35,7 +35,7 @@ use Encode qw(decode_utf8);
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(catdir rel2abs);
 binmode STDERR, ':utf8';
-my ( $startFolder, $perl5dir );
+my ( $startFolder, $perl5dir, @otherLibs );
 
 BEGIN {
     $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
@@ -51,11 +51,12 @@ BEGIN {
         last if $parent eq $homedir;
         $homedir = $parent;
     }
+    push @otherLibs, grep { -d $_; } catdir( $homedir, 'cpan' );
     chdir $perl5dir or die "chdir $perl5dir: $!";
     $perl5dir = decode_utf8 getcwd();
     chdir $startFolder;
 }
-use lib $perl5dir;
+use lib $perl5dir, @otherLibs;
 
 use FileMgt106::CLI::ExtractCLI;
 FileMgt106::CLI::ExtractCLI::process( $startFolder, $perl5dir, @ARGV );
