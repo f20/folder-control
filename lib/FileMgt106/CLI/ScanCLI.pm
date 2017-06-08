@@ -250,15 +250,10 @@ sub makeProcessor {
             my $destination = catdir( $syncDestination, basename($dir) );
             mkdir $destination;
             my ( @extrasSource, @extrasDestination );
-            push @extrasDestination, FileMgt106::FileSystem::noInodeStat()
-              if $destination =~ m#^/Volumes/#;
-            push @extrasSource, FileMgt106::FileSystem::noInodeStat()
-              if $dir =~ m#^/Volumes/#;
             my ($s) =
               FileMgt106::Scanner->new( $dir, $hints, @extrasSource )->scan;
-            require FileMgt106::CLI::Miscellaneous;
             FileMgt106::Scanner->new( $destination, $hints, @extrasDestination )
-              ->scan( 0, FileMgt106::CLI::Miscellaneous::simpleDedup($s) );
+              ->scan( 0, $s );
             $hints->commit;
             return;
         }
