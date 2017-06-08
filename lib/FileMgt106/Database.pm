@@ -2,7 +2,7 @@ package FileMgt106::Database;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -38,15 +38,12 @@ $hints->enqueue( $queue, sub { my ($hints) = @_; } );
 $hints->dequeued($runner);
 
 my $locid = $hints->{folder}->( $parid, $name, $dev, $ino );
-
 # {folder} will automatically duplicate and uproot trees for a folder found by dev/ino.
 
 my $locid = $hints->{topFolder}->( $path, $dev, $ino );
-
-# Like {folder}, but finds the parent itself.
+# {topFolder} works like {folder} to find a tree root.
 
 my ( $locid, $sha1, $looksChanged ) = $hints->{file}->( $parid, $name, $dev, $ino, $size, $mtime );
-
 # $sha1 will only be set if dev/ino/size/mtime passed as arguments agreed with the database,
 # possibly on a record duplicated from something found by dev/ino from another parid/name.
 
@@ -237,7 +234,7 @@ select name from locations where parid=? and name like ? order by name desc
 update locations set parid=null where locid=?
 update or replace locations set parid=?, name=? where parid=? and name=?
 update or replace locations set parid=?, name=? where locid=?
-insert or replace into locations (parid, name, rootid, ino, size, mtime, sha1) select ?, name, rootid, ino, size, mtime, sha1 from locations where locid=?
+insert or replace into locations (parid, name, rootid, ino, size, mtime, sha1) select ?, name, rootid, ino, size, mtime, case when size is null then null else sha1 end from locations where locid=?
 select 1 from locations where parid=? and sha1=? and (name=? or name like ?)
 EOL
     };
