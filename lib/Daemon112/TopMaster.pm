@@ -69,7 +69,7 @@ sub attach {
             if ( !$runner->{locs}{gitLastGarbageCollection}
                 || time - $runner->{locs}{gitLastGarbageCollection} > 86000
                 and chdir $gitrepo )
-            {
+            {    # Need a way to detect and remove abandoned catalogue files
                 warn "Running git gc in $gitrepo";
                 system qw(git gc);
                 $runner->{locs}{gitLastGarbageCollection} = time;
