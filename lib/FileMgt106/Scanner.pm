@@ -59,8 +59,14 @@ sub new {
         ^~\$|
         \.pyc$
       )/sx;
-    my $regexIgnoreFolderContents =
-      qr/\.(?:aplibrary|app|download|lrdata|tmp)$/s;
+    my $regexIgnoreFolderContents = qr/(?:
+        \.aplibrary|
+        \.app|
+        \.download|
+        \.lrdata|
+        \.tmp|
+        \(mirrored from .+\)
+      )$/sx;
     my $regexWatchThisFile =
       -e '/System/Library'
       ? qr/\.(?:R|c|cpp|css   |doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
@@ -68,7 +74,7 @@ sub new {
     my $regexCheckThisFile    = qr/\.xls$/is;
     my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
     my $regexMakeReadOnly     = qr/^[XY]_/is;
-    my $regexDoNotWatchFolder = qr/(?:^Y_|\(mirror)/is;
+    my $regexDoNotWatchFolder = qr/^Y_/is;
 
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
