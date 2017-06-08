@@ -2,7 +2,7 @@ package Daemon112::TopMaster;
 
 =head Copyright licence and disclaimer
 
-Copyright 2012-2016 Franck Latrémolière and Reckon LLP.
+Copyright 2012-2017 Franck Latrémolière and Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -31,7 +31,7 @@ use warnings;
 use strict;
 use utf8;
 use Cwd;
-use File::Spec::Functions qw(catdir);
+use File::Spec::Functions qw(catdir splitdir);
 use Encode qw(decode_utf8);
 use FileMgt106::ScanMaster;
 
@@ -64,22 +64,13 @@ sub attach {
     return $topMaster if $topMaster->{'/RESCANNER'};
 
     $topMaster->{'/RESCANNER'} = sub {
+
         my ($runner) = @_;
-        if ( my $gitrepo = $runner->{locs}{git} ) {
-            if ( !$runner->{locs}{gitLastGarbageCollection}
-                || time - $runner->{locs}{gitLastGarbageCollection} > 86000
-                and chdir $gitrepo )
-            {    # Need a way to detect and remove abandoned catalogue files
-                warn "Running git gc in $gitrepo";
-                system qw(git gc);
-                $runner->{locs}{gitLastGarbageCollection} = time;
-                warn "Finished git gc in $gitrepo";
-            }
-        }
         my $hints = $runner->{hints};
         warn "Scanning $root for $topMaster";
         my @list = $topMaster->_listDirectory($root);
         my %list = map { ( $_ => 1 ); } @list;
+
         foreach (
             grep {
                 !exists $list{$_}
@@ -107,6 +98,7 @@ sub attach {
                   foreach grep { !exists $list{$_} } @expected;
             }
         );
+
         my $time;
         foreach (@list) {
             my $dir = catdir( $root, $_ );
@@ -134,6 +126,43 @@ sub attach {
             $time ||= time + 2;
             $runner->{qu}->enqueue( ++$time, $scanMaster );
         }
+
+        if ( my $gitrepo = $runner->{locs}{git} ) {
+            if ( !$runner->{locs}{gitLastGarbageCollection}
+                || time - $runner->{locs}{gitLastGarbageCollection} > 86000
+                and chdir $gitrepo )
+            {
+                $ENV{PATH} =
+                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+                  . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
+                if (@list) {
+                    my @components =
+                      splitdir( $hints->{canonicalPath}->($root) );
+                    map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
+                    my $category =
+                      join( '.', map { length $_ ? $_ : '_' } @components )
+                      || 'No category';
+                    chdir $category;
+                    foreach ( split /\n/, `git ls-files` ) {
+                        s/\.txt$//s;
+                        next if exists $list{$_};
+                        warn "Removing catalogue for $root/$_";
+                        unlink "$_.txt";
+                        unlink "$runner->{locs}{jbz}/$category/$_.jbz"
+                          if defined $runner->{locs}{jbz}
+                          && -d $runner->{locs}{jbz};
+                        system qw(git rm --cached), "$_.txt";
+                        system qw(git commit -q --untracked-files=no -m),
+                          "Removing $root/$_";
+                    }
+                }
+                warn "Running git gc in $gitrepo";
+                system qw(git gc);
+                $runner->{locs}{gitLastGarbageCollection} = time;
+                warn "Finished git gc in $gitrepo";
+            }
+        }
+
     };
 
     Daemon112::Watcher->new( $topMaster->{'/RESCANNER'}, "Watcher: $root" )

@@ -185,6 +185,8 @@ sub setRepoloc {
                     else {
                         warn "Removing catalogue for $self";
                         unlink "$name.txt";
+                        unlink "$jbzFolder/$name.jbz"
+                          if defined $jbzFolder && -d $jbzFolder;
                         system qw(git rm --cached), "$name.txt";
                         system qw(git commit -q --untracked-files=no -m),
                           "Removing $self->[DIR]";
