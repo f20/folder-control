@@ -65,7 +65,7 @@ sub new {
         \.download|
         \.lrdata|
         \.tmp|
-        \(mirrored from .+\)
+        \ \(mirrored\ from\ .+\)
       )$/sx;
     my $regexWatchThisFile =
       -e '/System/Library'
