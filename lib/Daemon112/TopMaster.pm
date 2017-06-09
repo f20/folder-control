@@ -127,7 +127,7 @@ sub attach {
             $runner->{qu}->enqueue( ++$time, $scanMaster );
         }
 
-        if ( my $gitrepo = $runner->{locs}{git} and chdir $gitrepo ) {
+        if ( defined $runner->{locs}{git} && chdir $runner->{locs}{git} ) {
             $ENV{PATH} =
                 '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
               . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
@@ -155,10 +155,10 @@ sub attach {
                     || time - $runner->{locs}{gitLastGarbageCollection} >
                     86_100 )
                 {
-                    warn "Running git gc in $gitrepo";
+                    warn "Running git gc in $runner->{locs}{git}";
                     system qw(git gc);
                     $runner->{locs}{gitLastGarbageCollection} = time;
-                    warn "Finished git gc in $gitrepo";
+                    warn "Finished git gc in $runner->{locs}{git}";
                 }
             }
         }
