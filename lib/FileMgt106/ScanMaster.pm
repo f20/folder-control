@@ -167,7 +167,7 @@ sub setRepoloc {
                     $ENV{PATH} =
                         '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                       . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                    if ($blobref) {
+                    if ($scalar) {
                         warn "Catalogue update for $self";
                         open my $f, '>', "$name.txt.$$";
                         binmode $f;
