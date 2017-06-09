@@ -559,13 +559,8 @@ sub makeProcessor {
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
             unlink $canonical . $fileExtension;
-            my $target = FileMgt106::LoadSave::loadNormalisedScalar(
-                $catalogue,
-                sub {
-                    $_[0] !~ /^~WRL[0-9]+\.tmp$/s
-                      and $_[0] !~ /\.dta$/s;
-                }
-            );
+            my $target = FileMgt106::LoadSave::loadNormalisedScalar( $catalogue,
+                \&_filterUnwanted );
             delete $target->{$_} foreach grep { /\//; } keys %$target;
             my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
             foreach my $caseid (@caseids) {
@@ -594,6 +589,10 @@ sub makeProcessor {
 
 }
 
+sub _filterUnwanted {
+    $_[0] !~ /(?:^~WRL[0-9]+\.tmp|\.dta)$/s;
+}
+
 sub _chooserNoCaseids {
     my ( $catalogue, $canonical, $fileExtension ) = @_;
     unlink $canonical . $fileExtension;
@@ -601,13 +600,8 @@ sub _chooserNoCaseids {
         symlink rel2abs($catalogue), $canonical . $fileExtension;
         return;
     }
-    my $target = FileMgt106::LoadSave::loadNormalisedScalar(
-        $catalogue,
-        sub {
-            $_[0] !~ /^~WRL[0-9]+\.tmp$/s
-              and $_[0] !~ /\.dta$/s;
-        }
-    );
+    my $target = FileMgt106::LoadSave::loadNormalisedScalar( $catalogue,
+        \&_filterUnwanted );
     delete $target->{$_} foreach grep { /\//; } keys %$target;
     $target, $canonical;
 }
