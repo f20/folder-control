@@ -83,7 +83,9 @@ sub setRepoloc {
         my $dev = ( stat $self->[DIR] )[STAT_DEV];
         push @{ $self->[SCALARFILTER] }, sub {
             my ( $runner, $scalar ) = @_;
-            my @caseids = filterAndExtractCaseids($scalar);
+            my @caseids = extractCaseids($scalar);
+            delete $scalar->{$_}
+              foreach grep { / \(mirrored from .+\)$/is; } keys %$scalar;
             unless ( "@caseids" eq "@{$self->[CASEIDS]}" ) {
                 $self->[CASEIDS] = \@caseids;
                 my $updateHintsDb = sub {
@@ -443,14 +445,13 @@ sub unwatchAll {
     $self;
 }
 
-sub filterAndExtractCaseids {
+sub extractCaseids {
     my ($hashref) = @_;
     return unless $hashref;
     my @caseids;
     while ( my ( $k, $v ) = each %$hashref ) {
         if ( 'HASH' eq ref $v ) {
             push @caseids, extractCaseids($v);
-            delete $hashref->{$k} if $k =~ / \(mirrored from .+\)$/is;
         }
         elsif ( $k =~ /\.caseid$/is && $v =~ /^[0-9a-f]{40}$/is ) {
             push @caseids, pack( 'H*', $v );
