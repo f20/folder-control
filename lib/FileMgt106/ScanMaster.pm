@@ -349,9 +349,15 @@ sub takeScalar {
         $_->( $runner, $scalar ) foreach @{ $self->[SCALARFILTER] };
     }
     if ( $self->[SCALARTAKER] ) {
-        my $blob    = JSON->new->canonical(1)->utf8->pretty->encode($scalar);
-        my $newSha1 = sha1($blob);
-        unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
+        my ( $blob, $newSha1 );
+        if ($scalar) {
+            $blob    = JSON->new->canonical(1)->utf8->pretty->encode($scalar);
+            $newSha1 = sha1($blob);
+        }
+        unless ( defined $newSha1
+            && defined $self->[SHA1]
+            && $self->[SHA1] eq $newSha1 )
+        {
             $self->[SHA1] = $newSha1;
             $_->( $scalar, \$blob, $runner ) foreach @{ $self->[SCALARTAKER] };
         }
