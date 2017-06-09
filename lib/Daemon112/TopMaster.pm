@@ -117,7 +117,7 @@ sub attach {
                 $topMaster->{'/postwatch'}->( $scanMaster, $_ )
                   if $topMaster->{'/postwatch'};
             }
-            elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
+            elsif ( UNIVERSAL::can( $scanMaster, 'attach' ) ) {
                 $scanMaster->attach( $dir, $runner );
             }
             else {
@@ -127,39 +127,39 @@ sub attach {
             $runner->{qu}->enqueue( ++$time, $scanMaster );
         }
 
-        if ( my $gitrepo = $runner->{locs}{git} ) {
-            if ( !$runner->{locs}{gitLastGarbageCollection}
-                || time - $runner->{locs}{gitLastGarbageCollection} > 86000
-                and chdir $gitrepo )
-            {
-                $ENV{PATH} =
-                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
-                  . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                if (@list) {
-                    my @components =
-                      splitdir( $hints->{canonicalPath}->($root) );
-                    map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
-                    my $category =
-                      join( '.', map { length $_ ? $_ : '_' } @components )
-                      || 'No category';
-                    chdir $category;
-                    foreach ( split /\n/, `git ls-files` ) {
-                        s/\.txt$//s;
-                        next if exists $list{$_};
-                        warn "Removing catalogue for $root/$_";
-                        unlink "$_.txt";
-                        unlink "$runner->{locs}{jbz}/$category/$_.jbz"
-                          if defined $runner->{locs}{jbz}
-                          && -d $runner->{locs}{jbz};
-                        system qw(git rm --cached), "$_.txt";
-                        system qw(git commit -q --untracked-files=no -m),
-                          "Removing $root/$_";
-                    }
+        if ( my $gitrepo = $runner->{locs}{git} and chdir $gitrepo ) {
+            $ENV{PATH} =
+                '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+              . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
+            if (@list) {
+                my @components =
+                  splitdir( $hints->{canonicalPath}->($root) );
+                map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
+                my $category =
+                  join( '.', map { length $_ ? $_ : '_' } @components )
+                  || 'No category';
+                chdir $category;
+                foreach ( split /\n/, `git ls-files` ) {
+                    s/\.txt$//s;
+                    next if exists $list{$_};
+                    warn "Removing catalogue for $root/$_";
+                    unlink "$_.txt";
+                    unlink "$runner->{locs}{jbz}/$category/$_.jbz"
+                      if defined $runner->{locs}{jbz}
+                      && -d $runner->{locs}{jbz};
+                    system qw(git rm --cached), "$_.txt";
+                    system qw(git commit -q --untracked-files=no -m),
+                      "Removing $root/$_";
                 }
-                warn "Running git gc in $gitrepo";
-                system qw(git gc);
-                $runner->{locs}{gitLastGarbageCollection} = time;
-                warn "Finished git gc in $gitrepo";
+                if ( !$runner->{locs}{gitLastGarbageCollection}
+                    || time - $runner->{locs}{gitLastGarbageCollection} >
+                    86_100 )
+                {
+                    warn "Running git gc in $gitrepo";
+                    system qw(git gc);
+                    $runner->{locs}{gitLastGarbageCollection} = time;
+                    warn "Finished git gc in $gitrepo";
+                }
             }
         }
 
