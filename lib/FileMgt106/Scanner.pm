@@ -110,7 +110,7 @@ sub new {
                 $sha1 = pack( 'H*', $1 );
             }
             elsif ( symlink $whatYouWant->{$name}, $fileName ) {
-                delete $whatYouWant->{$name} if ref $whatYouWant;
+                delete $whatYouWant->{$name};
                 return 1;
             }
             else {
@@ -123,7 +123,10 @@ sub new {
         }
         my @stat;
         if ( $sha1 eq $_sha1Empty ) {
-            open my $fh, '>', $fileName or return;
+            if ( open my $fh, '>', $fileName ) {
+                warn "Could not create empty file $fileName";
+                return;
+            }
             @stat = $rstat->($fileName);
         }
         else {
