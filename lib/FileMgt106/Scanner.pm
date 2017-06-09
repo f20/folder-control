@@ -64,17 +64,19 @@ sub new {
         \.app|
         \.download|
         \.lrdata|
-        \.tmp|
-        \ \(mirrored\ from\ .+\)
+        \.tmp
       )$/sx;
+
     my $regexWatchThisFile =
       -e '/System/Library'
       ? qr/\.(?:R|c|cpp|css   |doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
       : qr/\.(?:R|c|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
-    my $regexCheckThisFile    = qr/\.xls$/is;
+    my $regexCheckThisFile = qr/\.xls$/is;
+
+    my $regexDoNotWatchFolder = qr/^Y_| \(mirrored from .+\)$/is;
     my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
-    my $regexMakeReadOnly     = qr/^[XY]_/is;
-    my $regexDoNotWatchFolder = qr/^Y_/is;
+
+    my $regexMakeReadOnly = qr/^[XY]_/is;
 
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );

@@ -46,20 +46,21 @@ use FileMgt106::FileSystem;
 use JSON;
 
 use constant {
-    DIR         => 0,
-    HINTS       => 1,
-    REPO        => 2,
-    WATCHING    => 3,
-    WATCHERS    => 4,
-    SCALAR      => 5,
-    QID         => 6,
-    TTR         => 7,
-    RESCANTIME  => 8,
-    ROOTLOCID   => 9,
-    SHA1        => 10,
-    FROTL       => 11,
-    SCALARTAKER => 12,
-    CASEIDS     => 13,
+    DIR          => 0,
+    HINTS        => 1,
+    REPO         => 2,
+    WATCHING     => 3,
+    WATCHERS     => 4,
+    SCALAR       => 5,
+    QID          => 6,
+    TTR          => 7,
+    RESCANTIME   => 8,
+    ROOTLOCID    => 9,
+    SHA1         => 10,
+    FROTL        => 11,
+    SCALARTAKER  => 12,
+    CASEIDS      => 13,
+    SCALARFILTER => 14,
 };
 
 sub new {
@@ -80,11 +81,10 @@ sub setRepoloc {
     if ($caseidRoot) {
         $self->[CASEIDS] = ['uninitialised'];
         my $dev = ( stat $self->[DIR] )[STAT_DEV];
-        $self->addScalarTaker(
-            sub {
-                my ( $scalar, undef, $runner ) = @_;
-                my @caseids = extractCaseids($scalar);
-                return if "@caseids" eq "@{$self->[CASEIDS]}";
+        push @{ $self->[SCALARFILTER] }, sub {
+            my ( $runner, $scalar ) = @_;
+            my @caseids = filterAndExtractCaseids($scalar);
+            unless ( "@caseids" eq "@{$self->[CASEIDS]}" ) {
                 $self->[CASEIDS] = \@caseids;
                 my $updateHintsDb = sub {
                     my ($hints) = @_;
@@ -105,7 +105,7 @@ sub setRepoloc {
                 };
                 $self->[HINTS]->enqueue( $runner->{pq}, $updateHintsDb );
             }
-        );
+        };
     }
 
     my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
@@ -335,24 +335,26 @@ sub dequeued {
         $runner->{qu}
     ) if $runner;
 
-    if ( $self->[SCALARTAKER] ) {
-        my $blob =
-          JSON->new->canonical(1)->utf8->pretty->encode( $self->[SCALAR] );
-        my $newSha1 = sha1($blob);
-        unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
-            $self->[SHA1] = $newSha1;
-            $_->( $self->[SCALAR], \$blob, $runner )
-              foreach @{ $self->[SCALARTAKER] };
-        }
-    }
+    $self->takeScalar( $runner, $self->[SCALAR] );
 
     $self;
 
 }
 
-sub updateCatalogue {
-    my ( $self, @args ) = @_;
-    $_->(@args) foreach @{ $self->[SCALARTAKER] };
+sub takeScalar {
+    my ( $self, $runner, $scalar ) = @_;
+    if ( $scalar && $self->[SCALARFILTER] ) {
+        $_->( $runner, $scalar ) foreach @{ $self->[SCALARFILTER] };
+    }
+    if ( $self->[SCALARTAKER] ) {
+        my $blob    = JSON->new->canonical(1)->utf8->pretty->encode($scalar);
+        my $newSha1 = sha1($blob);
+        unless ( defined $self->[SHA1] && $self->[SHA1] eq $newSha1 ) {
+            $self->[SHA1] = $newSha1;
+            $_->( $scalar, \$blob, $runner ) foreach @{ $self->[SCALARTAKER] };
+        }
+    }
+
 }
 
 sub schedule {
@@ -441,13 +443,14 @@ sub unwatchAll {
     $self;
 }
 
-sub extractCaseids {
+sub filterAndExtractCaseids {
     my ($hashref) = @_;
     return unless $hashref;
     my @caseids;
     while ( my ( $k, $v ) = each %$hashref ) {
         if ( 'HASH' eq ref $v ) {
             push @caseids, extractCaseids($v);
+            delete $hashref->{$k} if $k =~ / \(mirrored from .+\)$/is;
         }
         elsif ( $k =~ /\.caseid$/is && $v =~ /^[0-9a-f]{40}$/is ) {
             push @caseids, pack( 'H*', $v );
