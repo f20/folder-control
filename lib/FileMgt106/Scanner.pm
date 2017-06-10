@@ -123,7 +123,7 @@ sub new {
         }
         my @stat;
         if ( $sha1 eq $_sha1Empty ) {
-            if ( open my $fh, '>', $fileName ) {
+            unless ( open my $fh, '>', $fileName ) {
                 warn "Could not create empty file $fileName";
                 return;
             }
