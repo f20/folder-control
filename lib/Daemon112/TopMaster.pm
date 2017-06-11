@@ -117,7 +117,7 @@ sub attach {
                 $topMaster->{'/postwatch'}->( $scanMaster, $_ )
                   if $topMaster->{'/postwatch'};
             }
-            elsif ( UNIVERSAL::can( $scanMaster, 'attach' ) ) {
+            elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
                 $scanMaster->attach( $dir, $runner );
             }
             else {
