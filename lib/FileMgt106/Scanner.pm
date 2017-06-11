@@ -276,6 +276,7 @@ sub new {
             $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
         }
         my $target = !defined $watchMaster && $hashref;
+        $hashref = {} if $target || !$hashref;
         if ($target) {
             $noMkDir ||= -e '~$nomkdir';
             undef $noMkDir if $noMkDir && -e '~$yesmkdir';

@@ -420,7 +420,6 @@ sub watchFolder {
                         return;
                     }
                     my $newsha1 = sha1_base64( freeze($hashref) );
-                    0 and warn "$self: $newsha1 v $frozensha1";
                     if ( $newsha1 ne $frozensha1 ) {
                         $frozensha1 = $newsha1;
                         $self->schedule( time + 5, $runner->{qu} );
