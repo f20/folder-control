@@ -165,6 +165,7 @@ sub attach {
                     warn "Finished git gc in $runner->{locs}{git}";
                 }
             }
+            chdir $root;
         }
 
     };
