@@ -58,5 +58,10 @@ BEGIN {
 use lib $perl5dir;
 
 use FileMgt106::CLI::ScanCLI;
-FileMgt106::CLI::ScanCLI->new( $startFolder, $perl5dir )->process(@ARGV);
-
+FileMgt106::CLI::ScanCLI->new( $startFolder, $perl5dir )->process(
+    grep {
+        /^-+carp$/s
+          ? ( require Carp, $SIG{__DIE__} = \&Carp::confess, undef )
+          : 1;
+    } @ARGV
+);

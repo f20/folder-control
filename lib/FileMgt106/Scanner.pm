@@ -41,7 +41,6 @@ my $_sha1Empty   = $_sha1Machine->digest;
 sub new {
 
     my ( $className, $dir, $hints, $rstat ) = @_;
-    my $noMkDir      = -e "$dir/" . '~$nomkdir';
     my $allowActions = $rstat;
     $rstat = FileMgt106::FileSystem->justLookingStat
       unless $allowActions;
@@ -267,7 +266,7 @@ sub new {
     my $scanDir;
     $scanDir = sub {
         my ( $locid, $path, $forceReadOnlyTimeLimit, $watchMaster, $hashref,
-            $stasher, $backuper, $reserveWatchMaster, )
+            $stasher, $backuper, $reserveWatchMaster, $noMkDir, )
           = @_;
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > 1_999_999_999;
@@ -277,7 +276,10 @@ sub new {
             $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
         }
         my $target = !defined $watchMaster && $hashref;
-        $hashref = {} if $target || !$hashref;
+        if ($target) {
+            $noMkDir ||= -e '~$nomkdir';
+            undef $noMkDir if $noMkDir && -e '~$yesmkdir';
+        }
         $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
             $forceReadOnlyTimeLimit, $stasher, $backuper )
           if $watchMaster;
@@ -300,7 +302,8 @@ sub new {
                     push @list, $_ if $create->( $_, $locid, $target, $dev );
                 }
                 else {
-                    if ( $noMkDir && !$target->{"$_.jbz"} ) {
+                    if ( $noMkDir && ref $target->{$_} && !$target->{"$_.jbz"} )
+                    {
                         require FileMgt106::LoadSave;
                         my $tjbz = "$_.$$.jbz";
                         FileMgt106::LoadSave::saveJbzPretty( $tjbz,
@@ -646,6 +649,7 @@ sub new {
                         $stasherForChild,
                         $backuperForChild,
                         $reserveWatchMasterForChild,
+                        $noMkDir,
                     );
 
                     delete $target->{$_}

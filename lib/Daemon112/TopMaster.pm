@@ -133,23 +133,27 @@ sub attach {
               . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
             if (@list) {
                 my @components =
-                  splitdir( $hints->{canonicalPath}->($root) );
+                  splitdir(
+                    $hints->{canonicalPath}->( catdir( $root, 'pad' ) ) );
+                pop @components;
                 map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
                 my $category =
                   join( '.', map { length $_ ? $_ : '_' } @components )
                   || 'No category';
-                chdir $category;
-                foreach ( split /\n/, `git ls-files` ) {
-                    s/\.txt$//s;
-                    next if exists $list{$_};
-                    warn "Removing catalogue for $root/$_";
-                    unlink "$_.txt";
-                    unlink "$runner->{locs}{jbz}/$category/$_.jbz"
-                      if defined $runner->{locs}{jbz}
-                      && -d $runner->{locs}{jbz};
-                    system qw(git rm --cached), "$_.txt";
-                    system qw(git commit -q --untracked-files=no -m),
-                      "Removing $root/$_";
+                if ( chdir $category ) {
+                    foreach ( split /\n/, `git ls-files` ) {
+                        s/\.txt$//s;
+                        s/^_//s;
+                        next if exists $list{$_};
+                        warn "Removing catalogue for $root/$_";
+                        unlink "$_.txt";
+                        unlink "$runner->{locs}{jbz}/$category/$_.jbz"
+                          if defined $runner->{locs}{jbz}
+                          && -d $runner->{locs}{jbz};
+                        system qw(git rm --cached), "$_.txt";
+                        system qw(git commit -q --untracked-files=no -m),
+                          "Removing $root/$_";
+                    }
                 }
                 if ( !$runner->{locs}{gitLastGarbageCollection}
                     || time - $runner->{locs}{gitLastGarbageCollection} >
