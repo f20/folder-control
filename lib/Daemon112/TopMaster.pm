@@ -143,7 +143,7 @@ sub attach {
                 if ( chdir $category ) {
                     foreach ( split /\n/, `git ls-files` ) {
                         s/\.txt$//s;
-                        s/^_//s;
+                        s/^_/./s;
                         next if exists $list{$_};
                         warn "Removing catalogue for $root/$_";
                         unlink "$_.txt";
