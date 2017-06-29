@@ -1,5 +1,3 @@
-BSD 2-Clause License
-
 Copyright (c) 2011-2017, Franck Latrémolière and others
 All rights reserved.
 
