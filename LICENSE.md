@@ -23,3 +23,12 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+github.com/f20/folder-control is a set of Perl scripts for file
+cataloguing, file backup, synchronisation and file-level deduplication.
+Sorry no documentation.
+
+Pre-requisites from CPAN: JSON and DBD::SQLite. Needed for some
+features: BSD::Resource, Email::MIME, IO::KQueue, Linux::Inotify, YAML.
+
+Franck Latrémolière
