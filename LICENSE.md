@@ -1,5 +1,4 @@
-Copyright (c) 2011-2017, Franck Latrémolière and others
-All rights reserved.
+Copyright (c) 2011-2017, Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
