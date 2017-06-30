@@ -84,8 +84,6 @@ sub setRepoloc {
         push @{ $self->[SCALARFILTER] }, sub {
             my ( $runner, $scalar ) = @_;
             my @caseids = extractCaseids($scalar);
-            delete $scalar->{$_}
-              foreach grep { / \(mirrored from .+\)$/is; } keys %$scalar;
             unless ( "@caseids" eq "@{$self->[CASEIDS]}" ) {
                 $self->[CASEIDS] = \@caseids;
                 my $updateHintsDb = sub {
@@ -107,6 +105,11 @@ sub setRepoloc {
                 };
                 $self->[HINTS]->enqueue( $runner->{pq}, $updateHintsDb );
             }
+            my %filtered;
+            while ( my ( $k, $v ) = each %$scalar ) {
+                $filtered{$k} = $v unless $k =~ / \(mirrored from .+\)$/is;
+            }
+            \%filtered;
         };
     }
 
@@ -346,7 +349,7 @@ sub dequeued {
 sub takeScalar {
     my ( $self, $runner, $scalar ) = @_;
     if ( $scalar && $self->[SCALARFILTER] ) {
-        $_->( $runner, $scalar ) foreach @{ $self->[SCALARFILTER] };
+        $scalar = $_->( $runner, $scalar ) foreach @{ $self->[SCALARFILTER] };
     }
     if ( $self->[SCALARTAKER] ) {
         my ( $blob, $newSha1 );
