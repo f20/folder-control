@@ -63,7 +63,7 @@ sub help {
     warn <<EOW;
 Usage:
     scan.pl -help
-    scan.pl -migrate <old-hints-file>
+    scan.pl -migrate[=<old-hints-file>]
     scan.pl <legacy-arguments>
 EOW
 }
@@ -114,8 +114,9 @@ sub migrate {
         rename '~$hints', $oldFileName
           or die "Cannot move ~\$hints to $oldFileName: $!";
     }
-    my $hints = FileMgt106::Database->new('~$hints')
-      or die "Cannot create new database";
+    my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
+    my $hints = FileMgt106::Database->new($hintsFile)
+      or die "Cannot create database $hintsFile";
     my $db = $hints->{dbHandle};
     $db->{AutoCommit} = 1;
     $hints->{dbHandle}
@@ -169,6 +170,8 @@ sub migrate {
         warn 'Committing changes';
         my $status;
         sleep 2 while !( $status = $db->commit );
+        FileMgt106::Database->new($hintsFile)
+          or die 'Cannot complete database initialisation';
     }
     else {
         warn 'New database is in use: no migration done';
