@@ -239,7 +239,11 @@ sub statFromGidAndMapping {
             $stat[STAT_CHMODDED] = 1;
             $groupStatus         = 431;
         }
-        if ( defined $force && -f _ && $force > $stat[STAT_MTIME] ) {
+        if (   -f _
+            && !$readOnlyFile
+            && defined $force
+            && $force > $stat[STAT_MTIME] )
+        {
             $readOnlyFile = 1;
             if ( !$> && $stat[STAT_UID] ) {
                 chown( 0, -1, $name ) or return @stat;
