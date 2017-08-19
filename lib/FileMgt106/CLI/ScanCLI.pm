@@ -575,6 +575,16 @@ sub makeProcessor {
                     lstat $canonical;
                     unlink $canonical if -l _;
                     rename $canonical, $destination if -d _;
+                    unless ( -d $destination ) {
+                        mkdir $destination;
+                        open my $fh, '>', catdir( $destination, '~$nomkdir' );
+                    }
+                    unless ( -d $destination ) {
+                        symlink rel2abs($catalogue),
+                          $destination . $fileExtension;
+                        symlink $folder, $canonical;
+                        return;
+                    }
                     symlink $destination, $canonical;
                     return ( $target, $destination );
                 }
