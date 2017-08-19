@@ -58,6 +58,7 @@ sub new {
         ^~\$|
         \.pyc$
       )/sx;
+
     my $regexIgnoreFolderContents = qr/(?:
         \.aplibrary|
         \.app|
@@ -68,12 +69,14 @@ sub new {
 
     my $regexWatchThisFile =
       -e '/System/Library'
-      ? qr/\.(?:R|c|cpp|css   |doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
-      : qr/\.(?:R|c|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
+      ? qr/\.(?:R|c|command|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
+      : qr/\.(?:R|c|command|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
+
     my $regexCheckThisFile = qr/\.xls$/is;
 
     my $regexDoNotWatchFolder = qr/^Y_| \(mirrored from .+\)$/is;
-    my $regexWatchThisFolder  = qr/^[OWXZ]_/is;
+
+    my $regexWatchThisFolder = qr/^[OWXZ]_/is;
 
     my $regexMakeReadOnly = qr/^[XY]_/is;
 
