@@ -311,6 +311,7 @@ sub makeProcessor {
                     my $missingFile = "$startFolder/+missing.jbz";
                     FileMgt106::LoadSave::saveJbz( $missingFile, $missing );
                     warn "Do your own grab: $missingFile\n";
+                    next;
                 }
                 my ( $cellarScanner, $cellarDir );
                 unless ( $grabSource eq 'done' ) {
