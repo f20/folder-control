@@ -63,6 +63,7 @@ sub new {
         \.aplibrary|
         \.app|
         \.download|
+        \.lrcat|
         \.lrdata|
         \.tmp
       )$/sx;
@@ -592,7 +593,7 @@ sub new {
                 }
                 else {
 
-                    if ($runningUnderWatcher) {
+                    if ( $runningUnderWatcher && $hashref->{$_} ) {
                         if (
                             $checkFolder->(
                                 $locid, $_, @stat[ STAT_DEV, STAT_INO ]
