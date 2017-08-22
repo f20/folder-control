@@ -270,7 +270,7 @@ sub new {
     my $scanDir;
     $scanDir = sub {
         my ( $locid, $path, $forceReadOnlyTimeLimit, $watchMaster, $hashref,
-            $stasher, $backuper, $reserveWatchMaster, $noMkDir, )
+            $stasher, $backuper, $reserveWatchMaster, )
           = @_;
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > 1_999_999_999;
@@ -281,10 +281,7 @@ sub new {
         }
         my $target = !defined $watchMaster && $hashref;
         $hashref = {} if $target || !$hashref;
-        if ($target) {
-            $noMkDir ||= -e '~$nomkdir';
-            undef $noMkDir if $noMkDir && -e '~$yesmkdir';
-        }
+        my $noMkDir = $target && -e '~$nomkdir';
         $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
             $forceReadOnlyTimeLimit, $stasher, $backuper )
           if $watchMaster;
@@ -656,7 +653,6 @@ sub new {
                         $stasherForChild,
                         $backuperForChild,
                         $reserveWatchMasterForChild,
-                        $noMkDir,
                     );
 
                     delete $target->{$_}
