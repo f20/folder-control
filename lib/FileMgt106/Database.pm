@@ -502,9 +502,11 @@ EOL
                 return unless @$a;
                 my ( $locid, $parid, $name, $rootid, $ino, $size, $mtime ) =
                   @{ shift @$a };
+                $name = decode_utf8 $name;
                 while ($parid) {
                     $qGetParidName->execute($parid);
                     my ( $grandid, $parname ) = $qGetParidName->fetchrow_array;
+                    $parname = decode_utf8 $parname;
                     $qGetParidName->finish;
                     next ITERATION unless defined $parname;
                     $name  = "$parname/$name";
