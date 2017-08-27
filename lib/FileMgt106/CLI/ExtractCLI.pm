@@ -211,15 +211,12 @@ sub process {
             $processScal->($_);
         }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-            if (
-                my $s = $processScal->(
-                    FileMgt106::LoadSave::loadNormalisedScalar($_), $1
-                )
-              )
-            {
-                s/(\.jbz|json\.bz2)$/+missing$1/s;
-                FileMgt106::LoadSave::saveJbzPretty( $_, $s );
-            }
+            my $s = $processScal->(
+                FileMgt106::LoadSave::loadNormalisedScalar($_), $1
+            );
+            s/(\.jbz|json\.bz2)$/+missing$1/s;
+            unlink $_;
+            FileMgt106::LoadSave::saveJbzPretty( $_, $s ) if $s;
         }
         elsif ($processQuery) {
             $processQuery->($_);

@@ -232,7 +232,6 @@ sub makeProcessor {
             utime time, $targetStatRef->[STAT_MTIME], $dir;
         }
         my $missingFile = "$path+missing.jbz";
-        $missingFile =~ s/\+missing\+missing/+missing/;
         unlink $missingFile;
         if ( ref $scalar && keys %$scalar ) {
             if (@grabSources) {
@@ -304,13 +303,13 @@ sub makeProcessor {
     };
 
     my $finish = sub {
+        unlink "$startFolder/+missing.jbz" if grep { !$_; } @grabSources;
         if ($missing) {
             my @rmdirList;
             foreach my $grabSource (@grabSources) {
                 unless ($grabSource) {
-                    my $missingFile = "$startFolder/+missing.jbz";
-                    FileMgt106::LoadSave::saveJbz( $missingFile, $missing );
-                    warn "Do your own grab: $missingFile\n";
+                    FileMgt106::LoadSave::saveJbz( "$startFolder/+missing.jbz",
+                        $missing );
                     next;
                 }
                 my ( $cellarScanner, $cellarDir );
