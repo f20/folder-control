@@ -162,7 +162,7 @@ sub attach {
       ->startWatching( $topMaster->{'/kq'}, $root )
       if $topMaster->{'/kq'};
 
-    $topMaster->dequeued($runner) if $runner;
+    $runner->{qu}->enqueue( time + 1, $topMaster ) if $runner;
 
     $topMaster;
 
