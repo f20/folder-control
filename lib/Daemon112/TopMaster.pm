@@ -45,21 +45,9 @@ sub new {
     bless {@_}, $class;
 }
 
-sub dumpState {
-    my ( $topMaster, $prefix ) = @_;
-    $prefix ||= "$topMaster/";
-    warn "TopMaster $prefix " . ( 0 + keys %$topMaster ) . ' keys';
-    return;
-    foreach ( sort keys %$topMaster ) {
-        warn "$prefix$_: $topMaster->{$_}\n";
-        $topMaster->{$_}->dumpState("$prefix$_/")
-          if UNIVERSAL::can( $topMaster->{$_}, 'dumpState' );
-    }
-}
-
 sub attach {
 
-    my ( $topMaster, $root ) = @_;
+    my ( $topMaster, $root, $runner ) = @_;
 
     return $topMaster if $topMaster->{'/RESCANNER'};
 
@@ -103,7 +91,7 @@ sub attach {
         foreach (@list) {
             my $dir = catdir( $root, $_ );
             if ( -l $dir || !-d _ ) {
-                warn "Cannot watch $dir: not a directory";
+                warn "Not watching $dir (not a directory)";
                 next;
             }
             my $scanMaster = $topMaster->{$_};
@@ -116,6 +104,8 @@ sub attach {
                   if $topMaster->{'/kq'};
                 $topMaster->{'/postwatch'}->( $scanMaster, $_ )
                   if $topMaster->{'/postwatch'};
+                $time ||= time + 2;
+                $runner->{qu}->enqueue( ++$time, $scanMaster );
             }
             elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
                 $scanMaster->attach( $dir, $runner );
@@ -123,8 +113,6 @@ sub attach {
             else {
                 next;
             }
-            $time ||= time + 2;
-            $runner->{qu}->enqueue( ++$time, $scanMaster );
         }
 
         if ( defined $runner->{locs}{git} && chdir $runner->{locs}{git} ) {
@@ -173,6 +161,8 @@ sub attach {
     Daemon112::Watcher->new( $topMaster->{'/RESCANNER'}, "Watcher: $root" )
       ->startWatching( $topMaster->{'/kq'}, $root )
       if $topMaster->{'/kq'};
+
+    $topMaster->dequeued($runner) if $runner;
 
     $topMaster;
 
