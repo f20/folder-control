@@ -80,9 +80,6 @@ payloads so Daemon112::ArrayQueue need not.
 
 =head1 Public Methods
 
-Daemon112::ArrayQueue is an API specification.  Subclasses like
-L<Daemon112::ArrayQueue> provide actual implementations.
-
 =head2 new
 
 Creates a new priority queue.  Returns a reference to the queue.
