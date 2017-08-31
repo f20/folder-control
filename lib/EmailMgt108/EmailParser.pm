@@ -116,12 +116,14 @@ sub parseMessage {
         my $subject = "@titles";
         $subject = substr( $subject, 0, 100 ) if length($subject) > 100;
         $subject =~ s/[. ]+$//;
-        $folder .= " $subject";
-        if ( -e $folder || -e "$folder.tmp" ) {
+        if ( -e "$folder $subject" || -e "$folder $subject.tmp" ) {
             my $counter = -2;
-            --$counter while -e $folder . $counter || -e "$folder$counter.tmp";
+            --$counter
+              while -e "$folder$counter $subject"
+              || -e "$folder$counter $subject.tmp";
             $folder .= $counter;
         }
+        $folder .= " $subject";
     }
     unless ( mkdir "$folder.tmp" ) {
         warn "Cannot make $folder.tmp for $emailFile: $!";
