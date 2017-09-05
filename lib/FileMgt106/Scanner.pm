@@ -310,7 +310,7 @@ sub new {
                     {
                         require FileMgt106::LoadSave;
                         my $tjbz = "$_.$$.jbz";
-                        FileMgt106::LoadSave::saveJbzPretty( $tjbz,
+                        FileMgt106::LoadSave::saveJbz( $tjbz,
                             delete $target->{$_} );
                         if (
                             !-e "$_.jbz"
@@ -695,7 +695,7 @@ sub new {
                     );
                     if ($missing) {
                         require FileMgt106::LoadSave;
-                        FileMgt106::LoadSave::saveJbzPretty(
+                        FileMgt106::LoadSave::saveJbz(
                             "$dir/$path$binName-failed.jbz", $missing );
                     }
                 }

@@ -32,7 +32,17 @@ use strict;
 use utf8;
 use Encode qw(decode_utf8);
 use Unicode::Normalize;
-use JSON;
+
+my $jsonMachine;
+
+sub jsonMachineMaker {
+    return $jsonMachine if $jsonMachine;
+    foreach (qw(JSON JSON::PP)) {
+        return $jsonMachine = $_->new->canonical(1)->utf8->pretty
+          if eval "require $_";
+    }
+    die 'No JSON module';
+}
 
 my $normaliser = -e '/System/Library' ? \&NFD : \&NFC;
 
@@ -134,7 +144,7 @@ sub loadNormalisedScalar {
         }
         local undef $/;
         binmode $fh;
-        $obj = decode_json(<$fh>);
+        $obj = jsonMachineMaker()->decode(<$fh>);
     };
     $obj ? normaliseHash( $obj, $keyFilter ) : undef;
 }
@@ -151,12 +161,7 @@ sub saveBzOctets {
 }
 
 sub saveJbz {
-    saveBzOctets( $_[0], JSON->new->canonical(1)->utf8->encode( $_[1] ) );
-}
-
-sub saveJbzPretty {
-    saveBzOctets( $_[0],
-        JSON->new->canonical(1)->utf8->pretty->encode( $_[1] ) );
+    saveBzOctets( $_[0], jsonMachineMaker()->encode( $_[1] ) );
 }
 
 sub parseText {

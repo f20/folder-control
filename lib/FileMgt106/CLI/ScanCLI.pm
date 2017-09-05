@@ -36,7 +36,6 @@ use Cwd qw(getcwd);
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs);
-use JSON;
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 use FileMgt106::LoadSave;
@@ -338,7 +337,9 @@ sub makeProcessor {
                           qq^| ssh $host 'perl "$extract" -tar -'^
                           . ' | tar -x -f -';
                         binmode $fh;
-                        print {$fh} encode_json($missing);
+                        print {$fh}
+                          FileMgt106::LoadSave::jsonMachineMaker()
+                          ->encode($missing);
                     }
                     require FileMgt106::FolderTidy;
                     $hints->beginInteractive(1);
@@ -380,7 +381,7 @@ sub makeProcessor {
                 last unless %$missing;
             }
             while ( my ( $dir, $stillMissing ) = each %$missing ) {
-                FileMgt106::LoadSave::saveJbzPretty(
+                FileMgt106::LoadSave::saveJbz(
                     catfile( $dir, "\N{U+26A0}.jbz" ),
                     $stillMissing )
                   if $stillMissing;

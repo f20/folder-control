@@ -34,7 +34,6 @@ use utf8;
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catfile);
-use JSON;
 use FileMgt106::LoadSave;
 
 use constant { STAT_DEV => 0, };
@@ -63,7 +62,7 @@ sub process {
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
                     s#/#..#g;
-                    FileMgt106::LoadSave::saveJbzPretty( "$path \$$_.jbz",
+                    FileMgt106::LoadSave::saveJbz( "$path \$$_.jbz",
                         ref $v ? $v : { $k => $v } );
                 }
                 return;
@@ -89,7 +88,7 @@ sub process {
                   );
                 $path =~ s/\.aplibrary$//s;
                 while ( my ( $k, $v ) = each %$exploded ) {
-                    FileMgt106::LoadSave::saveJbzPretty( "$path \$$k.jbz", $v )
+                    FileMgt106::LoadSave::saveJbz( "$path \$$k.jbz", $v )
                       if ref $v;
                 }
                 return;
@@ -165,7 +164,9 @@ sub process {
             my $missingCompilation;
             my $stdin = <STDIN>;
             foreach (
-                eval { decode_json($stdin); } || map {
+                eval {
+                    FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin);
+                } || map {
                     if ( -f $_ && /(?:.*)\.(jbz|json\.bz2|txt|json)$/s ) {
                         warn "Filtering $_";
                         if ( $1 eq 'txt' || $1 eq 'json' ) {
@@ -173,7 +174,8 @@ sub process {
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            +{ $_ => decode_json(<$fh>), };
+                            +{ $_ => FileMgt106::LoadSave::jsonMachineMaker()
+                                  ->decode(<$fh>) };
                         }
                         else {
                             my $scalar =
@@ -203,8 +205,7 @@ sub process {
                 }
             }
             unlink '+missing.jbz';
-            FileMgt106::LoadSave::saveJbzPretty( '+missing.jbz',
-                $missingCompilation )
+            FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
               if $missingCompilation;
         }
         elsif (/^[0-9a-f]{40}$/is) {
@@ -216,7 +217,7 @@ sub process {
             );
             s/(\.jbz|json\.bz2)$/+missing$1/s;
             unlink $_;
-            FileMgt106::LoadSave::saveJbzPretty( $_, $s ) if $s;
+            FileMgt106::LoadSave::saveJbz( $_, $s ) if $s;
         }
         elsif ($processQuery) {
             $processQuery->($_);

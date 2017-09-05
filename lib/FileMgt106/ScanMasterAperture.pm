@@ -140,7 +140,7 @@ sub updateJbz {
     require FileMgt106::ScannerAperture;
     my $jbz = FileMgt106::ScannerAperture->scan( $lib->[LIB_DIR], $hints );
     require FileMgt106::LoadSave;
-    FileMgt106::LoadSave::saveJbzPretty( $lib->[LIB_JBZ] . $$, $jbz );
+    FileMgt106::LoadSave::saveJbz( $lib->[LIB_JBZ] . $$, $jbz );
     rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
 }
 

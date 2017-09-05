@@ -43,7 +43,6 @@ use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile splitdir);
 use FileMgt106::Scanner;
 use FileMgt106::FileSystem;
-use JSON;
 
 use constant {
     DIR          => 0,
@@ -354,7 +353,8 @@ sub takeScalar {
     if ( $self->[SCALARTAKER] ) {
         my ( $blob, $newSha1 );
         if ($scalar) {
-            $blob    = JSON->new->canonical(1)->utf8->pretty->encode($scalar);
+        	require FileMgt106::LoadSave;
+            $blob    = FileMgt106::LoadSave::jsonMachineMaker()->encode($scalar);
             $newSha1 = sha1($blob);
         }
         unless ( defined $newSha1
