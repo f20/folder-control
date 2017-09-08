@@ -305,7 +305,7 @@ sub makeProcessor {
         unlink "$startFolder/+missing.jbz" if grep { !$_; } @grabSources;
         if ($missing) {
             my @rmdirList;
-            foreach my $grabSource (@grabSources) {
+          SOURCE: foreach my $grabSource (@grabSources) {
                 unless ($grabSource) {
                     FileMgt106::LoadSave::saveJbz( "$startFolder/+missing.jbz",
                         $missing );
@@ -319,11 +319,19 @@ sub makeProcessor {
                     }
                     {
                         warn "Grabbing from $grabSource\n";
+                        my $toGrab;
+                        if ( $grabSource =~ s/:\+$//s ) {
+                            $toGrab = $missing;
+                        }
+                        else {
+                            $toGrab = _filterByFileName($missing);
+                            next SOURCE unless $toGrab;
+                        }
                         my ( $host, $extract ) =
                           $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
                           ? ( $1, 'extract.pl' )
                           : $grabSource =~
-                          m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._-]+)$#s
+                          m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
                           ? ( $1, $2 )
                           : die $grabSource;
                         $cellarDir .=
@@ -339,7 +347,7 @@ sub makeProcessor {
                         binmode $fh;
                         print {$fh}
                           FileMgt106::LoadSave::jsonMachineMaker()
-                          ->encode($missing);
+                          ->encode($toGrab);
                     }
                     require FileMgt106::FolderTidy;
                     $hints->beginInteractive(1);
@@ -563,8 +571,7 @@ sub makeProcessor {
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
             unlink $canonical . $fileExtension;
-            my $target = FileMgt106::LoadSave::loadNormalisedScalar( $catalogue,
-                \&_filterUnwanted );
+            my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
             delete $target->{$_} foreach grep { /\//; } keys %$target;
             my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
             foreach my $caseid (@caseids) {
@@ -603,8 +610,19 @@ sub makeProcessor {
 
 }
 
-sub _filterUnwanted {
-    $_[0] !~ /(?:^~WRL[0-9]+\.tmp|\.dta)$/s;
+sub _filterByFileName {
+    my ($src) = @_;
+    my %filtered;
+    foreach ( grep { !/(?:^~WRL[0-9]+\.tmp|\.dta|\.[zZ][iI][pP])$/s; }
+        keys %$src )
+    {
+        my $v = $src->{$_};
+        if ( 'HASH' eq ref $v ) {
+            $v = _filterByFileName($v) or next;
+        }
+        $filtered{$_} = $v;
+    }
+    %filtered ? \%filtered : undef;
 }
 
 sub _chooserNoCaseids {
@@ -614,8 +632,7 @@ sub _chooserNoCaseids {
         symlink rel2abs($catalogue), $canonical . $fileExtension;
         return;
     }
-    my $target = FileMgt106::LoadSave::loadNormalisedScalar( $catalogue,
-        \&_filterUnwanted );
+    my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
     delete $target->{$_} foreach grep { /\//; } keys %$target;
     $target, $canonical;
 }

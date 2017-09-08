@@ -90,11 +90,8 @@ sub normaliseFileNames {
 }
 
 sub normaliseHash {
-    my ( $hr, $keyFilter ) = @_;
+    my ($hr) = @_;
     return $hr unless ref $hr eq 'HASH';
-    if ($keyFilter) {
-        delete $hr->{$_} foreach grep { !$keyFilter->($_); } keys %$hr;
-    }
     my @original   = sort keys %$hr;
     my @normalised = map { $normaliser->($_); } @original;
     my @unique     = map { lc($_); } @normalised;
@@ -118,20 +115,20 @@ sub normaliseHash {
                 $c = $u . ' ~' . $map{$u}++;
             } while defined $map{$c};
             $map{$c} = 0;
-            $hr->{$c}{$n} = normaliseHash( delete $hr->{$o}, $keyFilter );
+            $hr->{$c}{$n} = normaliseHash( delete $hr->{$o} );
         }
         elsif ( $n ne $o ) {
-            $hr->{$n} = normaliseHash( delete $hr->{$o}, $keyFilter );
+            $hr->{$n} = normaliseHash( delete $hr->{$o} );
         }
         else {
-            normaliseHash( $hr->{$o}, $keyFilter );
+            normaliseHash( $hr->{$o} );
         }
     }
     $hr;
 }
 
 sub loadNormalisedScalar {
-    ( local $_, my $keyFilter ) = @_;
+    ( local $_ ) = @_;
     my $obj;
     eval {
         my $fh;
@@ -146,7 +143,7 @@ sub loadNormalisedScalar {
         binmode $fh;
         $obj = jsonMachineMaker()->decode(<$fh>);
     };
-    $obj ? normaliseHash( $obj, $keyFilter ) : undef;
+    $obj ? normaliseHash($obj) : undef;
 }
 
 sub saveBzOctets {
