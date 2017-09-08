@@ -305,7 +305,8 @@ sub makeProcessor {
         unlink "$startFolder/+missing.jbz" if grep { !$_; } @grabSources;
         if ($missing) {
             my @rmdirList;
-          SOURCE: foreach my $grabSource (@grabSources) {
+          SOURCE: foreach (@grabSources) {
+                my $grabSource = $_;    # a true copy, not a loop alias variable
                 unless ($grabSource) {
                     FileMgt106::LoadSave::saveJbz( "$startFolder/+missing.jbz",
                         $missing );
@@ -325,7 +326,7 @@ sub makeProcessor {
                         }
                         else {
                             $toGrab = _filterByFileName($missing);
-                            next SOURCE unless $toGrab;
+                            next SOURCE unless %$toGrab;
                         }
                         my ( $host, $extract ) =
                           $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
@@ -388,6 +389,8 @@ sub makeProcessor {
                 }
                 last unless %$missing;
             }
+            $missing = _filterByFileName($missing)
+              unless grep { /:\+$/s; } @grabSources;
             while ( my ( $dir, $stillMissing ) = each %$missing ) {
                 FileMgt106::LoadSave::saveJbz(
                     catfile( $dir, "\N{U+26A0}.jbz" ),
@@ -613,16 +616,19 @@ sub makeProcessor {
 sub _filterByFileName {
     my ($src) = @_;
     my %filtered;
-    foreach ( grep { !/(?:^~WRL[0-9]+\.tmp|\.dta|\.[zZ][iI][pP])$/s; }
-        keys %$src )
+    foreach (
+        grep { !/(?:^~WRL[0-9]+\.tmp|\.dta|\.[zZ][iI][pP])$/s; }
+        keys %$src
+      )
     {
         my $v = $src->{$_};
         if ( 'HASH' eq ref $v ) {
-            $v = _filterByFileName($v) or next;
+            $v = _filterByFileName($v);
+            next unless %$v;
         }
         $filtered{$_} = $v;
     }
-    %filtered ? \%filtered : undef;
+    \%filtered;
 }
 
 sub _chooserNoCaseids {
