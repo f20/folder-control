@@ -481,6 +481,23 @@ EOL
         $rootidFromDev{$dev} ||= 0;
     };
 
+    $self->{pathFromLocid} = sub {
+        my ($locid) = @_;
+        $qGetParidName->execute($locid);
+        my ( $parid, $path ) = $qGetParidName->fetchrow_array;
+        $qGetParidName->finish;
+        return unless defined $path;
+        while ($parid) {
+            $qGetParidName->execute($parid);
+            my ( $grandid, $parname ) = $qGetParidName->fetchrow_array;
+            $qGetParidName->finish;
+            return unless defined $parname;
+            $path  = decode_utf8($parname) . '/' . $path;
+            $parid = $grandid;
+        }
+        $path;
+    };
+
     $self->{searchSha1} = sub {
         my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
         my $rootid = $getRootidFromDev->($dev);
@@ -500,20 +517,19 @@ EOL
         sub {
           ITERATION: while (1) {
                 return unless @$a;
-                my ( $locid, $parid, $name, $rootid, $ino, $size, $mtime ) =
+                my ( $locid, $parid, $path, $rootid, $ino, $size, $mtime ) =
                   @{ shift @$a };
-                $name = decode_utf8 $name;
+                $path = decode_utf8 $path;
                 while ($parid) {
                     $qGetParidName->execute($parid);
                     my ( $grandid, $parname ) = $qGetParidName->fetchrow_array;
-                    $parname = decode_utf8 $parname;
                     $qGetParidName->finish;
                     next ITERATION unless defined $parname;
-                    $name  = "$parname/$name";
+                    $path  = decode_utf8($parname) . '/' . $path;
                     $parid = $grandid;
                 }
                 next unless defined $parid;
-                next unless my @stat = lstat $name;
+                next unless my @stat = lstat $path;
                 next
                   unless my $drootid = $getRootidFromDev->( $stat[STAT_DEV] );
                 undef $locid
@@ -524,7 +540,7 @@ EOL
                   && $size == $stat[STAT_SIZE]
                   && defined $mtime
                   && $mtime == $stat[STAT_MTIME];
-                return wantarray ? ( $name, \@stat, $locid ) : $name;
+                return wantarray ? ( $path, \@stat, $locid ) : $path;
             }
         };
     };

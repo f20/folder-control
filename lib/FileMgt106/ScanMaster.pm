@@ -353,8 +353,8 @@ sub takeScalar {
     if ( $self->[SCALARTAKER] ) {
         my ( $blob, $newSha1 );
         if ($scalar) {
-        	require FileMgt106::LoadSave;
-            $blob    = FileMgt106::LoadSave::jsonMachineMaker()->encode($scalar);
+            require FileMgt106::LoadSave;
+            $blob = FileMgt106::LoadSave::jsonMachineMaker()->encode($scalar);
             $newSha1 = sha1($blob);
         }
         unless ( defined $newSha1
@@ -392,7 +392,8 @@ sub watchFolder {
     $whatToWatch ||= '.';
     $frotl = -13 if $frotl && $frotl > time - 300;
 
-    # A single folder-based controller can watch several files and folders.
+    # A controller rescans a single folder, but can be triggered
+    # by changes to several files and folders.
     my ( $controller, $frozensha1 );
     $controller = $self->[WATCHERS]{ $path . '.' }
       || $self->[WATCHING][0]->new(
@@ -402,12 +403,19 @@ sub watchFolder {
             $self->[HINTS]->enqueue(
                 $runner->{pq},
                 sub {
-                    chdir "$self->[DIR]/$path" or return;
+
+                    # Validate locid as well as folder existence before running.
+                    # Previously chdir "$self->[DIR]/$path" or return;
+
+                    my $fullPath = $self->[HINTS]{pathFromLocid}->($locid)
+                      or return;
+                    chdir $fullPath or return;
+
                     $frozensha1 ||= sha1_base64( freeze($hashref) );
                     eval {
                         $scanDir->(
                             $locid,
-                            $path,
+                            $path,    # relative to $self->[DIR]
                             !$frotl      ? 0
                             : $frotl < 0 ? ( time - $frotl )
                             : $frotl,
