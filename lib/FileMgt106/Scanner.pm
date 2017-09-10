@@ -730,9 +730,12 @@ sub new {
     };
 
     $self->{scan} = sub {
+
         my ( $forceReadOnlyTimeLimit, $targetHashref, $repository,
-            $watchMaster ) = @_;
+            $watchMaster, )
+          = @_;
         chdir $dir or die "chdir $dir: $!";
+
         my $doStashing = sub {
             my ( $stashLocid, $stashPath, $name, $locid, $suggestedNewName ) =
               @_;
@@ -758,12 +761,34 @@ sub new {
                   : ( $main, $path );
             };
         };
-        my $rootStasher =
-          $makeChildStasher->( sub { ( $rootLocid, $dir ); }, '~$stash' );
-        $rootStasher = $makeChildStasher->(
-            $rootStasher,
-            POSIX::strftime( "Y_Cellar %Y-%m-%d %a %H%M%S", localtime )
-        ) if $targetHashref;
+        my $rootStasher;
+        if ( ref $repository && defined( my $stashFolder = $repository->[2] ) )
+        {
+            my @stat = stat $stashFolder;
+            if ( -d _ && -w _ && $stat[STAT_DEV] == $dev ) {
+                if ( my $stashLocid =
+                    $hints->{topFolder}
+                    ->( $stashFolder, @stat[ STAT_DEV, STAT_INO ] ) )
+                {
+                    $rootStasher = sub {
+                        @_
+                          ? $doStashingForClosure->(
+                            $stashLocid, $stashFolder, @_
+                          )
+                          : ( $stashLocid, $stashFolder );
+                    };
+                }
+            }
+        }
+        unless ($rootStasher) {
+            $rootStasher =
+              $makeChildStasher->( sub { ( $rootLocid, $dir ); }, '~$stash' );
+            $rootStasher = $makeChildStasher->(
+                $rootStasher,
+                POSIX::strftime( "Y_Cellar %Y-%m-%d %a %H%M%S", localtime )
+            ) if $targetHashref;
+        }
+
         my $rootBackuper;
         if ($repository) {
             my $repoFolder = ref $repository ? $repository->[0] : $repository;

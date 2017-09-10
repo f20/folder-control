@@ -72,9 +72,9 @@ sub setRepoloc {
     my ( $self, $repolocs ) = @_;
     return $self unless defined $repolocs;
 
-    my ( $repoFolder, $gitFolder, $jbzFolder, $caseidRoot ) =
+    my ( $repoFolder, $gitFolder, $jbzFolder, $caseidRoot, $stashFolder ) =
       ref $repolocs
-      ? @{$repolocs}{qw(repo git jbz caseid)}
+      ? @{$repolocs}{qw(repo git jbz caseid stash)}
       : ( $repolocs, $repolocs );
 
     if ($caseidRoot) {
@@ -142,6 +142,8 @@ sub setRepoloc {
             $self->[REPO] = [ $repoFolder, 'No date' ];
         }
     }
+    $self->[REPO][2] = $stashFolder
+      if defined $stashFolder && ref $self->[REPO];
     unless ( defined $gitFolder && -d $gitFolder ) {
         unless ( defined $jbzFolder && -d $jbzFolder ) {
             return $self;
@@ -229,7 +231,6 @@ sub addJbzName {
                   POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
                 my $njbz = $jbzName;
                 $njbz =~ s/.jbz$/ $mtime.jbz/;
-                $njbz = '~$stash/' . $njbz if -e '~$stash';
                 link $jbzName, $njbz;
             }
             rename $jbzName . $$, $jbzName;
