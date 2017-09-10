@@ -567,23 +567,22 @@ sub new {
                             require FileMgt106::LoadSave;
                             FileMgt106::LoadSave::normaliseFileNames('.');
                         }
+                        my $frotl = /^Z_(?:Archive|Cellar)/is
+                          ? 2_000_000_000    # This will go wrong in 2033
+                          : $forceReadOnlyTimeLimit;
                         $binned{"$binName"} = [
-                            $scanDir->(
+                            substr( $stash, 0, length($dir) + 1 ) eq "$dir/"
+                            ? $scanDir->(
                                 $folder->(
                                     $stashLocid, $binName,
                                     ( stat '.' )[ STAT_DEV, STAT_INO ]
                                 ),
-                                (
-                                    substr( $stash, 0, length($dir) + 1 ) eq
-                                      "$dir/"
-                                    ? substr( $stash, length($dir) + 1 )
-                                    : $stash
-                                  )
+                                substr( $stash, length($dir) + 1 )
                                   . "/$binName/",
-                                /^Z_(?:Archive|Cellar)/is
-                                ? 2_000_000_000    # This will go wrong in 2033
-                                : $forceReadOnlyTimeLimit
-                            ),
+                                $frotl
+                              )
+                            : FileMgt106::Scanner->new( "$stash/$binName",
+                                $hints, $rgid )->scan($frotl),
                             $crashRecoverySymlink
                         ];
                     }
