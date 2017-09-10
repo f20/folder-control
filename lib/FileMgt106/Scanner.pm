@@ -582,7 +582,7 @@ sub new {
                                 $frotl
                               )
                             : FileMgt106::Scanner->new( "$stash/$binName",
-                                $hints, $rgid )->scan($frotl),
+                                $hints, $rstat )->scan($frotl),
                             $crashRecoverySymlink
                         ];
                     }
