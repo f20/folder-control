@@ -143,7 +143,7 @@ sub setRepoloc {
         }
     }
     $self->[REPO][2] = $stashFolder
-      if defined $stashFolder && ref $self->[REPO];
+      if defined $stashFolder and !defined $self->[REPO] || ref $self->[REPO];
     unless ( defined $gitFolder && -d $gitFolder ) {
         unless ( defined $jbzFolder && -d $jbzFolder ) {
             return $self;
