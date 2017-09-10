@@ -770,6 +770,7 @@ sub new {
                     $hints->{topFolder}
                     ->( $stashFolder, @stat[ STAT_DEV, STAT_INO ] ) )
                 {
+                    my $doStashingForClosure = $doStashing;
                     $rootStasher = sub {
                         @_
                           ? $doStashingForClosure->(
