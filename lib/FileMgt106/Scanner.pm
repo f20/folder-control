@@ -570,21 +570,19 @@ sub new {
                         my $frotl = /^Z_(?:Archive|Cellar)/is
                           ? 2_000_000_000    # This will go wrong in 2033
                           : $forceReadOnlyTimeLimit;
-                        $binned{"$binName"} = [
-                            substr( $stash, 0, length($dir) + 1 ) eq "$dir/"
-                            ? $scanDir->(
-                                $folder->(
-                                    $stashLocid, $binName,
-                                    ( stat '.' )[ STAT_DEV, STAT_INO ]
-                                ),
-                                substr( $stash, length($dir) + 1 )
-                                  . "/$binName/",
-                                $frotl
-                              )
-                            : FileMgt106::Scanner->new( "$stash/$binName",
-                                $hints, $rstat )->scan($frotl),
-                            $crashRecoverySymlink
-                        ];
+                        my $cat =
+                          substr( $stash, 0, length($dir) + 1 ) eq "$dir/"
+                          ? $scanDir->(
+                            $folder->(
+                                $stashLocid, $binName,
+                                ( stat '.' )[ STAT_DEV, STAT_INO ]
+                            ),
+                            substr( $stash, length($dir) + 1 ) . "/$binName/",
+                            $frotl
+                          )
+                          : FileMgt106::Scanner->new( "$stash/$binName",
+                            $hints, $rstat )->scan($frotl);
+                        $binned{"$binName"} = [ $cat, $crashRecoverySymlink ];
                     }
                 }
                 else {
