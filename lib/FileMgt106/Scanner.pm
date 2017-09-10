@@ -790,8 +790,8 @@ sub new {
         }
 
         my $rootBackuper;
-        if ($repository) {
-            my $repoFolder = ref $repository ? $repository->[0] : $repository;
+        if ( my $repoFolder = ref $repository ? $repository->[0] : $repository )
+        {
             my @stat = stat $repoFolder and -d _ and -w _
               or die "$dir: don't like $repoFolder";
             my $repoRootLocid =
