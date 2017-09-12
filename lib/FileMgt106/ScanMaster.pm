@@ -303,7 +303,7 @@ sub dequeued {
             @{$self}[ SCALAR, ROOTLOCID ] =
               FileMgt106::Scanner->new( $self->[DIR], $hints,
                 $hints->statFromGid($rgid) )
-              ->scan( $frotl, undef, $self->[REPOPAIR], $self->[STASHPAIR],
+              ->scan( $frotl, undef, $self->[STASHPAIR], $self->[REPOPAIR],
                 $self->[WATCHING] ? $self : undef );
             $self->schedule( $time, $runner->{qu} ) if $runner;
         };

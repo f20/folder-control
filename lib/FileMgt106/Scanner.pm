@@ -728,7 +728,7 @@ sub new {
 
     $self->{scan} = sub {
 
-        my ( $forceReadOnlyTimeLimit, $targetHashref, $repoPair, $stashPair,
+        my ( $forceReadOnlyTimeLimit, $targetHashref, $stashPair, $repoPair,
             $watchMaster, )
           = @_;
         chdir $dir or die "chdir $dir: $!";
@@ -777,10 +777,6 @@ sub new {
         unless ($rootStasher) {
             $rootStasher =
               $makeChildStasher->( sub { ( $rootLocid, $dir ); }, '~$stash' );
-            $rootStasher = $makeChildStasher->(
-                $rootStasher,
-                POSIX::strftime( "Y_Cellar %Y-%m-%d %a %H%M%S", localtime )
-            ) if $targetHashref;
         }
 
         my $rootBackuper;

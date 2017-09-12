@@ -74,6 +74,12 @@ sub autograb {
       $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
     my $chooser =
       $chooserMaker->( map { /^-+caseid=([0-9-]+)/ ? $1 : (); } @arguments );
+    my $stashLoc;
+    foreach (@arguments) {
+        next unless /^-+stash=(.+)/;
+        local $_ = $1;
+        $stashLoc = m#^/# ? $_ : "$startFolder/$_";
+    }
     my @fileList = map {
         /^-$/s
           ? eval {
@@ -93,7 +99,14 @@ sub autograb {
           unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         $canonical .= " (mirrored from $components[1])";
         if ( my ( $scalar, $folder ) = $chooser->( $_, $canonical, $1 ) ) {
-            $processScalar->( $scalar, $folder, $1, \@targetStat, 1 );
+            $processScalar->(
+                $scalar, $folder, $1,
+                \@targetStat,
+                {
+                    restamp => 1,
+                    stash   => $stashLoc,
+                }
+            );
         }
     }
     $finish->();
@@ -185,9 +198,8 @@ sub makeProcessor {
         $syncDestination, @toRestamp );
 
     my $processScalar = sub {
-        my ( $scalar, $path, $fileExtension, $targetStatRef, $restampFlag ) =
-          @_;
-        push @toRestamp, $path if $restampFlag;
+        my ( $scalar, $path, $fileExtension, $targetStatRef, $options ) = @_;
+        push @toRestamp, $path if $options->{restamp};
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
@@ -224,7 +236,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                )->scan( 0, $scalar );
+                  )->scan(
+                    0,
+                    $scalar,
+                    $options->{stash}
+                    ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
+                    : (),
+                  );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -551,7 +569,8 @@ sub makeProcessor {
             }
 
             if ($target) {
-                $processScalar->( $target, $root, $ext, \@argumentStat );
+                $processScalar->( $target, $root, $ext, \@argumentStat,
+                    \%locs );
             }
             elsif ( -d _ && chdir $_ ) {
                 $processCwd->(
