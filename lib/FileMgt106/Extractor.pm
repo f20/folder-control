@@ -37,10 +37,11 @@ use FileMgt106::FileSystem;
 sub makeExtractAcceptor {
     my ($sort)    = grep { /^-+sort/i } @_;
     my ($tarpipe) = grep { /^-+(?:tar|tbz|tgz)/i } @_;
+    my $fileHandle = \*STDOUT;
+    binmode $fileHandle, ':utf8';
     if ( $sort || $tarpipe ) {
         my @list;
-        my $fileHandle = \*STDOUT;
-        if ( my ($tarpipe) = grep { /^-+(?:tar|tbz|tgz)/i } @_ ) {
+        if ($tarpipe) {
             my $options = '';
             if ( $tarpipe =~ /bz/i ) {
                 $options = '--bzip2';
@@ -54,6 +55,7 @@ sub makeExtractAcceptor {
             $ENV{COPY_EXTENDED_ATTRIBUTES_DISABLE} = 1;
             $ENV{COPYFILE_DISABLE}                 = 1;
             open $fileHandle, "| tar $options -c -f - -T -";
+            binmode $fileHandle, ':utf8';
         }
         return sub {
             unless ( defined $_[0] ) {
