@@ -728,7 +728,7 @@ sub new {
 
     $self->{scan} = sub {
 
-        my ( $forceReadOnlyTimeLimit, $targetHashref, $repository,
+        my ( $forceReadOnlyTimeLimit, $targetHashref, $repoPair, $stashPair,
             $watchMaster, )
           = @_;
         chdir $dir or die "chdir $dir: $!";
@@ -759,22 +759,18 @@ sub new {
             };
         };
         my $rootStasher;
-        if ( ref $repository && defined( my $stashFolder = $repository->[2] ) )
-        {
-            my @stat = stat $stashFolder;
+        if ($stashPair) {
+            my @stat = stat $stashPair->[0];
             if ( -d _ && -w _ && $stat[STAT_DEV] == $dev ) {
                 if ( my $stashLocid =
                     $hints->{topFolder}
-                    ->( $stashFolder, @stat[ STAT_DEV, STAT_INO ] ) )
+                    ->( $stashPair->[0], @stat[ STAT_DEV, STAT_INO ] ) )
                 {
                     my $doStashingForClosure = $doStashing;
-                    $rootStasher = sub {
-                        @_
-                          ? $doStashingForClosure->(
-                            $stashLocid, $stashFolder, @_
-                          )
-                          : ( $stashLocid, $stashFolder );
-                    };
+                    $rootStasher = $makeChildStasher->(
+                        sub { ( $stashLocid, $stashPair->[0] ); },
+                        $stashPair->[1]
+                    );
                 }
             }
         }
@@ -788,13 +784,13 @@ sub new {
         }
 
         my $rootBackuper;
-        if ( my $repoFolder = ref $repository ? $repository->[0] : $repository )
-        {
-            my @stat = stat $repoFolder and -d _ and -w _
-              or die "$dir: don't like $repoFolder";
+        if ($repoPair) {
+            my @stat = stat $repoPair->[0] and -d _ and -w _
+              or die "$dir: don't like $repoPair->[0]";
             my $repoRootLocid =
-              $hints->{topFolder}->( $repoFolder, @stat[ STAT_DEV, STAT_INO ] )
-              or die "$dir: no root locid for repository folder $repoFolder";
+              $hints->{topFolder}
+              ->( $repoPair->[0], @stat[ STAT_DEV, STAT_INO ] )
+              or die "$dir: no root locid for repository folder $repoPair->[0]";
             $repoDev = $stat[STAT_DEV];
             my $doBackup = sub {
                 my ( $repoLocid, $repoPath, $name, $locid, $sha1 ) = @_;
@@ -814,17 +810,10 @@ sub new {
                       : ( $main, $path );
                 };
             };
-            $rootBackuper =
-              ref $repository
-              ? $makeChildBackuper->(
-                sub { ( $repoRootLocid, $repoFolder ); },
-                $repository->[1]
-              )
-              : sub {
-                @_
-                  ? $doBackup->( $repoRootLocid, $repository, @_ )
-                  : ( $repoRootLocid, $repository );
-              };
+            $rootBackuper = $makeChildBackuper->(
+                sub { ( $repoRootLocid, $repoPair->[0] ); },
+                $repoPair->[1]
+            );
         }
 
         my $scalar = $scanDir->(

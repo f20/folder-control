@@ -406,7 +406,7 @@ sub makeProcessor {
 
     my $processLegacyArguments = sub {
 
-        my @scanMasterConfigClosures;
+        my ( %locs, @otherConfigClosures );
 
         foreach (@_) {
 
@@ -452,7 +452,7 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+read-?only/) {
-                push @scanMasterConfigClosures, sub {
+                push @otherConfigClosures, sub {
                     $_[0]->setFrotl(
                         2_000_000_000    # This will go wrong in 2033
                     );
@@ -460,7 +460,7 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+cat/) {
-                push @scanMasterConfigClosures, sub {
+                push @otherConfigClosures, sub {
                     $_[0]->addScalarTaker(
                         sub {
                             binmode STDOUT;
@@ -473,22 +473,24 @@ sub makeProcessor {
             elsif (/^-+(?:jbz|repo)=?(.*)/) {
                 local $_ = $1;
                 my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-                push @scanMasterConfigClosures,
-                  sub { $_[0]->addJbzFolder($loc); };
+                push @otherConfigClosures, sub { $_[0]->addJbzFolder($loc); };
+                next;
+            }
+            elsif (/^-+stash=(.+)/) {
+                local $_ = $1;
+                $locs{stash} = m#^/#s ? $_ : "$startFolder/$_";
                 next;
             }
             elsif (/^-+backup=?(.*)/) {
                 local $_ = $1;
-                my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-                push @scanMasterConfigClosures,
-                  sub { $_[0]->setRepoloc( { repo => $loc } ); };
+                $locs{repo} =
+                  !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 next;
             }
             elsif (/^-+git=?(.*)/) {
                 local $_ = $1;
-                my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-                push @scanMasterConfigClosures,
-                  sub { $_[0]->setRepoloc( { git => $loc } ); };
+                $locs{git} =
+                  !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 next;
             }
             $hints ||=
@@ -552,13 +554,17 @@ sub makeProcessor {
                 $processScalar->( $target, $root, $ext, \@argumentStat );
             }
             elsif ( -d _ && chdir $_ ) {
-                $processCwd->(@scanMasterConfigClosures);
+                $processCwd->(
+                    %locs ? sub { $_[0]->setRepoloc( \%locs ); } : (),
+                    @otherConfigClosures,
+                );
             }
             else {
                 warn "Ignored: $_";
             }
 
         }
+
     };
 
     my $chooserMaker = sub {

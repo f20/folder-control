@@ -47,19 +47,20 @@ use FileMgt106::FileSystem;
 use constant {
     DIR          => 0,
     HINTS        => 1,
-    REPO         => 2,
-    WATCHING     => 3,
-    WATCHERS     => 4,
-    SCALAR       => 5,
-    QID          => 6,
-    TTR          => 7,
-    RESCANTIME   => 8,
-    ROOTLOCID    => 9,
-    SHA1         => 10,
-    FROTL        => 11,
-    SCALARTAKER  => 12,
-    CASEIDS      => 13,
-    SCALARFILTER => 14,
+    CASEIDS      => 2,
+    FROTL        => 3,
+    QID          => 4,
+    REPOPAIR     => 5,
+    RESCANTIME   => 6,
+    ROOTLOCID    => 7,
+    SCALAR       => 8,
+    SCALARFILTER => 9,
+    SCALARTAKER  => 10,
+    SHA1         => 11,
+    STASHPAIR    => 12,
+    TTR          => 13,
+    WATCHERS     => 14,
+    WATCHING     => 15,
 };
 
 sub new {
@@ -70,12 +71,9 @@ sub new {
 sub setRepoloc {
 
     my ( $self, $repolocs ) = @_;
-    return $self unless defined $repolocs;
 
     my ( $repoFolder, $gitFolder, $jbzFolder, $caseidRoot, $stashFolder ) =
-      ref $repolocs
-      ? @{$repolocs}{qw(repo git jbz caseid stash)}
-      : ( $repolocs, $repolocs );
+      @{$repolocs}{qw(repo git jbz caseid stash)};
 
     if ($caseidRoot) {
         $self->[CASEIDS] = ['uninitialised'];
@@ -121,6 +119,8 @@ sub setRepoloc {
     my $category = join( '.', map { length $_ ? $_ : '_' } @components )
       || 'No category';
 
+    $self->[STASHPAIR] = [ $stashFolder, $name ] if defined $stashFolder;
+
     foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
         $gitFolder, $jbzFolder )
     {
@@ -131,6 +131,7 @@ sub setRepoloc {
             chmod 02750, $_;
         }
     }
+
     if ( defined $repoFolder && -d $repoFolder ) {
         $repoFolder = catdir( $repoFolder, $name );
         unless ( -e $repoFolder ) {
@@ -139,17 +140,17 @@ sub setRepoloc {
             chmod 02750, $repoFolder;
         }
         if ( -d $repoFolder && -w _ ) {
-            $self->[REPO] = [ $repoFolder, 'No date' ];
+            $self->[REPOPAIR] = [ $repoFolder, 'No date' ];
         }
     }
-    $self->[REPO][2] = $stashFolder
-      if defined $stashFolder and !defined $self->[REPO] || ref $self->[REPO];
+
     unless ( defined $gitFolder && -d $gitFolder ) {
         unless ( defined $jbzFolder && -d $jbzFolder ) {
             return $self;
         }
         return $self->addJbzName("$jbzFolder/$name.jbz");
     }
+
     $self->addScalarTaker(
         sub {
             my ( $scalar, $blobref, $runner ) = @_;
@@ -215,8 +216,6 @@ sub setRepoloc {
             }
         }
     );
-
-    $self;
 
 }
 
@@ -296,15 +295,15 @@ sub dequeued {
           : $self->[DIR] =~ m#/X_#i ? -13            # 13 seconds
           :                           -4_233_600;    # Seven weeks
         $frotl += $time if $frotl < 0;
-        $self->[REPO][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
-          if ref $self->[REPO];
+        $self->[REPOPAIR][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
+          if $self->[REPOPAIR];
         warn join ' ', "rgid=$rgid", "timelimit=$frotl", $self->[DIR], "\n";
         my $run = sub {
             my ($hints) = @_;
             @{$self}[ SCALAR, ROOTLOCID ] =
               FileMgt106::Scanner->new( $self->[DIR], $hints,
                 $hints->statFromGid($rgid) )
-              ->scan( $frotl, undef, $self->[REPO],
+              ->scan( $frotl, undef, $self->[REPOPAIR], $self->[STASHPAIR],
                 $self->[WATCHING] ? $self : undef );
             $self->schedule( $time, $runner->{qu} ) if $runner;
         };
