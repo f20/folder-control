@@ -205,6 +205,7 @@ sub makeProcessor {
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
         if ( $dir =~ /(.+)\+missing$/s && -d $1 ) {
+            $path = $1;
             my $rgid = ( stat _ )[STAT_GID];
             chdir $1 or die "chdir $1: $!";
             $dir = decode_utf8 getcwd();
