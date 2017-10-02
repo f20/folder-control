@@ -41,7 +41,7 @@ use constant { STAT_DEV => 0, };
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $processScal, $processQuery );
+    my ( $processScal, $processQuery, $extraColumnExtractor );
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -95,11 +95,27 @@ sub process {
             };
             next;
         }
+
+        if (/^-+exiftool/i) {
+            require Image::ExifTool;
+            my $et = Image::ExifTool->new;
+            my @tags =
+              qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
+            $extraColumnExtractor = sub {
+                my ($fn) = @_;
+                return @tags
+                  unless defined $fn;
+                $et->ExtractInfo($fn) or return map { ['']; } @tags;
+                my $info = $et->GetInfo(@tags);
+                map { defined $_ ? [$_] : ['']; } @$info{@tags};
+            };
+        }
         if (/^-+csv=?(.*)/i) {
             require FileMgt106::Extractor;
             ( $processScal, $processQuery ) =
               FileMgt106::Extractor::makeDataExtractor( $hintsFile,
-                FileMgt106::Extractor::makeCsvWriter($1) );
+                FileMgt106::Extractor::makeCsvWriter($1),
+                $extraColumnExtractor );
             next;
         }
 
@@ -110,7 +126,8 @@ sub process {
                 $hintsFile,
                 FileMgt106::Extractor::makeSpreadsheetWriter(
                     $1, $2 || 'Extracted'
-                )
+                ),
+                $extraColumnExtractor
               );
             next;
         }
@@ -143,8 +160,8 @@ sub process {
             if ($devNo) {
                 require FileMgt106::Extractor;
                 $processScal =
-                  FileMgt106::Extractor::makeHintsFilter( $hintsFile, $devNo,
-                    $devOnly );
+                  FileMgt106::Extractor::makeHintsFilter( $hintsFile,
+                    $devNo, $devOnly );
             }
             else {
                 $processScal = FileMgt106::LoadSave::makeInfillFilter();
@@ -175,7 +192,8 @@ sub process {
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            +{ $_ => FileMgt106::LoadSave::jsonMachineMaker()
+                            +{ $_ =>
+                                  FileMgt106::LoadSave::jsonMachineMaker()
                                   ->decode(<$fh>) };
                         }
                         else {

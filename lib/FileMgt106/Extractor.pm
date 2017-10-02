@@ -169,6 +169,13 @@ sub _escapeCsv {
     qq%"$_"%;
 }
 
+sub _formatCsv {
+    ( local $_ ) = @_;
+    return "$1-$2-$3 $4"
+      if /^([0-9]+)[-:]([0-9]+)[-:]([0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s;
+    $_;
+}
+
 sub makeCsvWriter {
     my ($dumpFile) = @_;
     $dumpFile ||= '';
@@ -184,8 +191,8 @@ sub makeCsvWriter {
     sub {
         if (@_) {
             print {$c} join( ',',
-                map { /[" ]/ ? _escapeCsv($_) : $_; }
-                map { ref $_ ? $_->[0]        : $_; } @_ )
+                map { /[" ]/ ? _escapeCsv($_)        : $_; }
+                map { ref $_ ? _formatCsv( $_->[0] ) : $_; } @_ )
               . "\n";
         }
         else {
@@ -235,10 +242,13 @@ sub makeSpreadsheetWriter {
             ( my $ws, my $row, my $col, local $_ ) = @_;
             if ( ref $_ ) {
                 ( local $_ ) = @$_;
-                if (/^([0-9]+-[0-9]+-[0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s) {
+                if (
+/^([0-9]+)[-:]([0-9]+)[-:]([0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s
+                  )
+                {
                     $ws->write_date_time(
                         $row, $col,
-                        $1 . 'T' . $2,
+                        "$1-$2-$3" . 'T' . $4,
                         $dateFormat ||= $wb->add_format(
                             num_format => 'ddd d mmm yyyy HH:MM:SS'
                         )
@@ -281,12 +291,17 @@ sub makeSpreadsheetWriter {
 
 sub makeDataExtractor {
 
-    my ( $hintsFile, $writer ) = @_;
+    my ( $hintsFile, $writer, $extraColumnExtractor ) = @_;
 
     require POSIX;
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
 
-    $writer->(qw(sha1 mtime size ext file folder path rootid inode));
+    $writer->(
+        qw(sha1 mtime size ext file folder),
+        $extraColumnExtractor
+        ? $extraColumnExtractor->()
+        : qw(path rootid inode)
+    );
 
     my $pathFinder;
     {
@@ -328,8 +343,9 @@ sub makeDataExtractor {
             ++$row;
             $writer->(
                 $sha1, [$mtime], [$size], $ext, $name, $p,
-                [qq%="'"&F$row&"/"&E$row&"'"%],
-                $rootid, $inode
+                $extraColumnExtractor
+                ? $extraColumnExtractor->("$p/$name")
+                : ( [qq%="'"&F$row&"/"&E$row&"'"%], $rootid, $inode )
             );
         }
         $writer->();
@@ -517,7 +533,7 @@ sub makeHintsBuilder {
 
         }
 
-        if (!$infillFlag&&%toDelete) {
+        if ( !$infillFlag && %toDelete ) {
             unless ( defined $stashFolder ) {
                 mkdir $stashFolder = catdir( $whereYouWantIt, "Z_Stashed-$$" );
             }
