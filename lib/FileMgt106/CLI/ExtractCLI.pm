@@ -109,6 +109,7 @@ sub process {
                 my $info = $et->GetInfo(@tags);
                 map { defined $_ ? [$_] : ['']; } @$info{@tags};
             };
+            next;
         }
         if (/^-+csv=?(.*)/i) {
             require FileMgt106::Extractor;
@@ -241,7 +242,7 @@ sub process {
         elsif ($processQuery) {
             $processQuery->($_);
         }
-        elsif ( !/^-+(?:cwd|filter|sort|tar|tgz|tbz|newer=.*)$/ ) {
+        else {
             warn "Ignored: $_";
         }
     }

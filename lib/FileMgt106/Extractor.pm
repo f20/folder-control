@@ -234,8 +234,7 @@ sub makeSpreadsheetWriter {
         $ws->set_paper(9);
         $ws->fit_to_pages( 1, 0 );
         $ws->hide_gridlines(2);
-        my @colWidth = qw(8 24 12 8 48 48 8 12 12);
-        $ws->set_column( $_, $_, $colWidth[$_] ) foreach 0 .. $#colWidth;
+        my $lastCol;
 
         my ( $dateFormat, $sizeFormat );
         my $wsWrite = sub {
@@ -273,13 +272,19 @@ sub makeSpreadsheetWriter {
 
         my $row = -1;
         return sub {
-
             if (@_) {
                 ++$row;
+                unless ( defined $lastCol ) {
+                    $lastCol = $#_;
+                    my @colWidth = qw(8 24 12 8 48 48),
+                      map { /date|time/i ? 48 : 12; } @_[ 6 .. $lastCol ];
+                    $ws->set_column( $_, $_, $colWidth[$_] )
+                      foreach 0 .. $lastCol;
+                }
                 $wsWrite->( $ws, $row, $_, $_[$_] ) foreach 0 .. $#_;
             }
             else {
-                $ws->autofilter( 0, 0, $row, $#colWidth );
+                $ws->autofilter( 0, 0, $row, $lastCol );
                 undef $wb;
                 rename $fileName . $$, $fileName;
             }
