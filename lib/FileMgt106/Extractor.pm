@@ -31,6 +31,8 @@ use strict;
 use warnings;
 use utf8;
 use Digest::SHA ();
+use Encode qw(decode_utf8);
+use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 
@@ -411,13 +413,15 @@ sub makeInfoExtractor {
 
 sub makeHintsBuilder {
 
-    my ($hintsFile) = @_;
+    my ( $hintsFile, $useSymlinksNotCopies, $infillFlag ) = @_;
     my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
 
     my $createTree;
     $createTree = sub {
 
         my ( $whatYouWant, $whereYouWantIt, $devNo ) = @_;
+        return unless $whatYouWant;
+
         unless ($devNo) {
             $whereYouWantIt ||= '.';
             die "No device for $whereYouWantIt"
@@ -426,23 +430,42 @@ sub makeHintsBuilder {
 
         # To contain a scalar representing missing objects (or false if none).
         my $returnValue;
+        my $stashFolder;
+        my $dh;
+        opendir $dh, $whereYouWantIt;
+        my %toDelete =
+          map { ( decode_utf8($_) => undef ); }
+          grep { !/^\.\.?$/s; } readdir $dh;
+        closedir $dh;
 
       ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
             next if $name =~ m#/#;
-            my $fileName = "$whereYouWantIt/$name";
-            if ( -l $fileName ) {
+            delete $toDelete{$name};
+            my $fileName = catfile( $whereYouWantIt, $name );
+            my @existingStat = lstat $fileName;
+            if ( -l _ ) {
                 unlink $fileName or die "unlink $fileName: $!";
             }
             if ( ref $what ) {
                 if ( ref $what eq 'HASH' ) {
-                    die "File in the way: $fileName" if -f _;
-                    mkdir $fileName;
+                    if ( !-d _ ) {
+                        if (@existingStat) {
+                            unless ( defined $stashFolder ) {
+                                mkdir $stashFolder =
+                                  catdir( $whereYouWantIt, "Z_Stashed-$$" );
+                            }
+                            die "Cannot move $fileName to $stashFolder "
+                              . catfile( $stashFolder, $name )
+                              unless rename $fileName,
+                              catfile( $stashFolder, $name );
+                        }
+                        mkdir $fileName;
+                    }
                     my $rv = $createTree->( $what, $fileName, $devNo );
                     $returnValue->{$name} = $rv if $rv;
                 }
                 next;
             }
-            die "Item in the way: $fileName" if -e _;
             unless ( $what =~ /([0-9a-fA-F]{40})/ ) {
                 symlink $what, $fileName or $returnValue->{$name} = $what;
                 next;
@@ -470,13 +493,39 @@ sub makeHintsBuilder {
                     push @candidates, $path;
                     next;
                 }
+                if (@existingStat) {
+                    next ENTRY
+                      if $existingStat[STAT_DEV] == $statref->[STAT_DEV]
+                      && $existingStat[STAT_INO] == $statref->[STAT_INO];
+                    unless ( defined $stashFolder ) {
+                        mkdir $stashFolder =
+                          catdir( $whereYouWantIt, "Z_Stashed-$$" );
+                    }
+                    die "Cannot move $fileName to $stashFolder"
+                      unless rename $fileName,
+                      catfile( $stashFolder, $name );
+                }
                 next ENTRY if link $path, $fileName;
             }
             foreach ( @candidates, @reservelist ) {
-                next ENTRY if _copyFile( $_, $fileName );
+                next ENTRY
+                  if $useSymlinksNotCopies
+                  ? symlink( $_, $fileName )
+                  : _copyFile( $_, $fileName );
             }
             $returnValue->{$name} = $what;
 
+        }
+
+        if (!$infillFlag&&%toDelete) {
+            unless ( defined $stashFolder ) {
+                mkdir $stashFolder = catdir( $whereYouWantIt, "Z_Stashed-$$" );
+            }
+            foreach ( keys %toDelete ) {
+                rename catfile( $whereYouWantIt, $_ ),
+                  catfile( $stashFolder, $_ )
+                  or die "Cannot move $_ to $stashFolder";
+            }
         }
 
         $returnValue;

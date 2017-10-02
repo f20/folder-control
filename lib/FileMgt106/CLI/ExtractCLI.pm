@@ -122,9 +122,10 @@ sub process {
             next;
         }
 
-        if (/^-+cwd/i) {
+        if (/^-+cwd(symlink)?(infill)?/i) {
             require FileMgt106::Extractor;
-            $processScal = FileMgt106::Extractor::makeHintsBuilder($hintsFile);
+            $processScal =
+              FileMgt106::Extractor::makeHintsBuilder( $hintsFile, $1, $2 );
             next;
         }
 
