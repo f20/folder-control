@@ -214,31 +214,15 @@ sub findOrMakeApertureLibraries {
         warn "Failed to rebuild $lib: $@" if $@;
     }
     unless (@liblist) {
-        my $path;
-        my %paths;
         warn 'Looking for Aperture libraries';
+        my $pathFinder=$hints->{pathFinderFactory}->();
         $hints->beginInteractive;
-        my $q =
-          $hints->{dbHandle}
-          ->prepare('select name, parid from locations where locid=?');
-        $path = sub {
-            my ($locid) = @_;
-            return $paths{$locid} if exists $paths{$locid};
-            $q->execute($locid);
-            my ( $name, $parid ) = $q->fetchrow_array;
-            return $paths{$locid} = undef unless defined $parid;
-            return $paths{$locid} = $name unless $parid;
-            my $p = $path->($parid);
-            return $paths{$locid} = undef unless defined $p;
-            $paths{$locid} = "$p/$name";
-        };
         @liblist =
           map { defined $_ ? decode_utf8($_) : (); }
-          map { $path->( $_->[0] ); } @{
+          map { $pathFinder->( $_->[0] ); } @{
             $hints->{dbHandle}->selectall_arrayref(
                 'select locid from locations where name like "%.aplibrary"')
           };
-        $q->finish;
         $hints->commit;
     }
     map {

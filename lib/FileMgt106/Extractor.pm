@@ -115,7 +115,7 @@ sub makeHintsExtractor {
         if ( $needsNap || !defined $what ) {
             undef $needsNap;
             undef $searchSha1;
-            $hints->{dbHandle}->disconnect if $hints && $hints->{dbHandle};
+            $hints->disconnect if $hints;
             undef $hints;
         }
         return $acceptor->() unless defined $what;
@@ -308,24 +308,7 @@ sub makeDataExtractor {
         : qw(path rootid inode)
     );
 
-    my $pathFinder;
-    {
-        my %paths;
-        my $q =
-          $hints->{dbHandle}
-          ->prepare('select name, parid from locations where locid=?');
-        $pathFinder = sub {
-            my ($locid) = @_;
-            return $paths{$locid} if exists $paths{$locid};
-            $q->execute($locid);
-            my ( $name, $parid ) = $q->fetchrow_array;
-            return $paths{$locid} = undef unless defined $parid;
-            return $paths{$locid} = $name unless $parid;
-            my $p = $pathFinder->($parid);
-            return $paths{$locid} = undef unless defined $p;
-            $paths{$locid} = "$p/$name";
-        };
-    }
+        my $pathFinder=$hints->{pathFinderFactory}->();
 
     sub { }, sub {
         my ($csvOptions) = @_;

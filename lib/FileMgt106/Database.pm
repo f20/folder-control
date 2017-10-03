@@ -481,6 +481,29 @@ EOL
         $rootidFromDev{$dev} ||= 0;
     };
 
+    my $paridNameFromLocid = $self->{paridNameFromLocid} = sub {
+        my ($locid) = @_;
+        $qGetParidName->execute($locid);
+        my @paridName = $qGetParidName->fetchrow_array;
+        $qGetParidName->finish;
+        @paridName;
+    };
+
+    $self->{pathFinderFactory} = sub {
+        my $pathFinder;
+        my %paths;
+        $pathFinder = sub {
+            my ($locid) = @_;
+            return $paths{$locid} if exists $paths{$locid};
+            my ( $parid, $name ) = $paridNameFromLocid->($locid);
+            return $paths{$locid} = undef unless defined $parid;
+            return $paths{$locid} = $name unless $parid;
+            my $p = $pathFinder->($parid);
+            return $paths{$locid} = undef unless defined $p;
+            $paths{$locid} = "$p/$name";
+        };
+    };
+
     $self->{pathFromLocid} = sub {
         my ($locid) = @_;
         $qGetParidName->execute($locid);
