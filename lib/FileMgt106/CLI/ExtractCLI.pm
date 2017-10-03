@@ -111,6 +111,7 @@ sub process {
             };
             next;
         }
+
         if (/^-+csv=?(.*)/i) {
             require FileMgt106::Extractor;
             ( $processScal, $processQuery ) =

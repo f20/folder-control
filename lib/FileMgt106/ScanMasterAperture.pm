@@ -47,6 +47,147 @@ sub new {
     bless [@_], $class;
 }
 
+sub repairPermissions {
+    my ($lib) = @_;
+    unless ( chdir $lib->[LIB_DIR] ) {
+        warn die "Cannot chdir $lib->[LIB_DIR]";
+        return;
+    }
+    my $rgid = ( stat '.' )[STAT_GID];
+    my $repairer;
+    $repairer = sub {
+        foreach (@_) {
+            my @stat = lstat $_;
+            if ( -d _ ) {
+                chdir $_ or next;
+                opendir DIR, '.';
+                my @list = grep { !/^\.\.?$/s; } readdir DIR;
+                closedir DIR;
+                $repairer->(@list);
+                chdir '..';
+            }
+            elsif ( -f _ ) {
+                if ( $stat[STAT_NLINK] > 1 ) {
+                    system 'cp', '-p', '--', $_,
+                      'aperture_repair_permissions_temporary';
+                    unless ( rename 'aperture_repair_permissions_temporary',
+                        $_ )
+                    {
+                        warn "Cannot rename to $_ in $lib->[LIB_DIR]";
+                        next;
+                    }
+                    @stat = lstat $_;
+                }
+                if ( $stat[STAT_NLINK] > 1 ) {
+                    warn "$_ still multilinked in $lib->[LIB_DIR]";
+                    next;
+                }
+                chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
+                chmod 0660, $_ unless $stat[STAT_MODE] & 0660 == 0660;
+            }
+        }
+    };
+    opendir DIR, '.';
+    my @list = grep { !/^\.\.?|Masters$/s; } readdir DIR;
+    closedir DIR;
+    $repairer->(@list);
+    {
+        local $_ = $lib->[LIB_DIR];
+        s/\.aplibrary$/ (Masters)/;
+        unlink $_;
+        symlink "$lib->[LIB_DIR]/Masters", $_;
+    }
+    $rgid;
+}
+
+sub extractApertureMetadata {
+    my ($lib) = @_;
+    return unless -s "$lib->[LIB_DIR]/Database/apdb/Library.apdb";
+    my $lib =
+      DBI->connect(
+        "dbi:SQLite:dbname=$lib->[LIB_DIR]/Database/apdb/Library.apdb",
+        '', '', { sqlite_unicode => 0, AutoCommit => 1, } );
+    unless ($lib) {
+        warn "Cannot open $lib->[LIB_DIR]/Database/apdb/Library.apdb";
+        return;
+    }
+    my %metadata;
+    foreach (
+        @{
+            $lib->selectall_arrayref(
+                    'select uuid, mainRating, isOriginal '
+                  . 'masterUuid, rawMasterUuid, nonRawMasterUuid '
+                  . ' from RKVersion'
+            )
+        }
+      )
+    {
+        my ( $v, $stars, $isOriginal, @masters ) = @$_;
+        next if !$stars && $isOriginal;
+        $stars ||= 0;
+        $metadata{starsById}{$v}     = $stars;
+        $metadata{masterPrimary}{$v} = $masters[0];
+        foreach my $m ( grep { $_ } @masters ) {
+            $metadata{starsById}{$m} = $stars
+              unless $metadata{starsById}{$m}
+              && $metadata{starsById}{$m} > $stars;
+            $metadata{masterSecondary}{$v} = $m
+              unless defined $masters[0] && $m eq $masters[0];
+        }
+    }
+    foreach (
+        @{
+            $lib->selectall_arrayref(
+                    'select RKKeyword.name, RKVersion.uuid'
+                  . ' from RKKeywordForVersion, RKVersion, RKKeyword'
+                  . ' where RKVersion.modelId = RKKeywordForVersion.versionId'
+                  . ' and RKKeyword.modelId = RKKeywordForVersion.keywordId'
+                  . ' order by RKKeyword.name'
+            )
+        }
+      )
+    {
+        my ( $keyword, $version ) = @$_;
+        push @{ $metadata{versionsByKeyword}{$keyword} }, $version;
+    }
+    foreach (
+        @{
+            $lib->selectall_arrayref(
+                'select uuid, fileIsReference, imagePath from RKMaster'
+            )
+        }
+      )
+    {
+        my ( $muuid, $externalFlag, $path ) = @$_;
+        if ($externalFlag) {
+            $metadata{fileByMaster}{$muuid} = "/$path";
+        }
+        else {
+            $metadata{fileByMaster}{$muuid} = $path;
+            my ( $a, $b, $c, $d, $e ) = split m#/#, $path;
+            $metadata{starsByFile}{$a}{$b}{$c}{$d}{$e} =
+              $metadata{starsById}{$muuid};
+        }
+    }
+    \%metadata;
+}
+
+sub scan {
+    my ( $lib, $hints ) = @_;
+    my $stat = $hints->statFromGid( $lib->repairPermissions );
+    $hints->beginInteractive;
+    warn "Scanning $lib->[LIB_DIR]/Masters";
+    FileMgt106::Scanner->new( "$lib->[LIB_DIR]/Masters", $hints, $stat )
+      ->scan( time - 27 )
+      if -d "$lib->[LIB_DIR]/Masters";
+    warn "Scanning $lib->[LIB_DIR]";
+    my $scalar =
+      FileMgt106::Scanner->new( $lib->[LIB_DIR], $hints, $stat )->scan(0);
+    $hints->commit;
+    $scalar->{'/FilterFactory::Aperture'} = $lib->extractApertureMetadata;
+    $scalar;
+}
+
 sub findOrMakeApertureLibraries {
     my $class   = shift;
     my $hints   = shift;
@@ -137,10 +278,9 @@ sub setPathsCheckUpToDate {
 sub updateJbz {
     my ( $lib, $hints, $jbzDir ) = @_;
     return if $lib->setPathsCheckUpToDate($jbzDir);
-    require FileMgt106::ScannerAperture;
-    my $jbz = FileMgt106::ScannerAperture->scan( $lib->[LIB_DIR], $hints );
+    my $scalar = $lib->scan($hints);
     require FileMgt106::LoadSave;
-    FileMgt106::LoadSave::saveJbz( $lib->[LIB_JBZ] . $$, $jbz );
+    FileMgt106::LoadSave::saveJbz( $lib->[LIB_JBZ] . $$, $scalar );
     rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
 }
 
