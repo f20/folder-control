@@ -457,15 +457,14 @@ sub new {
                         next unless link $ipath, $tfile;
                         warn $_ . ' <= ' . decode_utf8($ipath) . "\n";
                         my @stat2 = $rstat->($tfile);
-
                         if ( FileMgt106::FileSystem::filesDiffer( $_, $tfile ) )
                         {
-                            warn unpack( 'H*', $sha1 )
-                              . " unexpected difference between files ($tfile)";
+                            warn 'Merging cancelled';
                             warn unpack( 'H*', _sha1File($_) )
                               . " $dir/$path$_\n";
                             warn unpack( 'H*', _sha1File($tfile) )
                               . " $ipath\n";
+                            unlink $tfile;
                             next;
                         }
                         if (   $stat[STAT_MTIME]
