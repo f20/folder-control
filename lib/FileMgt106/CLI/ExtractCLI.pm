@@ -243,7 +243,7 @@ sub process {
         elsif ($processQuery) {
             $processQuery->($_);
         }
-        else {
+        elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
             warn "Ignored: $_";
         }
     }
