@@ -338,15 +338,12 @@ sub makeProcessor {
                         $cellarDir = $d;
                     }
                     {
+                        my $toGrab =
+                            $grabSource =~ s/:\+$//s
+                          ? $missing
+                          : _filterByFileName($missing);
+                        next SOURCE unless %$toGrab;
                         warn "Grabbing from $grabSource\n";
-                        my $toGrab;
-                        if ( $grabSource =~ s/:\+$//s ) {
-                            $toGrab = $missing;
-                        }
-                        else {
-                            $toGrab = _filterByFileName($missing);
-                            next SOURCE unless %$toGrab;
-                        }
                         my ( $host, $extract ) =
                           $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
                           ? ( $1, 'extract.pl' )
