@@ -102,8 +102,8 @@ sub attach {
                 $scanMaster->setWatch( 'Daemon112::Watcher',
                     $topMaster->{'/kq'} )
                   if $topMaster->{'/kq'};
-                $topMaster->{'/postwatch'}->( $scanMaster, $_ )
-                  if $topMaster->{'/postwatch'};
+                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_ )
+                  if $topMaster->{'/scanMasterConfig'};
                 $time ||= time + 2;
                 $runner->{qu}->enqueue( ++$time, $scanMaster );
             }
