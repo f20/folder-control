@@ -308,7 +308,7 @@ sub makeDataExtractor {
         : qw(path rootid inode)
     );
 
-        my $pathFinder=$hints->{pathFinderFactory}->();
+    my $pathFinder = $hints->{pathFinderFactory}->();
 
     sub { }, sub {
         my ($csvOptions) = @_;
@@ -343,6 +343,7 @@ sub makeDataExtractor {
 
 sub makeInfoExtractor {
     my ($hintsFile) = @_;
+    binmode STDOUT, ':utf8';
     my $hints       = FileMgt106::Database->new( $hintsFile, 1 );
     my $devNo       = ( stat $hintsFile )[STAT_DEV];
     my $search      = $hints->{searchSha1};
