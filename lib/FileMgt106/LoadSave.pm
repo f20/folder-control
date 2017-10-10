@@ -38,7 +38,7 @@ my $jsonMachine;
 sub jsonMachineMaker {
     return $jsonMachine if $jsonMachine;
     foreach (qw(JSON JSON::PP)) {
-        return $jsonMachine = $_->new->canonical(1)->utf8->pretty
+        return $jsonMachine = $_->new->canonical->pretty
           if eval "require $_";
     }
     die 'No JSON module';

@@ -354,7 +354,7 @@ sub takeScalar {
         my ( $blob, $newSha1 );
         if ($scalar) {
             require FileMgt106::LoadSave;
-            $blob = FileMgt106::LoadSave::jsonMachineMaker()->encode($scalar);
+            $blob = FileMgt106::LoadSave::jsonMachineMaker()->utf8->encode($scalar);
             $newSha1 = sha1($blob);
         }
         unless ( defined $newSha1
