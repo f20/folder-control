@@ -103,18 +103,18 @@ sub repairPermissions {
 sub extractApertureMetadata {
     my ($lib) = @_;
     return unless -s "$lib->[LIB_DIR]/Database/apdb/Library.apdb";
-    my $lib =
+    my $libDbh =
       DBI->connect(
         "dbi:SQLite:dbname=$lib->[LIB_DIR]/Database/apdb/Library.apdb",
         '', '', { sqlite_unicode => 0, AutoCommit => 1, } );
-    unless ($lib) {
+    unless ($libDbh) {
         warn "Cannot open $lib->[LIB_DIR]/Database/apdb/Library.apdb";
         return;
     }
     my %metadata;
     foreach (
         @{
-            $lib->selectall_arrayref(
+            $libDbh->selectall_arrayref(
                     'select uuid, mainRating, isOriginal '
                   . 'masterUuid, rawMasterUuid, nonRawMasterUuid '
                   . ' from RKVersion'
@@ -137,7 +137,7 @@ sub extractApertureMetadata {
     }
     foreach (
         @{
-            $lib->selectall_arrayref(
+            $libDbh->selectall_arrayref(
                     'select RKKeyword.name, RKVersion.uuid'
                   . ' from RKKeywordForVersion, RKVersion, RKKeyword'
                   . ' where RKVersion.modelId = RKKeywordForVersion.versionId'
@@ -152,7 +152,7 @@ sub extractApertureMetadata {
     }
     foreach (
         @{
-            $lib->selectall_arrayref(
+            $libDbh->selectall_arrayref(
                 'select uuid, fileIsReference, imagePath from RKMaster'
             )
         }
@@ -215,7 +215,7 @@ sub findOrMakeApertureLibraries {
     }
     unless (@liblist) {
         warn 'Looking for Aperture libraries';
-        my $pathFinder=$hints->{pathFinderFactory}->();
+        my $pathFinder = $hints->{pathFinderFactory}->();
         $hints->beginInteractive;
         @liblist =
           map { defined $_ ? decode_utf8($_) : (); }
