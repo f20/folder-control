@@ -403,14 +403,10 @@ sub watchFolder {
             $self->[HINTS]->enqueue(
                 $runner->{pq},
                 sub {
-
                     # Validate locid as well as folder existence before running.
-                    # Previously chdir "$self->[DIR]/$path" or return;
-
                     my $fullPath = $self->[HINTS]{pathFromLocid}->($locid)
                       or return;
                     chdir $fullPath or return;
-
                     $frozensha1 ||= sha1_base64( freeze($hashref) );
                     eval {
                         $scanDir->(

@@ -67,13 +67,13 @@ sub new {
         @extras =
           ( 'mid' => Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, ) );
         mkdir my $test1 = catdir( $top, 'test1' );
-        mkdir my $test2 = catdir( $top, 'mid', 'test2' );
+        mkdir my $test2 = catdir( $top, 'mid', 'test🐰' );
         my $counter = 1002;
         my $makeRandoms;
         $makeRandoms = sub {
             ++$counter;
             unless ( $counter % 4 ) {
-                my $newtest1 = catdir( $top, 'test' . ( $counter / 4 ) );
+                my $newtest1 = catdir( $top, 'test1-' . ( $counter / 4 ) );
                 rename $test1, $newtest1;
                 $test1 = $newtest1;
             }

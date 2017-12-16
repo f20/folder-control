@@ -508,6 +508,7 @@ EOL
         my ($locid) = @_;
         $qGetParidName->execute($locid);
         my ( $parid, $path ) = $qGetParidName->fetchrow_array;
+        $path = decode_utf8 $path;
         $qGetParidName->finish;
         return unless defined $path;
         while ($parid) {
