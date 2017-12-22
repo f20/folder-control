@@ -86,14 +86,17 @@ sub explodeByType {
               if $ext eq 'db' || $ext eq 'apdb';
             $cat = 'Document'
               if $ext =~ /^doc/s || $ext eq 'rtf' || $ext eq 'odt';
-            $cat = 'IPA'
-              if $ext eq 'ipa';
+            $cat = 'iOS'
+              if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
               if $ext eq 'jpg'
               || $ext eq 'jpeg';
             $cat = "Image_$ext"
               if $ext eq 'png'
-              || $ext eq 'gif';
+              || $ext eq 'gif'
+              || $ext eq 'heic';
+            $cat = 'Image_tiff'
+              if $ext eq 'tif' || $ext eq 'tiff';
             $cat = 'JBZ'
               if $ext eq 'jbz';
             $cat = 'PDF'
@@ -106,8 +109,6 @@ sub explodeByType {
               if $ext eq 'py' || $ext eq 'pyc';
             $cat = 'Spreadsheet'
               if $ext =~ /^xl/s || $ext eq 'csv' || $ext eq 'ods';
-            $cat = 'TIFF'
-              if $ext eq 'tif' || $ext eq 'tiff';
             $cat = 'Text'
               if $ext eq 'txt';
             $cat = 'Video'
