@@ -92,9 +92,11 @@ sub explodeByType {
               if $ext eq 'jpg'
               || $ext eq 'jpeg';
             $cat = "Image_$ext"
-              if $ext eq 'png'
-              || $ext eq 'gif'
-              || $ext eq 'heic';
+              if $ext eq 'gif'
+              || $ext eq 'heic'
+              || $ext eq 'ico'
+              || $ext eq 'png'
+              || $ext eq 'svg';
             $cat = 'Image_tiff'
               if $ext eq 'tif' || $ext eq 'tiff';
             $cat = 'JBZ'
