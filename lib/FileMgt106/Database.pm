@@ -2,7 +2,7 @@ package FileMgt106::Database;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -467,20 +467,6 @@ EOL
         $qUpdateSha1if->execute( @_[ 0, 0, 1 ] );
     };
 
-    my $getRootidFromDev = sub {
-        my ($dev) = @_;
-        my $rootid = $rootidFromDev{$dev};
-        return $rootid if defined $rootid;
-        my $a;
-        $a =
-          $dbHandle->selectall_arrayref(
-                'select rootid, locid from locations'
-              . ' where parid=0 order by length(name)' )
-          while !$a;
-        map { $rootidFromDev{ $_->[0] } ||= $_->[1]; } @$a;
-        $rootidFromDev{$dev} ||= 0;
-    };
-
     my $paridNameFromLocid = $self->{paridNameFromLocid} = sub {
         my ($locid) = @_;
         $qGetParidName->execute($locid);
@@ -508,7 +494,6 @@ EOL
         my ($locid) = @_;
         $qGetParidName->execute($locid);
         my ( $parid, $path ) = $qGetParidName->fetchrow_array;
-        $path = decode_utf8 $path;
         $qGetParidName->finish;
         return unless defined $path;
         while ($parid) {
@@ -524,7 +509,18 @@ EOL
 
     $self->{searchSha1} = sub {
         my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
-        my $rootid = $getRootidFromDev->($dev);
+        foreach (
+            @{
+                $dbHandle->selectall_arrayref(
+                    'select locid, name from locations where parid=0'
+                )
+            }
+          )
+        {
+            my @stat = stat $_->[1] or next;
+            $rootidFromDev{ $stat[STAT_DEV] } ||= $_->[0];
+        }
+        my $rootid = $rootidFromDev{$dev};
         my $q;
         if ($inoMaxFlag) {
             ( $q = $qGetBySha1InoMax )->execute( $sha1, $rootid, $inoAvoid );
@@ -555,7 +551,7 @@ EOL
                 next unless defined $parid;
                 next unless my @stat = lstat $path;
                 next
-                  unless my $drootid = $getRootidFromDev->( $stat[STAT_DEV] );
+                  unless my $drootid = $rootidFromDev{ $stat[STAT_DEV] };
                 undef $locid
                   unless defined $size
                   && defined $rootid
