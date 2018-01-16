@@ -106,8 +106,6 @@ EOSQL
         require DBD::SQLite;
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
-        sleep 1 while !$mdbh->do('begin immediate transaction');
-        $counter = 0;
         my $qGetId = $mdbh->prepare('select id from dic where description=?');
         my $qAddDic =
           $mdbh->prepare('insert into dic (description) values (?)');
@@ -132,7 +130,6 @@ EOSQL
       }, sub {
         my ($info) = @_;
         unless ($info) {
-            $mdbh->commit;
             $mdbh->disconnect;
             return;
         }
@@ -145,17 +142,14 @@ EOSQL
             $info->{folder},
             map { defined $_ ? [$_] : ['']; } @$info{@$tags}
         );
+        sleep 1 while !$mdbh->do('begin immediate transaction');
         my $s = $getid->("sha1=$info->{sha1}");
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
             $qAddRel->execute( $s,
                 $getid->( $k . '=' . ( ref $v ? $$v : $v ) ) );
         }
-        if ( ++$counter > 64 ) {
-            $mdbh->commit;
-            $counter = 0;
-            sleep 1 while !$mdbh->do('begin immediate transaction');
-        }
+        $mdbh->commit;
       };
 }
 
