@@ -27,7 +27,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 =cut
 
-
 sub _escapeCsv {
     ( local $_ ) = @_;
     s/"/""/g;
@@ -150,6 +149,7 @@ sub makeSpreadsheetWriter {
             }
             else {
                 $ws->autofilter( 0, 0, $row, $lastCol );
+                $wb->close;
                 undef $wb;
                 rename $fileName . $$, $fileName;
             }
