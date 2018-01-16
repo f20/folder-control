@@ -96,11 +96,6 @@ sub makeHintsExtractor {
 
     my ( $hintsFile, $acceptor ) = @_;
     my ( $hints, $searchSha1, $needsNap );
-    $SIG{ALRM} = sub {
-        $needsNap = 1;
-        alarm 15;
-    };
-    alarm 20;
 
     my $devNo = ( stat $hintsFile )[STAT_DEV];
     require Digest::SHA;
@@ -177,7 +172,7 @@ sub makeDataExtractor {
         $writer = sub {
             return $fileWriter->() unless @_;
             my (
-                $sha1, $mtime, $size,   $ext, $name,
+                $sha1,   $mtime, $size,   $ext, $name,
                 $folder, $row,   $rootid, $inode
             ) = @_;
             $fileWriter->(
