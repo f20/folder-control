@@ -2,7 +2,7 @@ package FileMgt106::Extractor;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -30,9 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use strict;
 use warnings;
 use utf8;
-use Digest::SHA ();
 use Encode qw(decode_utf8);
-use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 
@@ -163,158 +161,40 @@ sub makeHintsExtractor {
 
 }
 
-sub _escapeCsv {
-    ( local $_ ) = @_;
-    s/"/""/g;
-    qq%"$_"%;
-}
-
-sub _formatCsv {
-    ( local $_ ) = @_;
-    return "$1-$2-$3 $4"
-      if /^([0-9]+)[-:]([0-9]+)[-:]([0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s;
-    $_;
-}
-
-sub makeCsvWriter {
-    my ($dumpFile) = @_;
-    $dumpFile ||= '';
-    $dumpFile =~ s/[^%_\.a-zA-Z0-9]+/_/gs;
-    my $c;
-    if ($dumpFile) {
-        open $c, '>', "$dumpFile.$$";
-    }
-    else {
-        $c = \*STDOUT;
-    }
-    binmode $c, ':utf8';
-    sub {
-        if (@_) {
-            print {$c} join( ',',
-                map { /[" ]/ ? _escapeCsv($_)        : $_; }
-                map { ref $_ ? _formatCsv( $_->[0] ) : $_; } @_ )
-              . "\n";
-        }
-        else {
-            close $c;
-            rename "$dumpFile.$$", "$dumpFile.csv" if $dumpFile;
-        }
-    };
-}
-
-sub makeSpreadsheetWriter {
-    my ( $format, $fileName ) = @_;
-    my $module;
-    if ( $format =~ /^xls$/s ) {
-        if ( eval { require Spreadsheet::WriteExcel; } ) {
-            $fileName .= '.xls';
-            $module = 'Spreadsheet::WriteExcel';
-        }
-        else {
-            warn "Could not load Spreadsheet::WriteExcel: $@";
-        }
-    }
-    if ( !$module ) {
-        if ( eval { require Excel::Writer::XLSX; } ) {
-            $fileName .= '.xlsx';
-            $module = 'Excel::Writer::XLSX';
-        }
-        else {
-            warn "Could not load Excel::Writer::XLSX: $@";
-        }
-    }
-    if ( !$module && eval { require Spreadsheet::WriteExcel; } ) {
-        $fileName .= '.xls';
-        $module = 'Spreadsheet::WriteExcel';
-    }
-    if ($module) {
-        warn "Using $module";
-        my $wb = $module->new( $fileName . $$ );
-        my $ws = $wb->add_worksheet('Extracted');
-        $ws->set_paper(9);
-        $ws->fit_to_pages( 1, 0 );
-        $ws->hide_gridlines(2);
-        my $lastCol;
-
-        my ( $dateFormat, $sizeFormat );
-        my $wsWrite = sub {
-            ( my $ws, my $row, my $col, local $_ ) = @_;
-            if ( ref $_ ) {
-                ( local $_ ) = @$_;
-                if (
-/^([0-9]+)[-:]([0-9]+)[-:]([0-9]+)[ T]([0-9]+:[0-9]+:[0-9]+)$/s
-                  )
-                {
-                    $ws->write_date_time(
-                        $row, $col,
-                        "$1-$2-$3" . 'T' . $4,
-                        $dateFormat ||= $wb->add_format(
-                            num_format => 'ddd d mmm yyyy HH:MM:SS'
-                        )
-                    );
-                }
-                elsif (/^[0-9]+$/s) {
-                    $ws->write(
-                        $row, $col, $_,
-                        $sizeFormat ||= $wb->add_format(
-                            num_format => '#,##0'
-                        )
-                    );
-                }
-                else {
-                    $ws->write( $row, $col, $_ );
-                }
-            }
-            else {
-                $ws->write_string( $row, $col, $_ );
-            }
-        };
-
-        my $row = -1;
-        return sub {
-            if (@_) {
-                ++$row;
-                unless ( defined $lastCol ) {
-                    $lastCol = $#_;
-                    my @colWidth = qw(8 24 12 8 48 48),
-                      map { /date|time/i ? 48 : 12; } @_[ 6 .. $lastCol ];
-                    $ws->set_column( $_, $_, $colWidth[$_] )
-                      foreach 0 .. $lastCol;
-                }
-                $wsWrite->( $ws, $row, $_, $_[$_] ) foreach 0 .. $#_;
-            }
-            else {
-                $ws->autofilter( 0, 0, $row, $lastCol );
-                undef $wb;
-                rename $fileName . $$, $fileName;
-            }
-        };
-    }
-    warn 'Using CSV';
-    makeCsvWriter($fileName);
-}
-
 sub makeDataExtractor {
 
-    my ( $hintsFile, $writer, $extraColumnExtractor ) = @_;
+    my ( $hintsFile, $fileWriter, $resultsProcessor ) = @_;
 
     require POSIX;
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    my $writer;
 
-    $writer->(
-        qw(sha1 mtime size ext file folder),
-        $extraColumnExtractor
-        ? $extraColumnExtractor->()
-        : qw(path rootid inode)
-    );
+    if ($resultsProcessor) {
+        $writer = $resultsProcessor->($fileWriter);
+    }
+    else {
+        $fileWriter->(qw(sha1 mtime size ext file folder path rootid inode));
+        $writer = sub {
+            return $fileWriter->() unless @_;
+            my (
+                $sha1, $mtime, $size,   $ext, $name,
+                $folder, $row,   $rootid, $inode
+            ) = @_;
+            $fileWriter->(
+                $sha1, [$mtime], [$size], $ext, $name, $folder,
+                [qq%="'"&F$row&"/"&E$row&"'"%],
+                $rootid, $inode
+            );
+        };
+    }
 
     my $pathFinder = $hints->{pathFinderFactory}->();
 
-    sub { }, sub {
+    sub {
         my ($csvOptions) = @_;
         my $q =
-          $hints->{dbHandle}
-          ->prepare( 'select rootid, ino, size, name, parid, hex(sha1), mtime'
+          $hints->{dbHandle}->prepare(
+                'select rootid, ino, size, name, parid, hex(sha1), mtime'
               . ' from locations where sha1 is not null and size is not null'
               . ( $csvOptions =~ /%/ ? ' and name like ?' : '' )
               . ' order by mtime desc, size desc, sha1, rootid, ino' );
@@ -326,14 +206,11 @@ sub makeDataExtractor {
             my ($ext) = ( $name =~ /(\.[a-z0-9-_]+)$/i );
             $ext = '' unless defined $ext;
             next unless defined $parid;
-            next unless my $p = $pathFinder->($parid);
+            next unless my $folder = $pathFinder->($parid);
             $mtime = POSIX::strftime( '%Y-%m-%d %H:%M:%S', gmtime $mtime );
-            ++$row;
             $writer->(
-                $sha1, [$mtime], [$size], $ext, $name, $p,
-                $extraColumnExtractor
-                ? $extraColumnExtractor->("$p/$name")
-                : ( [qq%="'"&F$row&"/"&E$row&"'"%], $rootid, $inode )
+                $sha1,   $mtime, $size,   $ext, $name,
+                $folder, ++$row, $rootid, $inode
             );
         }
         $writer->();
@@ -367,7 +244,8 @@ sub makeInfoExtractor {
             }
             else { push @trusted, $path; }
         }
-        print join "\n", ( sort @trusted ), ( map { " $_"; } sort @untrusted ),
+        print join "\n", ( sort @trusted ),
+          ( map { " $_"; } sort @untrusted ),
           '';
     };
 
@@ -413,206 +291,6 @@ sub makeInfoExtractor {
     };
 
     $processScal, $processQuery;
-
-}
-
-sub makeHintsBuilder {
-
-    my ( $hintsFile, $useSymlinksNotCopies, $infillFlag ) = @_;
-    my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
-
-    my $createTree;
-    $createTree = sub {
-
-        my ( $whatYouWant, $whereYouWantIt, $devNo ) = @_;
-        return unless $whatYouWant;
-
-        unless ($devNo) {
-            $whereYouWantIt ||= '.';
-            die "No device for $whereYouWantIt"
-              unless $devNo = ( stat $whereYouWantIt )[STAT_DEV];
-        }
-
-        # To contain a scalar representing missing objects (or false if none).
-        my $returnValue;
-        my $stashFolder;
-        my $dh;
-        opendir $dh, $whereYouWantIt;
-        my %toDelete =
-          map { ( decode_utf8($_) => undef ); }
-          grep { !/^\.\.?$/s; } readdir $dh;
-        closedir $dh;
-
-      ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
-            next if $name =~ m#/#;
-            delete $toDelete{$name};
-            my $fileName = catfile( $whereYouWantIt, $name );
-            my @existingStat = lstat $fileName;
-            if ( -l _ ) {
-                unlink $fileName or die "unlink $fileName: $!";
-            }
-            if ( ref $what ) {
-                if ( ref $what eq 'HASH' ) {
-                    if ( !-d _ ) {
-                        if (@existingStat) {
-                            unless ( defined $stashFolder ) {
-                                mkdir $stashFolder =
-                                  catdir( $whereYouWantIt, "Z_Stashed-$$" );
-                            }
-                            die "Cannot move $fileName to $stashFolder "
-                              . catfile( $stashFolder, $name )
-                              unless rename $fileName,
-                              catfile( $stashFolder, $name );
-                        }
-                        mkdir $fileName;
-                    }
-                    my $rv = $createTree->( $what, $fileName, $devNo );
-                    $returnValue->{$name} = $rv if $rv;
-                }
-                next;
-            }
-            unless ( $what =~ /([0-9a-fA-F]{40})/ ) {
-                symlink $what, $fileName or $returnValue->{$name} = $what;
-                next;
-            }
-            my $sha1 = pack( 'H*', $1 );
-            my $iterator = $searchSha1->( $sha1, $devNo );
-            my ( @stat, @candidates, @reservelist );
-            while ( !@stat
-                && ( my ( $path, $statref, $locid ) = $iterator->() ) )
-            {
-                next unless -f _;
-                if (
-                    !$locid
-                    || ( $statref->[STAT_UID]
-                        && ( $statref->[STAT_MODE] & 0200 ) )
-                    || ( $statref->[STAT_MODE] & 022 )
-                  )
-                {
-                    push @reservelist, $path;
-                    next;
-                }
-                if (   $statref->[STAT_DEV] != $devNo
-                    || $statref->[STAT_UID] && $statref->[STAT_UID] < 500 )
-                {
-                    push @candidates, $path;
-                    next;
-                }
-                if (@existingStat) {
-                    next ENTRY
-                      if $existingStat[STAT_DEV] == $statref->[STAT_DEV]
-                      && $existingStat[STAT_INO] == $statref->[STAT_INO];
-                    unless ( defined $stashFolder ) {
-                        mkdir $stashFolder =
-                          catdir( $whereYouWantIt, "Z_Stashed-$$" );
-                    }
-                    die "Cannot move $fileName to $stashFolder"
-                      unless rename $fileName,
-                      catfile( $stashFolder, $name );
-                }
-                next ENTRY if link $path, $fileName;
-            }
-            foreach ( @candidates, @reservelist ) {
-                next ENTRY
-                  if $useSymlinksNotCopies
-                  ? symlink( $_, $fileName )
-                  : _copyFile( $_, $fileName );
-            }
-            $returnValue->{$name} = $what;
-
-        }
-
-        if ( !$infillFlag && %toDelete ) {
-            unless ( defined $stashFolder ) {
-                mkdir $stashFolder = catdir( $whereYouWantIt, "Z_Stashed-$$" );
-            }
-            foreach ( keys %toDelete ) {
-                rename catfile( $whereYouWantIt, $_ ),
-                  catfile( $stashFolder, $_ )
-                  or die "Cannot move $_ to $stashFolder";
-            }
-        }
-
-        $returnValue;
-
-    };
-
-}
-
-sub _copyFile {
-    my $status = system qw(cp -p --), @_;
-    return 1 if 0 == $status;
-    warn join ' ', qw(system cp -p --), @_, 'returned',
-      unpack( 'H*', pack( 'n', $status ) ), 'Caller:', caller,
-      'Cwd:',
-      `pwd`;
-    return;
-}
-
-sub makeHintsFilter {
-
-    my ( $hintsFile, $devNo, $devOnly ) = @_;
-
-    my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
-    my %seen;
-    my $sha1Machine;
-    if ($devNo) {
-        require Digest::SHA;
-        $sha1Machine = new Digest::SHA;
-    }
-
-    my $filterTree;
-    $filterTree = sub {
-        my ($whatYouWant) = @_;
-        my $returnValue;
-
-      ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
-            next if $name =~ m#/#;
-            if ( ref $what ) {
-                if ( ref $what eq 'HASH' ) {
-                    my $rv = $filterTree->( $what, $devNo );
-                    $returnValue->{$name} = $rv if $rv;
-                }
-                next;
-            }
-            next if exists $seen{$what};
-            undef $seen{$what};
-            next unless $what =~ /([0-9a-fA-F]{40})/;
-            my $sha1 = pack( 'H*', $1 );
-            my $iterator = $searchSha1->( $sha1, $devNo );
-            if ($devNo) {
-                my ( @stat, @candidates, @reservelist );
-                while ( !@stat
-                    && ( my ( $path, $statref, $locid ) = $iterator->() ) )
-                {
-                    next unless -f _;
-                    last if $devOnly && $statref->[STAT_DEV] != $devNo;
-                    if (
-                        !$locid
-                        || ( $statref->[STAT_UID]
-                            && ( $statref->[STAT_MODE] & 0200 ) )
-                        || ( $statref->[STAT_MODE] & 022 )
-                      )
-                    {
-                        push @reservelist, $path;
-                        next;
-                    }
-                    next ENTRY;
-                }
-                if ( @candidates || @reservelist ) {
-                    foreach ( @candidates, @reservelist ) {
-                        next ENTRY
-                          if $sha1 eq $sha1Machine->addfile($_)->digest;
-                    }
-                }
-            }
-            else { next if $iterator->(); }
-            $returnValue->{$name} = $what;
-        }
-
-        $returnValue;
-
-    };
 
 }
 

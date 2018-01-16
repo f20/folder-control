@@ -2,7 +2,7 @@ package FileMgt106::CLI::ExtractCLI;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -41,7 +41,7 @@ use constant { STAT_DEV => 0, };
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $processScal, $processQuery, $extraColumnExtractor );
+    my ( $scalarFilter, $queryProcessor, $resultsProcessor );
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -50,14 +50,14 @@ sub process {
 
         if (/^-+nohints/i) {
             require FileMgt106::Extractor;
-            $processScal =
+            $scalarFilter =
               FileMgt106::Extractor::makeSimpleExtractor(
                 FileMgt106::Extractor::makeExtractAcceptor(@args) );
             next;
         }
 
         if (/^-+split/) {
-            $processScal = sub {
+            $scalarFilter = sub {
                 my ( $scalar, $path ) = @_ or return;
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
@@ -71,7 +71,7 @@ sub process {
         }
 
         if (/^-+explode/) {
-            $processScal = sub {
+            $scalarFilter = sub {
                 my ( $scalar, $path ) = @_ or return;
                 my ($module) =
                   grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
@@ -96,55 +96,61 @@ sub process {
             next;
         }
 
+        if (/^-+metadatasingle/i) {
+            require FileMgt106::Metadata;
+            $resultsProcessor = FileMgt106::Metadata::metadataProcessorMaker();
+            next;
+        }
+
+        if (/^-+metadata/i) {
+            require FileMgt106::Metadata;
+            $resultsProcessor =
+              FileMgt106::Metadata::metadataThreadedProcessorMaker(
+                catfile( dirname($perl5dir), '~$metadata' ) );
+            next;
+        }
+
         if (/^-+exiftool/i) {
-            require Image::ExifTool;
-            my $et = Image::ExifTool->new;
-            my @tags =
-              qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
-            $extraColumnExtractor = sub {
-                my ($fn) = @_;
-                return @tags
-                  unless defined $fn;
-                $et->ExtractInfo($fn) or return map { ['']; } @tags;
-                my $info = $et->GetInfo(@tags);
-                map { defined $_ ? [$_] : ['']; } @$info{@tags};
-            };
+            require FileMgt106::Metadata;
+            $resultsProcessor =
+              FileMgt106::Metadata::metadaExtractorMakerSimple();
             next;
         }
 
         if (/^-+csv=?(.*)/i) {
             require FileMgt106::Extractor;
-            ( $processScal, $processQuery ) =
+            require FileMgt106::Spreadsheets;
+            $queryProcessor =
               FileMgt106::Extractor::makeDataExtractor( $hintsFile,
-                FileMgt106::Extractor::makeCsvWriter($1),
-                $extraColumnExtractor );
+                FileMgt106::Spreadsheets::makeCsvWriter($1),
+                $resultsProcessor );
             next;
         }
 
         if (/^-+(xlsx?)=?(.*)/i) {
             require FileMgt106::Extractor;
-            ( $processScal, $processQuery ) =
-              FileMgt106::Extractor::makeDataExtractor(
+            require FileMgt106::Spreadsheets;
+            $queryProcessor = FileMgt106::Extractor::makeDataExtractor(
                 $hintsFile,
-                FileMgt106::Extractor::makeSpreadsheetWriter(
+                FileMgt106::Spreadsheets::makeSpreadsheetWriter(
                     $1, $2 || 'Extracted'
                 ),
-                $extraColumnExtractor
-              );
+                $resultsProcessor
+            );
             next;
         }
 
         if (/^-+info/i) {
             require FileMgt106::Extractor;
-            ( $processScal, $processQuery ) =
+            ( $scalarFilter, $queryProcessor ) =
               FileMgt106::Extractor::makeInfoExtractor($hintsFile);
             next;
         }
 
         if (/^-+cwd(symlink)?(infill)?/i) {
-            require FileMgt106::Extractor;
-            $processScal =
-              FileMgt106::Extractor::makeHintsBuilder( $hintsFile, $1, $2 );
+            require FileMgt106::Builder;
+            $scalarFilter =
+              FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
             next;
         }
 
@@ -160,20 +166,20 @@ sub process {
                 $devNo = $stat[STAT_DEV];
             }
             if ($devNo) {
-                require FileMgt106::Extractor;
-                $processScal =
-                  FileMgt106::Extractor::makeHintsFilter( $hintsFile,
+                require FileMgt106::HintsFilter;
+                $scalarFilter =
+                  FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
                     $devNo, $devOnly );
             }
             else {
-                $processScal = FileMgt106::LoadSave::makeInfillFilter();
+                $scalarFilter = FileMgt106::LoadSave::makeInfillFilter();
             }
             next;
         }
 
-        unless ($processScal) {
+        unless ($scalarFilter) {
             require FileMgt106::Extractor;
-            $processScal =
+            $scalarFilter =
               FileMgt106::Extractor::makeHintsExtractor( $hintsFile,
                 FileMgt106::Extractor::makeExtractAcceptor(@args) );
         }
@@ -213,7 +219,7 @@ sub process {
                 $stdin
               )
             {
-                my $missing = $processScal->($_);
+                my $missing = $scalarFilter->($_);
                 if ($missing) {
                     if ( !$missingCompilation ) {
                         $missingCompilation = $missing;
@@ -230,25 +236,25 @@ sub process {
               if $missingCompilation;
         }
         elsif (/^[0-9a-f]{40}$/is) {
-            $processScal->($_);
+            $scalarFilter->($_);
         }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-            my $s = $processScal->(
+            my $s = $scalarFilter->(
                 FileMgt106::LoadSave::loadNormalisedScalar($_), $1
             );
             s/(\.jbz|json\.bz2)$/+missing$1/s;
             unlink $_;
             FileMgt106::LoadSave::saveJbz( $_, $s ) if $s;
         }
-        elsif ($processQuery) {
-            $processQuery->($_);
+        elsif ($queryProcessor) {
+            $queryProcessor->($_);
         }
         elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
             warn "Ignored: $_";
         }
     }
 
-    $processScal->() if $processScal;
+    $scalarFilter->() if $scalarFilter;
 
 }
 

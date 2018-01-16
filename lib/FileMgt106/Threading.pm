@@ -1,8 +1,8 @@
-#!/usr/bin/env perl
+package FileMgt106::Threading;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+Copyright 2017-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -25,42 +25,57 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Sorry no documentation.
-github.com/f20/folder-control is a set of Perl scripts for file
-cataloguing, file backup, synchronisation and file-level deduplication.
-Pre-requisites from CPAN: JSON or JSON:PP, DBD::SQLite.
-
 =cut
 
-use warnings;
 use strict;
+use warnings;
 use utf8;
-use Cwd qw(getcwd);
-use Encode qw(decode_utf8);
-use File::Basename qw(dirname);
-use File::Spec::Functions qw(catdir rel2abs);
-binmode STDERR, ':utf8';
-my ( $startFolder, $perl5dir );
 
-BEGIN {
-    $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
-        my ($sig) = @_;
-        die "Died on $sig signal\n";
+use threads;
+use Thread::Pool;
+use Thread::Queue;
+
+sub runPoolQueue {
+
+    my (
+        $extractionWorkerPre, $extractionWorkerDo,
+        $storageWorkerPre,    $storageWorkerDo
+    ) = @_;
+
+    my $queue = Thread::Queue->new;
+
+    my $extractorPool = Thread::Pool->new(
+        {
+            pre => $extractionWorkerPre,
+            do  => sub {
+                $queue->enqueue( $extractionWorkerDo->(@_) );
+            },
+            workers => 6,
+        }
+    );
+
+    my $storageThread = threads->create(
+        sub {
+            $storageWorkerPre->();
+            while (1) {
+                my $hash = $queue->dequeue;
+                $storageWorkerDo->($hash);
+                last unless $hash;
+            }
+        }
+    );
+
+    sub {
+        unless (@_) {
+            $extractorPool->shutdown;
+            $queue->enqueue(undef);
+            $storageThread->join;
+            return;
+        }
+        sleep 1 while $extractorPool->todo > 64;
+        $extractorPool->job(@_);
     };
-    $startFolder = decode_utf8 getcwd();
-    my $homedir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
-    while (1) {
-        $perl5dir = catdir( $homedir, 'lib' );
-        last if -d catdir( $perl5dir, 'FileMgt106' );
-        my $parent = dirname $homedir;
-        last if $parent eq $homedir;
-        $homedir = $parent;
-    }
-    chdir $perl5dir or die "chdir $perl5dir: $!";
-    $perl5dir = decode_utf8 getcwd();
-    chdir $startFolder;
-}
-use lib $perl5dir;
 
-use FileMgt106::CLI::ExtractCLI;
-FileMgt106::CLI::ExtractCLI::process( $startFolder, $perl5dir, @ARGV );
+}
+
+1;
