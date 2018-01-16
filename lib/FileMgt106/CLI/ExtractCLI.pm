@@ -98,7 +98,9 @@ sub process {
 
         if (/^-+metadatasingle/i) {
             require FileMgt106::Metadata;
-            $resultsProcessor = FileMgt106::Metadata::metadataProcessorMaker();
+            $resultsProcessor =
+              FileMgt106::Metadata::metadataProcessorMaker(
+                catfile( dirname($perl5dir), '~$metadata' ) );
             next;
         }
 
