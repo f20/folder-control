@@ -89,16 +89,19 @@ sub metadataExtractionWorker {
 
 sub metadataStorageWorker {
     my ( $mdbFile, $fileWriter, $tags ) = @_;
-    my ( $counter, $mdbh, $getid, $qAddRel );
+    my ( $counter, $mdbh, $getid, $qGetSub, $qAddSub, $qAddRel );
 
     {
         my $dbh = DBI->connect("dbi:SQLite:dbname=$mdbFile");
         do { sleep 1 while !$dbh->do($_); }
           foreach grep { $_ } split /;\s*/s, <<EOSQL;
-create table if not exists dic (id integer primary key, description text);
+create table if not exists subj (s integer primary key, sha1 text);
+create unique index if not exists subjsha1 on subj (sha1);
+create table if not exists dic (p integer primary key, description text);
 create unique index if not exists dicdes on dic (description);
-create table if not exists rel (s integer, p integer);
+create table if not exists rel (s integer, p integer, d text);
 create unique index if not exists relsp on rel (s, p);
+create index if not exists relpd on rel (p, d);
 EOSQL
     }
 
@@ -106,11 +109,14 @@ EOSQL
         require DBD::SQLite;
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
-        my $qGetId = $mdbh->prepare('select id from dic where description=?');
+        my $qGetId = $mdbh->prepare('select p from dic where description=?');
         my $qAddDic =
           $mdbh->prepare('insert into dic (description) values (?)');
+        $qGetSub = $mdbh->prepare('select s from subj where sha1=?');
+        $qAddSub = $mdbh->prepare('insert into subj (sha1) values (?)');
         $qAddRel =
-          $mdbh->prepare('insert or replace into rel (s, p) values (?, ?)');
+          $mdbh->prepare(
+            'insert or replace into rel (s, p, d) values (?, ?, ?)');
         my %ids;
         $getid = sub {
             my ($description) = @_;
@@ -120,8 +126,6 @@ EOSQL
             $qGetId->finish;
             return $ids{$description} = $id if $id;
             $qAddDic->execute($description);
-            $mdbh->commit;
-            $mdbh->do('begin immediate transaction');
             $qGetId->execute($description);
             ($id) = $qGetId->fetchrow_array;
             $qGetId->finish;
@@ -143,11 +147,18 @@ EOSQL
             map { defined $_ ? [$_] : ['']; } @$info{@$tags}
         );
         sleep 1 while !$mdbh->do('begin immediate transaction');
-        my $s = $getid->("sha1=$info->{sha1}");
+        $qGetSub->execute( $info->{sha1} );
+        my ($s) = $qGetSub->fetchrow_array;
+        $qGetSub->finish;
+        unless ($s) {
+            $qAddSub->execute( $info->{sha1} );
+            $qGetSub->execute( $info->{sha1} );
+            ($s) = $qGetSub->fetchrow_array;
+            $qGetSub->finish;
+        }
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
-            $qAddRel->execute( $s,
-                $getid->( $k . '=' . ( ref $v ? $$v : $v ) ) );
+            $qAddRel->execute( $s, $getid->($k), ref $v ? $$v : $v );
         }
         $mdbh->commit;
       };
@@ -155,28 +166,28 @@ EOSQL
 
 sub metadataStorageReader {
     my ( $mdbFile, $fileWriter, $tags ) = @_;
-    my ( $mdbh, $qGetId, $qGetProps );
+    my ( $mdbh, $qGetSub, $qGetProps );
     sub {
         require DBD::SQLite;
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
-        $qGetId = $mdbh->prepare('select id from dic where description=?');
+        $qGetSub = $mdbh->prepare('select s from subj where sha1=?');
         $qGetProps =
-          $mdbh->prepare('select description from dic, rel where id=p and s=?');
+          $mdbh->prepare(
+            'select description, d from dic inner join rel using (p) where s=?');
       }, sub {
         unless (@_) {
             $mdbh->disconnect;
             return;
         }
         my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-        $qGetId->execute("sha1=$sha1");
-        my ($id) = $qGetId->fetchrow_array or return;
-        $qGetId->finish;
+        $qGetSub->execute($sha1);
+        my ($id) = $qGetSub->fetchrow_array or return;
+        $qGetSub->finish;
         $qGetProps->execute($id);
         my %info;
-        while ( ( local $_ ) = $qGetProps->fetchrow_array ) {
-            next unless /^(.+?)=(.*)/s;
-            $info{$1} = $2;
+        while ( my ( $p, $v ) = $qGetProps->fetchrow_array ) {
+            $info{$p} = $v;
         }
         $fileWriter->(
             $sha1, [$mtime], [$size], $ext, $name, $folder,
