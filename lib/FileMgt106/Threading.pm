@@ -64,7 +64,6 @@ sub runPoolQueue {
                     last;
                 }
                 if ( my $wantMore = $storageWorkerDo->($arg) ) {
-                    sleep 1 while $workerPool->todo > 64;
                     $workerPool->job( $wantMore->{extractionPath}, $wantMore );
                 }
             }
