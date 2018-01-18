@@ -517,8 +517,10 @@ EOL
             }
           )
         {
-            my @stat = stat $_->[1] or next;
-            $rootidFromDev{ $stat[STAT_DEV] } ||= $_->[0];
+            my ( $locid, $name ) = @$_;
+            $name = '/' if $name eq '';
+            my @stat = stat $name or next;
+            $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
         }
         my $rootid = $rootidFromDev{$dev};
         my $q;
