@@ -90,7 +90,8 @@ sub metadataExtractionWorker {
 
 sub metadataStorageWorker {
     my ( $mdbFile, $fileWriter, $tags ) = @_;
-    my ( $counter, $mdbh, $getid, $qGetSub, $qAddSub, $qAddRel );
+    my ( $mdbh, $getid, $qGetSub, $qGetProps, $qAddSub, $qAddRel );
+    my $counter = -1;
 
     {
         my $dbh = DBI->connect("dbi:SQLite:dbname=$mdbFile");
@@ -113,6 +114,10 @@ EOSQL
         my $qAddDic =
           $mdbh->prepare('insert into dic (description) values (?)');
         $qGetSub = $mdbh->prepare('select s from subj where sha1=?');
+        $qGetProps =
+          $mdbh->prepare(
+            'select description, d from dic inner join rel using (p) where s=?'
+          );
         $qAddSub = $mdbh->prepare('insert into subj (sha1) values (?)');
         $qAddRel =
           $mdbh->prepare(
@@ -131,12 +136,29 @@ EOSQL
             $qGetId->finish;
             return $ids{$description} = $id if $id;
         };
-      }, sub {
+      },
+
+      sub {
+
         my ($info) = @_;
         unless ($info) {
+            $mdbh->commit if $counter > -1;
             $mdbh->disconnect;
+            $fileWriter->();
             return;
         }
+
+        $qGetSub->execute( $info->{sha1} );
+        my ($s) = $qGetSub->fetchrow_array;
+        $qGetSub->finish;
+        if ($s) {
+            $qGetProps->execute($s);
+            while ( my ( $p, $v ) = $qGetProps->fetchrow_array ) {
+                $info->{$p} = $v;
+            }
+        }
+        return $info unless $s || defined $info->{path};
+
         $fileWriter->(
             $info->{sha1},
             [ $info->{mtime} ],
@@ -146,55 +168,25 @@ EOSQL
             $info->{folder},
             map { defined $_ ? [$_] : ['']; } @$info{@$tags}
         );
-        sleep 1 while !$mdbh->do('begin immediate transaction');
-        $qGetSub->execute( $info->{sha1} );
-        my ($s) = $qGetSub->fetchrow_array;
-        $qGetSub->finish;
-        unless ($s) {
-            $qAddSub->execute( $info->{sha1} );
-            $qGetSub->execute( $info->{sha1} );
-            ($s) = $qGetSub->fetchrow_array;
-            $qGetSub->finish;
+
+        return if $s;
+
+        if ( --$counter < 0 ) {
+            $mdbh->commit if $counter > -2;
+            sleep 1 while !$mdbh->do('begin immediate transaction');
+            $counter = 420;
         }
+        $qAddSub->execute( $info->{sha1} );
+        $qGetSub->execute( $info->{sha1} );
+        ($s) = $qGetSub->fetchrow_array;
+        $qGetSub->finish;
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
             $qAddRel->execute( $s, $getid->($k), ref $v ? $$v : $v );
         }
-        $mdbh->commit;
-      };
-}
 
-sub metadataStorageReader {
-    my ( $mdbFile, $fileWriter, $tags ) = @_;
-    my ( $mdbh, $qGetSub, $qGetProps );
-    sub {
-        $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
-            { sqlite_unicode => 0, AutoCommit => 0, } );
-        $qGetSub = $mdbh->prepare('select s from subj where sha1=?');
-        $qGetProps =
-          $mdbh->prepare(
-            'select description, d from dic inner join rel using (p) where s=?'
-          );
-      }, sub {
-        unless (@_) {
-            $mdbh->disconnect;
-            return;
-        }
-        my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-        $qGetSub->execute($sha1);
-        my ($id) = $qGetSub->fetchrow_array or return;
-        $qGetSub->finish;
-        $qGetProps->execute($id);
-        my %info;
-        while ( my ( $p, $v ) = $qGetProps->fetchrow_array ) {
-            $info{$p} = $v;
-        }
-        $fileWriter->(
-            $sha1, [$mtime], [$size], $ext, $name, $folder,
-            map { defined $_ ? [$_] : ['']; } @info{@$tags}
-        );
-        1;
       };
+
 }
 
 sub metadataProcessorMaker {
@@ -204,49 +196,28 @@ sub metadataProcessorMaker {
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
-        my ( $storageWorkerPre, $storageWorkerDo ) =
-          metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
-        my ( $storageReaderPre, $storageReaderDo ) =
-          metadataStorageReader( $mdbFile, $fileWriter, \@tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           metadataExtractionWorker();
+        my ( $storageWorkerPre, $storageWorkerDo ) =
+          metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
         $extractionWorkerPre->();
         $storageWorkerPre->();
-        $storageReaderPre->();
-        my %seen;
         sub {
-
-            unless (@_) {
-                $storageReaderDo->();
-                $storageWorkerDo->();
-                return $fileWriter->();
-            }
-
+            return $storageWorkerDo->() unless @_;
             my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            if ( exists $seen{$sha1} ) {
-                $fileWriter->(
-                    $sha1, [$mtime], [$size], $ext, $name, $folder,
-                    'See previous row'
-                );
-                next;
-            }
-            undef $seen{$sha1};
-            return
-              if $storageReaderDo->( $sha1, $mtime, $size, $ext, $name,
-                $folder );
-            $storageWorkerDo->(
-                $extractionWorkerDo->(
-                    catfile( $folder, $name ),
-                    {
-                        sha1   => $sha1,
-                        mtime  => $mtime,
-                        size   => $size,
-                        ext    => $ext,
-                        name   => $name,
-                        folder => $folder,
-                    }
-                )
+            my $info = $storageWorkerDo->(
+                {
+                    sha1   => $sha1,
+                    mtime  => $mtime,
+                    size   => $size,
+                    ext    => $ext,
+                    name   => $name,
+                    folder => $folder,
+                }
             );
+            $storageWorkerDo->(
+                $extractionWorkerDo->( catfile( $folder, $name ), $info ) )
+              if $info;
         };
     };
 }
@@ -257,49 +228,33 @@ sub metadataThreadedProcessorMaker {
       qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
     sub {
         my ($fileWriter) = @_;
-        $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
         my ( $storageWorkerPre, $storageWorkerDo ) =
           metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
-        my ( $storageReaderPre, $storageReaderDo ) =
-          metadataStorageReader( $mdbFile, $fileWriter, \@tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           metadataExtractionWorker();
         require FileMgt106::Threading;
         my $enqueuer = FileMgt106::Threading::runPoolQueue(
-            $extractionWorkerPre, $extractionWorkerDo,
-            $storageWorkerPre,    $storageWorkerDo
+            $extractionWorkerPre, $extractionWorkerDo, $storageWorkerPre,
+            $storageWorkerDo,     $fileWriter,
         );
-        $storageReaderPre->();
-        my %seen;
+        $enqueuer->(
+            {
+                map { ( $_ => $_ ); } qw(sha1 mtime size ext file folder path),
+                @tags
+            }
+        );
         sub {
-
-            unless (@_) {
-                $storageReaderDo->();
-                $enqueuer->();
-                return $fileWriter->();
-            }
-
+            return $enqueuer->(undef) unless @_;
             my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            if ( exists $seen{$sha1} ) {
-                $fileWriter->(
-                    $sha1, [$mtime], [$size], $ext, $name, $folder,
-                    'See previous row'
-                );
-                return;
-            }
-            undef $seen{$sha1};
-            return
-              if $storageReaderDo->( $sha1, $mtime, $size, $ext, $name,
-                $folder );
             $enqueuer->(
-                catfile( $folder, $name ),
                 {
-                    sha1   => $sha1,
-                    mtime  => $mtime,
-                    size   => $size,
-                    ext    => $ext,
-                    name   => $name,
-                    folder => $folder,
+                    extractionPath => catfile( $folder, $name ),
+                    sha1           => $sha1,
+                    mtime          => $mtime,
+                    size           => $size,
+                    ext            => $ext,
+                    name           => $name,
+                    folder         => $folder,
                 }
             );
         };

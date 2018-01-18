@@ -38,13 +38,13 @@ use Thread::Queue;
 sub runPoolQueue {
 
     my (
-        $extractionWorkerPre, $extractionWorkerDo,
-        $storageWorkerPre,    $storageWorkerDo
+        $extractionWorkerPre, $extractionWorkerDo, $storageWorkerPre,
+        $storageWorkerDo,     $fileWriter,
     ) = @_;
 
     my $queue = Thread::Queue->new;
 
-    my $extractorPool = Thread::Pool->new(
+    my $workerPool = Thread::Pool->new(
         {
             pre => $extractionWorkerPre,
             do  => sub {
@@ -58,22 +58,28 @@ sub runPoolQueue {
         sub {
             $storageWorkerPre->();
             while (1) {
-                my $hash = $queue->dequeue;
-                $storageWorkerDo->($hash);
-                last unless $hash;
+                my $arg = $queue->dequeue;
+                unless ( defined $arg ) {
+                    $storageWorkerDo->();
+                    last;
+                }
+                if ( my $wantMore = $storageWorkerDo->($arg) ) {
+                    sleep 1 while $workerPool->todo > 64;
+                    $workerPool->job( $wantMore->{extractionPath}, $wantMore );
+                }
             }
         }
     );
 
     sub {
-        unless (@_) {
-            $extractorPool->shutdown;
+        my ($arg) = @_;
+        unless ( defined $arg ) {
+            $workerPool->shutdown;
             $queue->enqueue(undef);
             $storageThread->join;
             return;
         }
-        sleep 1 while $extractorPool->todo > 64;
-        $extractorPool->job(@_);
+        $queue->enqueue($arg);
     };
 
 }
