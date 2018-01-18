@@ -93,9 +93,10 @@ sub metadataStorageWorker {
     my ( $mdbh, $getid, $qGetSub, $qGetProps, $qAddSub, $qAddRel );
     my $counter = -1;
 
-    {
-        my $dbh = DBI->connect("dbi:SQLite:dbname=$mdbFile");
-        do { sleep 1 while !$dbh->do($_); }
+    sub {
+        $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
+            { sqlite_unicode => 0, AutoCommit => 0, } );
+        do { sleep 1 while !$mdbh->do($_); }
           foreach grep { $_ } split /;\s*/s, <<EOSQL;
 create table if not exists subj (s integer primary key, sha1 text);
 create unique index if not exists subjsha1 on subj (sha1);
@@ -104,12 +105,8 @@ create unique index if not exists dicdes on dic (description);
 create table if not exists rel (s integer, p integer, d text);
 create unique index if not exists relsp on rel (s, p);
 create index if not exists relpd on rel (p, d);
+begin immediate transaction;
 EOSQL
-    }
-
-    sub {
-        $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
-            { sqlite_unicode => 0, AutoCommit => 0, } );
         my $qGetId = $mdbh->prepare('select p from dic where description=?');
         my $qAddDic =
           $mdbh->prepare('insert into dic (description) values (?)');
@@ -142,7 +139,7 @@ EOSQL
 
         my ($info) = @_;
         unless ($info) {
-            $mdbh->commit if $counter > -1;
+            $mdbh->commit;
             $mdbh->disconnect;
             $fileWriter->();
             return;
@@ -172,7 +169,7 @@ EOSQL
         return if $s;
 
         if ( --$counter < 0 ) {
-            $mdbh->commit if $counter > -2;
+            $mdbh->commit;
             sleep 1 while !$mdbh->do('begin immediate transaction');
             $counter = 420;
         }
@@ -195,7 +192,7 @@ sub metadataProcessorMaker {
       qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
     sub {
         my ($fileWriter) = @_;
-        $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
+        $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           metadataExtractionWorker();
         my ( $storageWorkerPre, $storageWorkerDo ) =
@@ -239,7 +236,7 @@ sub metadataThreadedProcessorMaker {
         );
         $enqueuer->(
             {
-                map { ( $_ => $_ ); } qw(sha1 mtime size ext file folder path),
+                map { ( $_ => $_ ); } qw(sha1 mtime size ext name folder path),
                 @tags
             }
         );
