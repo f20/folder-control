@@ -98,6 +98,8 @@ sub metadataStorageWorker {
             { sqlite_unicode => 0, AutoCommit => 0, } );
         do { sleep 1 while !$mdbh->do($_); }
           foreach grep { $_ } split /;\s*/s, <<EOSQL;
+pragma temp_store = memory;
+pragma cache_size = 48000;
 begin immediate transaction;
 create table if not exists subj (s integer primary key, sha1 text);
 create unique index if not exists subjsha1 on subj (sha1);
