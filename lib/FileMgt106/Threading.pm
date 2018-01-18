@@ -44,27 +44,35 @@ sub runPoolQueue {
 
     my $queue = Thread::Queue->new;
 
-    my $workerPool = Thread::Pool->new(
-        {
-            pre => $extractionWorkerPre,
-            do  => sub {
-                $queue->enqueue( $extractionWorkerDo->(@_) );
-            },
-            workers => 12,
-        }
-    );
-
     my $storageThread = threads->create(
         sub {
+            my $workerPool = Thread::Pool->new(
+                {
+                    pre => $extractionWorkerPre,
+                    do  => sub {
+                        my %hash = @_;
+                        if ( my $p = delete $hash{extractionPath} ) {
+                            $queue->enqueue(
+                                $extractionWorkerDo->( $p, \%hash ) );
+                        }
+                    },
+                    workers => 12,
+                }
+            );
             $storageWorkerPre->();
             while (1) {
                 my $arg = $queue->dequeue;
-                unless ( defined $arg ) {
+                unless ( ref $arg ) {
+                    if ( $arg == 1 ) {
+                        $workerPool->shutdown;
+                        $queue->enqueue(2);
+                        next;
+                    }
                     $storageWorkerDo->();
                     last;
                 }
                 if ( my $wantMore = $storageWorkerDo->($arg) ) {
-                    $workerPool->job( $wantMore->{extractionPath}, $wantMore );
+                    $workerPool->job( map { "$_"; } %$wantMore );
                 }
             }
         }
@@ -73,8 +81,7 @@ sub runPoolQueue {
     sub {
         my ($arg) = @_;
         unless ( defined $arg ) {
-            $workerPool->shutdown;
-            $queue->enqueue(undef);
+            $queue->enqueue(1);
             $storageThread->join;
             return;
         }
