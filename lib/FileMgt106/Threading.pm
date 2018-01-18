@@ -50,7 +50,7 @@ sub runPoolQueue {
             do  => sub {
                 $queue->enqueue( $extractionWorkerDo->(@_) );
             },
-            workers => 6,
+            workers => 12,
         }
     );
 
