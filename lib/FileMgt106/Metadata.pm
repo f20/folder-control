@@ -31,6 +31,7 @@ use strict;
 use warnings;
 use utf8;
 use File::Spec::Functions qw(catfile);
+use DBD::SQLite;
 
 sub metadaExtractorMakerSimple {
     require Image::ExifTool;
@@ -106,7 +107,6 @@ EOSQL
     }
 
     sub {
-        require DBD::SQLite;
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
         my $qGetId = $mdbh->prepare('select p from dic where description=?');
@@ -168,13 +168,13 @@ sub metadataStorageReader {
     my ( $mdbFile, $fileWriter, $tags ) = @_;
     my ( $mdbh, $qGetSub, $qGetProps );
     sub {
-        require DBD::SQLite;
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
         $qGetSub = $mdbh->prepare('select s from subj where sha1=?');
         $qGetProps =
           $mdbh->prepare(
-            'select description, d from dic inner join rel using (p) where s=?');
+            'select description, d from dic inner join rel using (p) where s=?'
+          );
       }, sub {
         unless (@_) {
             $mdbh->disconnect;
