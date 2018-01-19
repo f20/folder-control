@@ -87,7 +87,7 @@ sub runPoolQueue {
             $storageThread->join;
             return;
         }
-        sleep 1 while $q->pending > 255;
+        sleep 1 while $queue->pending > 255;
         $queue->enqueue($arg);
     };
 
