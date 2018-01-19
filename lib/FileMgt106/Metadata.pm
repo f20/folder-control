@@ -72,6 +72,7 @@ sub metadataExtractionWorker {
         $et        = Image::ExifTool->new;
       }, sub {
         my ( $path, $basics ) = @_;
+        warn "$path\n";
         my $results =
             $path =~ /\.(?:nef|jpg|arw|raw|jpeg|m4a|mp3|mp4)$/is
           ? $et->ImageInfo($path)
@@ -81,6 +82,7 @@ sub metadataExtractionWorker {
         $results->{'SHA-3/224'}   = $sha3->addfile($path)->b64digest;
         $results->{bytes}         = -s $path;
         $results->{path}          = $path;
+
         while ( my ( $k, $v ) = each %$basics ) {
             $results->{$k} = $v;
         }
@@ -173,7 +175,7 @@ EOSQL
         if ( --$counter < 0 ) {
             $mdbh->commit;
             sleep 1 while !$mdbh->do('begin immediate transaction');
-            $counter = 420;
+            $counter = 42;
         }
         $qAddSub->execute( $info->{sha1} );
         $qGetSub->execute( $info->{sha1} );
