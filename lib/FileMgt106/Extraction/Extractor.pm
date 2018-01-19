@@ -1,4 +1,4 @@
-package FileMgt106::Extractor;
+package FileMgt106::Extraction::Extractor;
 
 =head Copyright licence and disclaimer
 

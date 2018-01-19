@@ -1,4 +1,4 @@
-package FileMgt106::Metadata;
+package FileMgt106::Extraction::Metadata;
 
 =head Copyright licence and disclaimer
 
@@ -233,8 +233,8 @@ sub metadataThreadedProcessorMaker {
           metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           metadataExtractionWorker();
-        require FileMgt106::Threading;
-        my $enqueuer = FileMgt106::Threading::runPoolQueue(
+        require FileMgt106::Extraction::Threading;
+        my $enqueuer = FileMgt106::Extraction::Threading::runPoolQueue(
             $extractionWorkerPre, $extractionWorkerDo, $storageWorkerPre,
             $storageWorkerDo,     $fileWriter,
         );

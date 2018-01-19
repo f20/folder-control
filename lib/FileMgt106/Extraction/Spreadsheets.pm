@@ -1,4 +1,4 @@
-package FileMgt106::Spreadsheets;
+package FileMgt106::Extraction::Spreadsheets;
 
 =head Copyright licence and disclaimer
 
@@ -93,14 +93,7 @@ sub makeSpreadsheetWriter {
     }
     if ($module) {
         warn "Using $module";
-        my $wb = $module->new( $fileName . $$ );
-        my $ws = $wb->add_worksheet('Extracted');
-        $ws->set_paper(9);
-        $ws->fit_to_pages( 1, 0 );
-        $ws->hide_gridlines(2);
-        my $lastCol;
-
-        my ( $dateFormat, $sizeFormat );
+        my ( $wb, $ws, $lastCol, $dateFormat, $sizeFormat );
         my $wsWrite = sub {
             ( my $ws, my $row, my $col, local $_ ) = @_;
             if ( ref $_ ) {
@@ -137,6 +130,13 @@ sub makeSpreadsheetWriter {
         my $row = -1;
         return sub {
             if (@_) {
+                unless ($wb) {
+                    $wb = $module->new( $fileName . $$ );
+                    $ws = $wb->add_worksheet('Extracted');
+                    $ws->set_paper(9);
+                    $ws->fit_to_pages( 1, 0 );
+                    $ws->hide_gridlines(2);
+                }
                 ++$row;
                 unless ( defined $lastCol ) {
                     $lastCol = $#_;

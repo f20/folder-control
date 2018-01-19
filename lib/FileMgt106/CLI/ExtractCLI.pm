@@ -49,10 +49,10 @@ sub process {
         local $_ = decode_utf8 $_;
 
         if (/^-+nohints/i) {
-            require FileMgt106::Extractor;
+            require FileMgt106::Extraction::Extractor;
             $scalarFilter =
-              FileMgt106::Extractor::makeSimpleExtractor(
-                FileMgt106::Extractor::makeExtractAcceptor(@args) );
+              FileMgt106::Extraction::Extractor::makeSimpleExtractor(
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
             next;
         }
 
@@ -97,55 +97,56 @@ sub process {
         }
 
         if (/^-+metadatasingle/i) {
-            require FileMgt106::Metadata;
+            require FileMgt106::Extraction::Metadata;
             $resultsProcessor =
-              FileMgt106::Metadata::metadataProcessorMaker(
+              FileMgt106::Extraction::Metadata::metadataProcessorMaker(
                 catfile( dirname($perl5dir), '~$metadata' ) );
             next;
         }
 
         if (/^-+metadata/i) {
-            require FileMgt106::Metadata;
+            require FileMgt106::Extraction::Metadata;
             $resultsProcessor =
-              FileMgt106::Metadata::metadataThreadedProcessorMaker(
+              FileMgt106::Extraction::Metadata::metadataThreadedProcessorMaker(
                 catfile( dirname($perl5dir), '~$metadata' ) );
             next;
         }
 
         if (/^-+exiftool/i) {
-            require FileMgt106::Metadata;
+            require FileMgt106::Extraction::Metadata;
             $resultsProcessor =
-              FileMgt106::Metadata::metadaExtractorMakerSimple();
+              FileMgt106::Extraction::Metadata::metadaExtractorMakerSimple();
             next;
         }
 
         if (/^-+csv=?(.*)/i) {
-            require FileMgt106::Extractor;
-            require FileMgt106::Spreadsheets;
+            require FileMgt106::Extraction::Extractor;
+            require FileMgt106::Extraction::Spreadsheets;
             $queryProcessor =
-              FileMgt106::Extractor::makeDataExtractor( $hintsFile,
-                FileMgt106::Spreadsheets::makeCsvWriter($1),
+              FileMgt106::Extraction::Extractor::makeDataExtractor( $hintsFile,
+                FileMgt106::Extraction::Spreadsheets::makeCsvWriter($1),
                 $resultsProcessor );
             next;
         }
 
         if (/^-+(xlsx?)=?(.*)/i) {
-            require FileMgt106::Extractor;
-            require FileMgt106::Spreadsheets;
-            $queryProcessor = FileMgt106::Extractor::makeDataExtractor(
+            require FileMgt106::Extraction::Extractor;
+            require FileMgt106::Extraction::Spreadsheets;
+            $queryProcessor =
+              FileMgt106::Extraction::Extractor::makeDataExtractor(
                 $hintsFile,
-                FileMgt106::Spreadsheets::makeSpreadsheetWriter(
+                FileMgt106::Extraction::Spreadsheets::makeSpreadsheetWriter(
                     $1, $2 || 'Extracted'
                 ),
                 $resultsProcessor
-            );
+              );
             next;
         }
 
         if (/^-+info/i) {
-            require FileMgt106::Extractor;
+            require FileMgt106::Extraction::Extractor;
             ( $scalarFilter, $queryProcessor ) =
-              FileMgt106::Extractor::makeInfoExtractor($hintsFile);
+              FileMgt106::Extraction::Extractor::makeInfoExtractor($hintsFile);
             next;
         }
 
@@ -180,10 +181,10 @@ sub process {
         }
 
         unless ($scalarFilter) {
-            require FileMgt106::Extractor;
+            require FileMgt106::Extraction::Extractor;
             $scalarFilter =
-              FileMgt106::Extractor::makeHintsExtractor( $hintsFile,
-                FileMgt106::Extractor::makeExtractAcceptor(@args) );
+              FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
         }
 
         if (/^-$/) {

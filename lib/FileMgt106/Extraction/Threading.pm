@@ -1,4 +1,4 @@
-package FileMgt106::Threading;
+package FileMgt106::Extraction::Threading;
 
 =head Copyright licence and disclaimer
 
