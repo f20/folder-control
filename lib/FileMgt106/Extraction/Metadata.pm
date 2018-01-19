@@ -37,7 +37,7 @@ sub metadaExtractorMakerSimple {
     require Image::ExifTool;
     my $et = Image::ExifTool->new;
     my @tags =
-      qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
+      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
@@ -193,7 +193,7 @@ EOSQL
 sub metadataProcessorMaker {
     my ($mdbFile) = @_;
     my @tags =
-      qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
+      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
@@ -226,7 +226,7 @@ sub metadataProcessorMaker {
 sub metadataThreadedProcessorMaker {
     my ($mdbFile) = @_;
     my @tags =
-      qw(SerialNumber ShutterCount DateTimeOriginal ImageWidth ImageHeight);
+      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
