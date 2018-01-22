@@ -48,6 +48,7 @@ sub makeHintsBuilder {
 
         unless ($devNo) {
             $whereYouWantIt ||= '.';
+            mkdir $whereYouWantIt unless -e $whereYouWantIt;
             die "No device for $whereYouWantIt"
               unless $devNo = ( stat $whereYouWantIt )[STAT_DEV];
         }
