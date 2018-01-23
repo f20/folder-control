@@ -94,6 +94,7 @@ sub metadataStorageWorker {
     my ( $mdbFile, $fileWriter, $tags ) = @_;
     my ( $mdbh, $getid, $qGetSub, $qGetProps, $qAddSub, $qAddRel );
     my $counter = -1;
+    my %seen;
 
     sub {
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
@@ -148,6 +149,18 @@ EOSQL
             $fileWriter->();
             return;
         }
+
+        if ( exists $seen{ $info->{sha1} } ) {
+            $fileWriter->(
+                $info->{sha1},
+                [ $info->{mtime} ],
+                [ $info->{size} ],
+                $info->{ext}, $info->{name}, $info->{folder},
+                map { '='; } @$tags
+            );
+            return;
+        }
+        undef $seen{ $info->{sha1} };
 
         $qGetSub->execute( $info->{sha1} );
         my ($s) = $qGetSub->fetchrow_array;

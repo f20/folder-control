@@ -150,7 +150,7 @@ sub process {
             next;
         }
 
-        if (/^-+cwd(symlink)?(infill)?/i) {
+        if (/^-+(?:make|build|cwd)(symlink)?(infill)?/i) {
             require FileMgt106::Builder;
             $scalarFilter =
               FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
