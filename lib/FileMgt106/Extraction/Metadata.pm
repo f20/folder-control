@@ -102,7 +102,6 @@ sub metadataStorageWorker {
         do { sleep 1 while !$mdbh->do($_); }
           foreach grep { $_ } split /;\s*/s, <<EOSQL;
 pragma temp_store = memory;
-pragma cache_size = 48000;
 begin immediate transaction;
 create table if not exists subj (s integer primary key, sha1 text);
 create unique index if not exists subjsha1 on subj (sha1);
@@ -110,7 +109,6 @@ create table if not exists dic (p integer primary key, description text);
 create unique index if not exists dicdes on dic (description);
 create table if not exists rel (s integer, p integer, d text);
 create unique index if not exists relsp on rel (s, p);
-create index if not exists relpd on rel (p, d);
 EOSQL
         my $qGetId = $mdbh->prepare('select p from dic where description=?');
         my $qAddDic =
