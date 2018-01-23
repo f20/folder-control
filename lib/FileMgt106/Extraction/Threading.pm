@@ -52,7 +52,7 @@ sub runPoolQueue {
                     do  => sub {
                         my %hash = @_;
                         if ( my $p = delete $hash{extractionPath} ) {
-                            $queue->enqueue(
+                            $queue->insert( 5,
                                 $extractionWorkerDo->( $p, \%hash ) );
                         }
                     },
@@ -73,7 +73,7 @@ sub runPoolQueue {
                 }
                 if ( my $wantMore = $storageWorkerDo->($arg) ) {
 
-                    # sleep 1 while $workerPool->todo > 64;
+                    # sleep 1 while $workerPool->todo > 64;
                     $workerPool->job( map { "$_"; } %$wantMore );
                 }
             }
@@ -87,7 +87,6 @@ sub runPoolQueue {
             $storageThread->join;
             return;
         }
-        sleep 1 while $queue->pending > 255;
         $queue->enqueue($arg);
     };
 
