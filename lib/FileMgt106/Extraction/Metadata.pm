@@ -150,11 +150,9 @@ EOSQL
 
         if ( exists $seen{ $info->{sha1} } ) {
             $fileWriter->(
-                $info->{sha1},
-                [ $info->{mtime} ],
-                [ $info->{size} ],
-                $info->{ext}, $info->{name}, $info->{folder},
-                map { '='; } @$tags
+                $info->{sha1}, [ $info->{mtime} ],
+                [ $info->{size} ], $info->{ext},
+                $info->{name},     $info->{folder},
             );
             return;
         }
