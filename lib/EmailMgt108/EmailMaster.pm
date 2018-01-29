@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
 use warnings;
-use utf8;
 use JSON;
 
 sub new {
@@ -99,7 +98,7 @@ create table if not exists map (
     id integer,
     sha1hex text,
     primary key (id, sha1hex)
-);    
+);
 EOS
         my $folders = {};
         my $toScan  = {};

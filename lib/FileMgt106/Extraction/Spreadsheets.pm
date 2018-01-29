@@ -161,7 +161,6 @@ sub makeSpreadsheetWriter {
 
 use strict;
 use warnings;
-use utf8;
 use Digest::SHA ();
 use Encode qw(decode_utf8);
 use File::Spec::Functions qw(catdir catfile);

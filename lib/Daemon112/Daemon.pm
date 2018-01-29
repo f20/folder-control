@@ -44,7 +44,6 @@ For KQueue events, the kevent structure (array reference) is an extra parameter.
 
 use strict;
 use warnings;
-use utf8;
 use Daemon112::ArrayQueue;
 
 sub reloadMyModules {

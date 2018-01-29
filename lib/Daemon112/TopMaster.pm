@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use warnings;
 use strict;
-use utf8;
 use Cwd;
 use File::Spec::Functions qw(catdir splitdir);
 use Encode qw(decode_utf8);

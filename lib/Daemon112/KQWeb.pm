@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use warnings;
 use strict;
-use utf8;
 use HTTP::Daemon;
 use HTTP::Response;
 use Daemon112::KQueue qw(:constants);

@@ -65,7 +65,6 @@ $hints->{moveByLocid}->( $newparid, $newname, $oldlocid );
 
 use strict;
 use warnings;
-use utf8;
 use Encode qw(decode_utf8);
 use DBI;
 use File::Spec::Functions qw(abs2rel);

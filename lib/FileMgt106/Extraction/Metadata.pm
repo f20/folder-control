@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
 use warnings;
-use utf8;
 use File::Spec::Functions qw(catfile);
 use DBD::SQLite;
 

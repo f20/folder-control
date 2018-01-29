@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
 use warnings;
-use utf8;
 use Encode qw/decode_utf8/;
 use POSIX       ();
 use Digest::SHA ();

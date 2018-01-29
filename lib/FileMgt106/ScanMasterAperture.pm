@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
 use warnings;
-use utf8;
 use Cwd;
 use Sys::Hostname qw(hostname);
 use Encode qw(decode_utf8 encode_utf8);

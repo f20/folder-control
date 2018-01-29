@@ -34,7 +34,6 @@ Pre-requisites from CPAN: JSON or JSON:PP, DBD::SQLite.
 
 use warnings;
 use strict;
-use utf8;
 use Cwd qw(getcwd);
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname);

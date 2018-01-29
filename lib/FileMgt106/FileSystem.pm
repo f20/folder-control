@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
 use warnings;
-use utf8;
 
 use base 'Exporter';
 our @EXPORT = qw(STAT_DEV STAT_INO STAT_MODE STAT_NLINK

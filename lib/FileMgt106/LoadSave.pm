@@ -29,7 +29,6 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use warnings;
 use strict;
-use utf8;
 use Encode qw(decode_utf8);
 use Unicode::Normalize;
 

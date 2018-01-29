@@ -35,7 +35,6 @@ Required for some features: BSD::Resource, Email::MIME, IO::KQueue, JSON, Linux:
 
 use warnings;
 use strict;
-use utf8;
 use Cwd qw(getcwd);
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname);
