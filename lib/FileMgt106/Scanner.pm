@@ -304,9 +304,9 @@ sub new {
                     push @list, $_ if $create->( $_, $locid, $target, $dev );
                 }
                 else {
-                    if (   $noMkDir
-                        && ref $target->{$_}
-                        && !$target->{"$_.jbz"} )
+                    if (   ref $target->{$_}
+                        && !$target->{"$_.jbz"}
+                        && ( $noMkDir || -f "$_.jbz" ) )
                     {
                         require FileMgt106::LoadSave;
                         my $tjbz = "$_.$$.jbz";
