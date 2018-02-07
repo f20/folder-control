@@ -454,7 +454,7 @@ sub new {
                         do { $tfile = '~$ temporary merge file ' . rand(); }
                           while -e $tfile;
                         next unless link $ipath, $tfile;
-                        warn $_ . ' <= ' . decode_utf8($ipath) . "\n";
+                        warn "$_ <= $ipath\n";
                         my @stat2 = $rstat->($tfile);
                         if ( FileMgt106::FileSystem::filesDiffer( $_, $tfile ) )
                         {
