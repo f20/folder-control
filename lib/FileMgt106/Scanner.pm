@@ -661,7 +661,7 @@ sub new {
 
             elsif ( -l _ ) {
                 delete $oldChildrenHashref->{$_};
-                $hashref->{$_} = readlink;
+                $hashref->{$_} = decode_utf8 readlink;
             }
 
             else {

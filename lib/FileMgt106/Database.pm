@@ -188,12 +188,12 @@ sub new {
         $qInsertLocid,             $qInsertLocation,
         $qGetChildren,             $qUpdateLocation,
         $qUpdateSha1,              $qUpdateSha1if,
-        $qGetBySha1,               $qGetBySha1Rootid,
-        $qGetBySha1InoAvoid,       $qGetBySha1InoMax,
-        $qGetParidName,            $qGetLikeDesc,
-        $qUproot,                  $qMoveByParidName,
-        $qMoveByLocid,             $qClone,
-        $qAlreadyThere,
+        $qGetSha1,                 $qGetBySha1,
+        $qGetBySha1Rootid,         $qGetBySha1InoAvoid,
+        $qGetBySha1InoMax,         $qGetParidName,
+        $qGetLikeDesc,             $qUproot,
+        $qMoveByParidName,         $qMoveByLocid,
+        $qClone,                   $qAlreadyThere,
     );
     my $prepareStatements = sub {
         (
@@ -203,12 +203,12 @@ sub new {
             $qInsertLocid,             $qInsertLocation,
             $qGetChildren,             $qUpdateLocation,
             $qUpdateSha1,              $qUpdateSha1if,
-            $qGetBySha1,               $qGetBySha1Rootid,
-            $qGetBySha1InoAvoid,       $qGetBySha1InoMax,
-            $qGetParidName,            $qGetLikeDesc,
-            $qUproot,                  $qMoveByParidName,
-            $qMoveByLocid,             $qClone,
-            $qAlreadyThere,
+            $qGetSha1,                 $qGetBySha1,
+            $qGetBySha1Rootid,         $qGetBySha1InoAvoid,
+            $qGetBySha1InoMax,         $qGetParidName,
+            $qGetLikeDesc,             $qUproot,
+            $qMoveByParidName,         $qMoveByLocid,
+            $qClone,                   $qAlreadyThere,
           )
           = map { my $q; sleep 1 while !( $q = $dbHandle->prepare($_) ); $q; }
           split /\n/, <<EOL;
@@ -224,6 +224,7 @@ select locid, name, sha1 from locations where parid=?
 update or replace locations set rootid=?, ino=?, size=?, mtime=? where locid=?
 update locations set sha1=? where locid=?
 update locations set sha1=? where ( sha1 is null or sha1<>? ) and locid=?
+select sha1 from locations where name=? and rootid=? and ino=? and size=? and mtime=?
 select locid, parid, name, rootid, ino, size, mtime from locations where sha1=? order by rootid=? desc
 select locid, parid, name, rootid, ino, size, mtime from locations where sha1=? and rootid=?
 select locid, parid, name, rootid, ino, size, mtime from locations where sha1=? and rootid=? and ino<>?
@@ -257,7 +258,7 @@ EOL
           $qChangeRootid,            $qChangeIno,
           $qInsertLocid,             $qInsertLocation,
           $qGetChildren,             $qUpdateLocation,
-          $qUpdateSha1,              $qUpdateSha1if,
+          $qUpdateSha1,              $qUpdateSha1if, $qGetSha1,
           $qGetBySha1,               $qGetBySha1Rootid,
           $qGetBySha1InoAvoid,       $qGetBySha1InoMax,
           $qGetParidName,            $qGetLikeDesc,
@@ -506,8 +507,7 @@ EOL
         $path;
     };
 
-    $self->{searchSha1} = sub {
-        my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
+    $self->{initRootidFromDev} = sub {
         foreach (
             @{
                 $dbHandle->selectall_arrayref(
@@ -521,6 +521,19 @@ EOL
             my @stat = stat $name or next;
             $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
         }
+    };
+
+    $self->{sha1FromStat} = sub {
+        my ( $name, $dev, $ino, $size, $mtime ) = @_;
+        my $rootid = $rootidFromDev{$dev};
+        $qGetSha1->execute( $name, $rootid, $ino, $size, $mtime );
+        my ($sha1) = $qGetSha1->fetchrow_array or return;
+        $qGetSha1->finish;
+        $sha1;
+    };
+
+    $self->{searchSha1} = sub {
+        my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
         my $rootid = $rootidFromDev{$dev};
         my $q;
         if ($inoMaxFlag) {

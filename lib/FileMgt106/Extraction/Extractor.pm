@@ -113,6 +113,7 @@ sub makeHintsExtractor {
         return $acceptor->() unless defined $what;
         unless ($searchSha1) {
             $hints = FileMgt106::Database->new( $hintsFile, 1 );
+            $hints->{initRootidFromDev}->();
             $searchSha1 = $hints->{searchSha1};
         }
         if ( ref $what eq 'HASH' ) {
@@ -215,7 +216,8 @@ sub makeDataExtractor {
 sub makeInfoExtractor {
     my ($hintsFile) = @_;
     binmode STDOUT, ':utf8';
-    my $hints       = FileMgt106::Database->new( $hintsFile, 1 );
+    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    $hints->{initRootidFromDev}->();
     my $devNo       = ( stat $hintsFile )[STAT_DEV];
     my $search      = $hints->{searchSha1};
     my $processScal = sub {

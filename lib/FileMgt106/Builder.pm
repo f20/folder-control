@@ -2,7 +2,7 @@ package FileMgt106::Builder;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -37,7 +37,9 @@ use FileMgt106::FileSystem;
 sub makeHintsBuilder {
 
     my ( $hintsFile, $useSymlinksNotCopies, $infillFlag ) = @_;
-    my $searchSha1 = FileMgt106::Database->new( $hintsFile, 1 )->{searchSha1};
+    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    $hints->{initRootidFromDev}->();
+    my $searchSha1 = $hints->{searchSha1};
 
     my $createTree;
     $createTree = sub {

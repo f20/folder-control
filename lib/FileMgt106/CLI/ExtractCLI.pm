@@ -35,7 +35,10 @@ use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::LoadSave;
 
-use constant { STAT_DEV => 0, };
+use constant {
+    STAT_DEV => 0,
+    STAT_INO => 1,
+};
 
 sub process {
 
@@ -47,11 +50,44 @@ sub process {
 
         local $_ = decode_utf8 $_;
 
-        if (/^-+nohints/i) {
-            require FileMgt106::Extraction::Extractor;
+        if (/^-+(?:make|build|cwd)(symlink)?(infill)?/i) {
+            require FileMgt106::Builder;
             $scalarFilter =
-              FileMgt106::Extraction::Extractor::makeSimpleExtractor(
-                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
+              FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
+            next;
+        }
+
+        if (/^-+resolve/) {
+            require FileMgt106::Database;
+            my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+            $hints->{initRootidFromDev}->();
+            my $sha1FromStat = $hints->{sha1FromStat};
+            require FileMgt106::Scanner;
+            my $sha1calc = \&FileMgt106::Scanner::_sha1File;
+            my $resolve;
+            $resolve = sub {
+                my ($i) = @_;
+                my %o;
+                while ( my ( $k, $v ) = each %$i ) {
+                    if ( ref $v eq 'HASH' ) {
+                        $o{$k} = $resolve->($v);
+                    }
+                    elsif ( $v =~ m#^/.*?([^/]+)$#s && -f $v && -r _ ) {
+                        my $sha1 =
+                          $sha1FromStat->( $1, ( stat _ )[ 0, 1, 7, 9 ] );
+                        $sha1 = $sha1calc->($v) unless defined $sha1;
+                        $o{$k} = defined $sha1 ? unpack( 'H*', $sha1 ) : $v;
+                    }
+                    else { $o{$k} = $v; }
+                }
+                \%o;
+            };
+            $scalarFilter = sub {
+                my ( $scalar, $path ) = @_ or return;
+                FileMgt106::LoadSave::saveJbz( "$path+resolved.jbz",
+                    $resolve->($scalar) );
+                return;
+            };
             next;
         }
 
@@ -149,10 +185,11 @@ sub process {
             next;
         }
 
-        if (/^-+(?:make|build|cwd)(symlink)?(infill)?/i) {
-            require FileMgt106::Builder;
+        if (/^-+nohints/i) {
+            require FileMgt106::Extraction::Extractor;
             $scalarFilter =
-              FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
+              FileMgt106::Extraction::Extractor::makeSimpleExtractor(
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
             next;
         }
 
@@ -202,8 +239,7 @@ sub process {
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            +{ $_ =>
-                                  FileMgt106::LoadSave::jsonMachineMaker()
+                            +{ $_ => FileMgt106::LoadSave::jsonMachineMaker()
                                   ->decode(<$fh>) };
                         }
                         else {
