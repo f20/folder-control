@@ -61,31 +61,20 @@ sub process {
             require FileMgt106::Database;
             my $hints = FileMgt106::Database->new( $hintsFile, 1 );
             $hints->{initRootidFromDev}->();
-            my $sha1FromStat = $hints->{sha1FromStat};
+            require FileMgt106::ResolveFilter;
             require FileMgt106::Scanner;
-            my $sha1calc = \&FileMgt106::Scanner::_sha1File;
-            my $resolve;
-            $resolve = sub {
-                my ($i) = @_;
-                my %o;
-                while ( my ( $k, $v ) = each %$i ) {
-                    if ( ref $v eq 'HASH' ) {
-                        $o{$k} = $resolve->($v);
-                    }
-                    elsif ( $v =~ m#^/.*?([^/]+)$#s && -f $v && -r _ ) {
-                        my $sha1 =
-                          $sha1FromStat->( $1, ( stat _ )[ 0, 1, 7, 9 ] );
-                        $sha1 = $sha1calc->($v) unless defined $sha1;
-                        $o{$k} = defined $sha1 ? unpack( 'H*', $sha1 ) : $v;
-                    }
-                    else { $o{$k} = $v; }
-                }
-                \%o;
-            };
             $scalarFilter = sub {
                 my ( $scalar, $path ) = @_ or return;
-                FileMgt106::LoadSave::saveJbz( "$path+resolved.jbz",
-                    $resolve->($scalar) );
+                my ( $consolidated, $nonLinks ) =
+                  FileMgt106::ResolveFilter::resolveAbsolutePaths(
+                    $scalar,
+                    $hints->{sha1FromStat},
+                    \&FileMgt106::Scanner::_sha1File
+                  );
+                FileMgt106::LoadSave::saveJbz( "$path+consolidated.jbz",
+                    $consolidated );
+                FileMgt106::LoadSave::saveJbz( "$path+nonLinks.jbz",
+                    $nonLinks );
                 return;
             };
             next;
@@ -211,7 +200,8 @@ sub process {
                     $devNo, $devOnly );
             }
             else {
-                $scalarFilter = FileMgt106::LoadSave::makeInfillFilter();
+                require FileMgt106::InfillFilter;
+                $scalarFilter = FileMgt106::InfillFilter::makeInfillFilter();
             }
             next;
         }

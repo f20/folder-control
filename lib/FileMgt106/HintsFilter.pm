@@ -48,10 +48,10 @@ sub makeHintsFilter {
 
     my $filterTree;
     $filterTree = sub {
-        my ($whatYouWant) = @_;
+        my ($sourceValue) = @_;
         my $returnValue;
 
-      ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
+      ENTRY: while ( my ( $name, $what ) = each %$sourceValue ) {
             next if $name =~ m#/#;
             if ( ref $what ) {
                 if ( ref $what eq 'HASH' ) {

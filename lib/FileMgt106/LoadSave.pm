@@ -180,29 +180,4 @@ sub parseText {
     $obj;
 }
 
-sub makeInfillFilter {
-    my %done;
-    my $filter;
-    $filter = sub {
-        my ($hash) = @_;
-        my %newHash;
-        foreach ( sort { length $a <=> length $b } keys %$hash ) {
-            my $what = $hash->{$_};
-            if ( ref $what eq 'HASH' ) {
-                $what = $filter->($what);
-                $newHash{$_} = $what if $what;
-            }
-            elsif ( $what && !$done{$what} ) {
-                $done{$what} = 1;
-                s/\s+/ /gs;
-                s/^ //;
-                s/ \././g;
-                s/ $//;
-                $newHash{ $_ || ( '__' . rand() ) } = $what;
-            }
-        }
-        keys %newHash ? \%newHash : undef;
-    };
-}
-
 1;

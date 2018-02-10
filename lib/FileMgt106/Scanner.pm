@@ -698,8 +698,8 @@ sub new {
                 if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/is ) {
                     warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
-                        require FileMgt106::LoadSave;
-                        $filter = FileMgt106::LoadSave::makeInfillFilter();
+                        require FileMgt106::InfillFilter;
+                        $filter = FileMgt106::InfillFilter::makeInfillFilter();
                         $hashref = $scanDir->( $locid, $path )
                           if $runningUnderWatcher;
                         $filter->($hashref);
