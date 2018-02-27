@@ -175,6 +175,20 @@ sub new {
     my $dbHandle = $makeNewHandle->();
 
     my %rootidFromDev;
+    foreach (
+        @{
+            $dbHandle->selectall_arrayref(
+                'select locid, name from locations where parid=0'
+            )
+        }
+      )
+    {
+        my ( $locid, $name ) = @$_;
+        $name = '/' if $name eq '';
+        my @stat = stat $name or next;
+        $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
+    }
+
     if ($writeable) {
         $dbHandle->sqlite_busy_timeout(600);    # 600 ms instead of default 30 s
         _setupTables($dbHandle);
@@ -505,22 +519,6 @@ EOL
             $parid = $grandid;
         }
         $path;
-    };
-
-    $self->{initRootidFromDev} = sub {
-        foreach (
-            @{
-                $dbHandle->selectall_arrayref(
-                    'select locid, name from locations where parid=0'
-                )
-            }
-          )
-        {
-            my ( $locid, $name ) = @$_;
-            $name = '/' if $name eq '';
-            my @stat = stat $name or next;
-            $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
-        }
     };
 
     $self->{sha1FromStat} = sub {

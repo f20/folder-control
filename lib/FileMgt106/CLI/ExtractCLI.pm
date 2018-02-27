@@ -60,7 +60,6 @@ sub process {
         if (/^-+resolve/) {
             require FileMgt106::Database;
             my $hints = FileMgt106::Database->new( $hintsFile, 1 );
-            $hints->{initRootidFromDev}->();
             require FileMgt106::ResolveFilter;
             require FileMgt106::Scanner;
             $scalarFilter = sub {

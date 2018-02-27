@@ -38,7 +38,6 @@ sub makeHintsBuilder {
 
     my ( $hintsFile, $useSymlinksNotCopies, $infillFlag ) = @_;
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
-    $hints->{initRootidFromDev}->();
     my $searchSha1 = $hints->{searchSha1};
 
     my $createTree;

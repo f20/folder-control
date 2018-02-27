@@ -37,7 +37,6 @@ sub makeHintsFilter {
     my ( $hintsFile, $devNo, $devOnly ) = @_;
 
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
-    $hints->{initRootidFromDev}->();
     my $searchSha1 = $hints->{searchSha1};
     my %seen;
     my $sha1Machine;
