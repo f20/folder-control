@@ -174,26 +174,25 @@ sub new {
 
     my $dbHandle = $makeNewHandle->();
 
-    my %rootidFromDev;
-    foreach (
-        @{
-            $dbHandle->selectall_arrayref(
-                'select locid, name from locations where parid=0'
-            )
-        }
-      )
-    {
-        my ( $locid, $name ) = @$_;
-        $name = '/' if $name eq '';
-        my @stat = stat $name or next;
-        $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
-    }
-
     if ($writeable) {
         $dbHandle->sqlite_busy_timeout(600);    # 600 ms instead of default 30 s
         _setupTables($dbHandle);
     }
     _setSQLitePragmas($dbHandle);
+
+    my %rootidFromDev;
+    {
+        my $resultsArrayRef;
+        sleep 1
+          until $resultsArrayRef = $dbHandle->selectall_arrayref(
+            'select locid, name from locations where parid=0');
+        foreach (@$resultsArrayRef) {
+            my ( $locid, $name ) = @$_;
+            $name = '/' if $name eq '';
+            my @stat = stat $name or next;
+            $rootidFromDev{ $stat[STAT_DEV] } ||= $locid;
+        }
+    }
 
     my (
         $qGetLocid,                $qGetLocidRootidIno,
@@ -760,7 +759,8 @@ sub dequeued {
     }
     else {    # Database seems to be locked
         $dbHandle->rollback;
-        $self->{qid} = $self->{queue}->enqueue( $self->{ttr} = $ttr, $self );
+        $self->{qid} =
+          $self->{queue}->enqueue( $self->{ttr} = $ttr, $self );
     }
 }
 
