@@ -142,6 +142,7 @@ sub migrate {
         $db->do('create temporary table t1'
               . ' (nl integer primary key, ol integer, nr integer)' );
         $db->do("insert or replace into t0 (nl, ol) values (0, 0)");
+        $db->do("insert or replace into t0 (nl, ol) values (-42, -42)");
         my $total = 0;
 
         my $prettifyWarning = sub {
@@ -590,43 +591,41 @@ sub makeProcessor {
           unless $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         $hints->beginInteractive;
-        my $caseidMap = $hints->{childrenSha1}->($caseidRoot);
+        my $caseidMap         = $hints->{childrenSha1}->($caseidRoot);
+        my @caseidOrderedKeys = keys %$caseidMap;
         $hints->commit;
-        return \&_chooserNoCaseids unless %$caseidMap;
+        return \&_chooserNoCaseids unless @caseidOrderedKeys;
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
             unlink $canonical . $fileExtension;
             my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
             delete $target->{$_} foreach grep { /\//; } keys %$target;
             my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
-            foreach my $caseid (@caseids) {
-                foreach my $folder ( keys %$caseidMap ) {
-                    next unless $caseidMap->{$folder} eq $caseid;
-                    $folder =~ s#//[0-9]+$##s;
-                    next unless -d $folder;
-                    my $destination = catdir( $folder, $canonical );
+            my $destination;
+          CASEID: foreach my $caseid (@caseids) {
+              CONCODE: foreach my $conCode (@caseidOrderedKeys) {
+                    next CONCODE unless $caseidMap->{$conCode} eq $caseid;
+                    my $container = $conCode;
+                    $container =~ s#//[0-9]+$##s;
+                    next CONCODE unless -d $container;
+                    $destination = catdir( $container, $canonical );
                     lstat $canonical;
                     unlink $canonical if -l _;
                     rename $canonical, $destination if -d _;
-                    unless ( -d $destination ) {
-                        mkdir $destination;
-                        open my $fh, '>', catdir( $destination, '~$nomkdir' );
-                    }
-                    unless ( -d $destination ) {
-                        symlink rel2abs($catalogue),
-                          $destination . $fileExtension;
-                        symlink $folder, $canonical;
-                        return;
-                    }
-                    symlink $destination, $canonical;
-                    return ( $target, $destination );
+                    last CASEID;
                 }
             }
-            if ( !-d $canonical ) {
+            $destination = $canonical unless defined $destination;
+            unless ( -d $destination ) {
+                mkdir $destination;
+                open my $fh, '>', catdir( $destination, '~$excluded.jbz' );
+            }
+            unless ( defined $destination ) {
                 symlink rel2abs($catalogue), $canonical . $fileExtension;
                 return;
             }
-            $target, $canonical;
+            symlink $destination, $canonical;
+            $target, $destination;
         };
     };
 

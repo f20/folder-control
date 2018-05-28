@@ -280,7 +280,6 @@ sub new {
         }
         my $target = !defined $watchMaster && $hashref;
         $hashref = {} if $target || !$hashref;
-        my $noMkDir = $target && -e '~$nomkdir';
         $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
             $forceReadOnlyTimeLimit, $stasher, $backuper )
           if $watchMaster;
@@ -294,6 +293,42 @@ sub new {
         }
         if ($target) {
             my %list = map { $_ => undef } @list;
+            my $excludedJbz;
+            $excludedJbz = '~$excluded.jbz'
+              if -e '~$excluded.jbz'
+              or -e '~$nomkdir' and rename '~$nomkdir',
+              '~$excluded.jbz';
+            if ( defined $excludedJbz ) {
+                require FileMgt106::LoadSave;
+                my $previouslyExcluded;
+                $previouslyExcluded =
+                  FileMgt106::LoadSave::loadNormalisedScalar($excludedJbz)
+                  if -s $excludedJbz;
+                my %excluded;
+                foreach ( keys %$target ) {
+                    next if /\.caseid$/is;
+                    next if exists $list{$_};
+                    $excluded{$_} = delete $target->{$_}
+                      if !$previouslyExcluded
+                      || exists $previouslyExcluded->{$_};
+                }
+                if (%excluded) {
+                    my $tjbz = $excludedJbz . $$;
+                    FileMgt106::LoadSave::saveJbz( $tjbz, \%excluded );
+                    if (
+                        !-e $excludedJbz
+                        || FileMgt106::FileSystem::filesDiffer(
+                            $excludedJbz, $tjbz
+                        )
+                      )
+                    {
+                        rename $tjbz, $excludedJbz;
+                    }
+                    else {
+                        unlink $tjbz;
+                    }
+                }
+            }
             foreach ( grep { !/\// && !exists $list{$_}; } keys %$target ) {
                 if ( -e $_ ) {
                     warn "Unexpectedly found $_ in $dir/$path";
@@ -302,35 +337,11 @@ sub new {
                     undef $targetHasBeenApplied{$_};
                     push @list, $_ if $create->( $_, $locid, $target, $dev );
                 }
+                elsif ( mkdir $_ and $rstat->($_) ) {
+                    push @list, $_;
+                }
                 else {
-                    if (   ref $target->{$_}
-                        && !$target->{"$_.jbz"}
-                        && ( $noMkDir || -f "$_.jbz" ) )
-                    {
-                        require FileMgt106::LoadSave;
-                        my $tjbz = "$_.$$.jbz";
-                        FileMgt106::LoadSave::saveJbz( $tjbz,
-                            delete $target->{$_} );
-                        if (
-                            !-e "$_.jbz"
-                            || FileMgt106::FileSystem::filesDiffer(
-                                "$_.jbz", $tjbz
-                            )
-                          )
-                        {
-                            rename $tjbz, "$_.jbz";
-                        }
-                        else {
-                            unlink $tjbz;
-                        }
-                        undef $targetHasBeenApplied{"$_.jbz"};
-                    }
-                    elsif ( mkdir $_ and $rstat->($_) ) {
-                        push @list, $_;
-                    }
-                    else {
-                        warn "Could not mkdir $_: $! (in $dir/$path)";
-                    }
+                    warn "Could not mkdir $_: $! (in $dir/$path)";
                 }
             }
         }
