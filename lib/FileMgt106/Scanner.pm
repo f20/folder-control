@@ -298,19 +298,21 @@ sub new {
               if -e '~$excluded.jbz'
               or -e '~$nomkdir' and rename '~$nomkdir',
               '~$excluded.jbz';
+            $excludedJbz = '~$exclusions.jbz'
+              if !defined $excludedJbz && -s '~$exclusions.jbz';
             if ( defined $excludedJbz ) {
                 require FileMgt106::LoadSave;
-                my $previouslyExcluded;
-                $previouslyExcluded =
+                my $definedExclusions;
+                $definedExclusions =
                   FileMgt106::LoadSave::loadNormalisedScalar($excludedJbz)
-                  if -s $excludedJbz;
+                  if $excludedJbz =~ /exclusions/;
                 my %excluded;
                 foreach ( keys %$target ) {
                     next if /\.caseid$/is;
                     next if exists $list{$_};
                     $excluded{$_} = delete $target->{$_}
-                      if !$previouslyExcluded
-                      || exists $previouslyExcluded->{$_};
+                      if !$definedExclusions
+                      || exists $definedExclusions->{$_};
                 }
                 if (%excluded) {
                     my $tjbz = $excludedJbz . $$;
