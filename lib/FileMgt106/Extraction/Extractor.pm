@@ -30,6 +30,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use strict;
 use warnings;
 use Encode qw(decode_utf8);
+use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 
@@ -201,6 +202,8 @@ sub makeDataExtractor {
             $ext = '' unless defined $ext;
             next unless defined $parid;
             next unless my $folder = $pathFinder->($parid);
+            next unless my @lstat = lstat catfile($folder, $name);
+            next unless -f _ && $lstat[STAT_INO] == $inode && $lstat[STAT_SIZE] == $size && $lstat[STAT_MTIME] == $mtime;
             $mtime = POSIX::strftime( '%Y-%m-%d %H:%M:%S', gmtime $mtime );
             $writer->(
                 $sha1,   $mtime, $size,   $ext, $name,

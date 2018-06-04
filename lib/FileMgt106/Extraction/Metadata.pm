@@ -73,7 +73,7 @@ sub metadataExtractionWorker {
         my ( $path, $basics ) = @_;
         warn "$path\n";
         my $results =
-            $path =~ /\.(?:nef|jpg|arw|raw|jpeg|m4a|mp3|mp4)$/is
+            $path =~ /\.(?:jpg|jpeg|tif|tiff|png|nef|arw|raw|m4a|mp3|mp4)$/is
           ? $et->ImageInfo($path)
           : {};
         $results->{'SHA-1'}       = $sha1->addfile($path)->hexdigest;
@@ -147,7 +147,7 @@ EOSQL
             return;
         }
 
-        if ( exists $seen{ $info->{sha1} } ) {
+        if ( !defined $info->{path} && exists $seen{ $info->{sha1} } ) {
             $fileWriter->(
                 $info->{sha1}, [ $info->{mtime} ],
                 [ $info->{size} ], $info->{ext},
@@ -160,11 +160,15 @@ EOSQL
         $qGetSub->execute( $info->{sha1} );
         my ($s) = $qGetSub->fetchrow_array;
         $qGetSub->finish;
+        my %combo;
         if ($s) {
             $qGetProps->execute($s);
             while ( my ( $p, $v ) = $qGetProps->fetchrow_array ) {
-                $info->{$p} = $v;
+                $combo{$p} = $v;
             }
+        }
+        while ( my ( $p, $v ) = each %$info ) {
+            $combo{$p} = $v;
         }
         return $info unless $s || defined $info->{path};
 
@@ -175,7 +179,7 @@ EOSQL
             $info->{ext},
             $info->{name},
             $info->{folder},
-            map { defined $_ ? [$_] : ['']; } @$info{@$tags}
+            map { defined $_ ? [$_] : ['']; } @combo{@$tags}
         );
 
         return if $s;
@@ -234,7 +238,7 @@ sub metadataProcessorMaker {
 sub metadataThreadedProcessorMaker {
     my ($mdbFile) = @_;
     my @tags =
-      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
+      qw(SerialNumber ShutterCount ImageCount ImageWidth ImageHeight DateCreated DateTimeOriginal CreateDate DateTimeCreated);
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
@@ -253,7 +257,7 @@ sub metadataThreadedProcessorMaker {
             }
         );
         sub {
-            return $enqueuer->(undef) unless @_;
+            return $enqueuer->() unless @_;
             my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
             $enqueuer->(
                 {

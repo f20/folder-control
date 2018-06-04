@@ -62,6 +62,10 @@ sub runPoolQueue {
             while (1) {
                 my $arg = $queue->dequeue;
                 unless ( ref $arg ) {
+                    if ($queue->pending) {
+                        $queue->enqueue($arg);
+                        next;
+                    }
                     if ( $arg == 1 ) {
                         $workerPool->shutdown;
                         $queue->enqueue(2);
@@ -71,8 +75,7 @@ sub runPoolQueue {
                     last;
                 }
                 if ( my $wantMore = $storageWorkerDo->($arg) ) {
-
-                    # sleep 1 while $workerPool->todo > 64;
+                    sleep 1 while $workerPool->todo > 96;
                     $workerPool->job( map { "$_"; } %$wantMore );
                 }
             }
