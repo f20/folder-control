@@ -73,7 +73,7 @@ sub metadataExtractionWorker {
         my ( $path, $basics ) = @_;
         warn "$path\n";
         my $results =
-            $path =~ /\.(?:jpg|jpeg|tif|tiff|png|nef|arw|raw|m4a|mp3|mp4)$/is
+          $path =~ /\.(?:jpg|jpeg|tif|tiff|psd|png|nef|arw|raw|m4a|mp3|mp4)$/is
           ? $et->ImageInfo($path)
           : {};
         $results->{'SHA-1'}       = $sha1->addfile($path)->hexdigest;

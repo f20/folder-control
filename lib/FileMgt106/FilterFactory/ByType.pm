@@ -95,9 +95,11 @@ sub explodeByType {
               || $ext eq 'heic'
               || $ext eq 'ico'
               || $ext eq 'png'
-              || $ext eq 'svg';
+              || $ext eq 'psd'
+              || $ext eq 'svg'
+              || $ext eq 'tiff';
             $cat = 'Image_tiff'
-              if $ext eq 'tif' || $ext eq 'tiff';
+              if $ext eq 'tif';
             $cat = 'JBZ'
               if $ext eq 'jbz';
             $cat = 'PDF'
