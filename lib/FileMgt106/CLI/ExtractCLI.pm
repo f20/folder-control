@@ -70,10 +70,8 @@ sub process {
                     $hints->{sha1FromStat},
                     \&FileMgt106::Scanner::_sha1File
                   );
-                FileMgt106::LoadSave::saveJbz( "$path+consolidated.jbz",
-                    $consolidated );
-                FileMgt106::LoadSave::saveJbz( "$path+nonLinks.jbz",
-                    $nonLinks );
+                rename "$path.jbz", "$path+symlinks.jbz";
+                FileMgt106::LoadSave::saveJbz( "$path.jbz", $consolidated );
                 return;
             };
             next;

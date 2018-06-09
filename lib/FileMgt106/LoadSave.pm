@@ -157,7 +157,14 @@ sub saveBzOctets {
 }
 
 sub saveJbz {
-    saveBzOctets( $_[0], jsonMachineMaker()->encode( $_[1] ) );
+    my ( $file, $scalar ) = @_;
+    unless ( ref $scalar ) {
+        warn 'Cannot write '
+          . ( defined $scalar ? $scalar : 'undef' ) . ' to '
+          . $file;
+        return;
+    }
+    saveBzOctets( $file, jsonMachineMaker()->encode($scalar) );
 }
 
 sub parseText {
