@@ -58,19 +58,7 @@ sub explodeByType {
             my $cat = 'Other';
 
             $cat = 'Aperture'
-              if $ext eq 'apalbum'
-              || $ext eq 'apfolder'
-              || $ext eq 'apmaster'
-              || $ext eq 'apversion';
-            $cat = 'Archive'
-              if $ext eq 'zip'
-              || $ext eq 'gz'
-              || $ext eq 'bz2'
-              || $ext eq 'xz'
-              || $ext eq 'tar'
-              || $ext eq 'tgz'
-              || $ext eq 'tbz'
-              || $ext eq 'rar';
+              if $ext =~ /^ap[a-z]+$/;
             $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
@@ -103,6 +91,18 @@ sub explodeByType {
               if $ext eq 'tif';
             $cat = 'JBZ'
               if $ext eq 'jbz';
+            $cat = 'Package'
+              if $ext eq 'bz2'
+              || $ext eq 'exe'
+              || $ext eq 'gz'
+              || $ext eq 'pkg'
+              || $ext eq 'rar'
+              || $ext eq 'tar'
+              || $ext eq 'tbz'
+              || $ext eq 'tgz'
+              || $ext eq 'txz'
+              || $ext eq 'xz'
+              || $ext eq 'zip';
             $cat = 'PDF'
               if $ext eq 'pdf';
             $cat = 'Perl'
@@ -121,7 +121,11 @@ sub explodeByType {
               || $ext eq 'm4v'
               || $ext eq 'avi';
             $cat = 'Volume'
-              if $ext eq 'dmg' || $ext eq 'img' || $ext eq 'iso';
+              if $ext eq 'dmg'
+              || $ext eq 'img'
+              || $ext eq 'iso'
+              || $ext eq 'sparseimage'
+              || $ext eq 'vdi';
             $cat = 'Web'
               if $ext eq 'htm'
               || $ext eq 'js'
