@@ -75,6 +75,7 @@ sub explodeByType {
               if $ext eq 'wav'
               || $ext eq 'mp3'
               || $ext eq 'm4a'
+              || $ext eq 'flac'
               || $ext eq 'aa'
               || $ext eq 'aax';
             $cat = "Camera_$ext"
