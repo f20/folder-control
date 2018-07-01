@@ -2,7 +2,7 @@ package FileMgt106::FilterFactory::ByType;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -66,8 +66,6 @@ sub explodeByType {
               || $ext eq 'flac'
               || $ext eq 'aa'
               || $ext eq 'aax';
-            $cat = "Camera_$ext"
-              if $ext eq 'nef' || $ext eq 'raw' || $ext eq 'arw';
             $cat = 'Config'
               if $ext eq 'conf' || $ext eq 'xml' || $ext eq 'plist';
             $cat = 'Database'
@@ -77,12 +75,16 @@ sub explodeByType {
             $cat = 'iOS'
               if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
-              if $ext eq 'jpg'
-              || $ext eq 'jpeg';
+              if $ext eq 'jpg' || $ext eq 'jpeg';
+            $cat = 'Image_tiff'
+              if $ext eq 'tif' || $ext eq 'tiff';
             $cat = "Image_$ext"
-              if $ext eq 'gif'
+              if $ext eq 'arw'
+              || $ext eq 'dng'
+              || $ext eq 'gif'
               || $ext eq 'heic'
               || $ext eq 'ico'
+              || $ext eq 'nef'
               || $ext eq 'png'
               || $ext eq 'psd'
               || $ext eq 'svg'
