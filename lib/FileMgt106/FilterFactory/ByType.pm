@@ -58,7 +58,7 @@ sub explodeByType {
             my $cat = 'Other';
 
             $cat = 'Aperture'
-              if $ext =~ /^ap[a-z]+$/;
+              if $ext =~ /^ap[a-oq-z]+$/;
             $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
@@ -67,7 +67,10 @@ sub explodeByType {
               || $ext eq 'aa'
               || $ext eq 'aax';
             $cat = 'Config'
-              if $ext eq 'conf' || $ext eq 'xml' || $ext eq 'plist';
+              if $ext eq 'conf'
+              || $ext eq 'ini'
+              || $ext eq 'plist'
+              || $ext eq 'xml';
             $cat = 'Database'
               if $ext eq 'db' || $ext eq 'apdb';
             $cat = 'Document'
