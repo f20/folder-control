@@ -2,7 +2,7 @@ package FileMgt106::LoadSave;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -57,7 +57,7 @@ sub setNormalisation {
       :            $normaliser;
 }
 
-sub normaliseFileNames {
+sub renameFilesToNormalisedScannable {
     my ($dir) = @_;
     opendir DIR, $dir or die "opendir: $! in " . `pwd`;
     my @list = map { decode_utf8 $_; } readdir DIR;
@@ -84,7 +84,7 @@ sub normaliseFileNames {
             }
         }
         lstat $path;
-        normaliseFileNames($path) if -d _;
+        renameFilesToNormalisedScannable($path) if -d _;
     }
 }
 
