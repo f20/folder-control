@@ -95,6 +95,7 @@ sub gidInfo {
     unless ( $self->{gidInfo} ) {
         $self->{gidInfo} = {
             6    => 'imap',
+            20   => 'justlooking',
             1037 => 'mgt',
             1030 => 'world',
             1025 => [qw(1026 1028 1029 1032 1034 1037 1038)],
@@ -127,8 +128,10 @@ sub statFromGid {
 
     my $myInfo = $gidInfo->{$rgid} || '';
     return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
-    return FileMgt106::FileSystem::imapStat($rgid)       if $myInfo eq 'imap';
-    return FileMgt106::FileSystem::publishedStat($rgid)  if $myInfo eq 'world';
+    return FileMgt106::FileSystem::justLookingStat($rgid)
+      if $myInfo eq 'justlooking';
+    return FileMgt106::FileSystem::imapStat($rgid)      if $myInfo eq 'imap';
+    return FileMgt106::FileSystem::publishedStat($rgid) if $myInfo eq 'world';
 
     # Categorisation system for gids:
     # 775 = files with this gid are world readable.

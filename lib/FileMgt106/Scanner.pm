@@ -2,7 +2,7 @@ package FileMgt106::Scanner;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -576,7 +576,8 @@ sub new {
                           or die "chdir $stash/$binName: $!";
                         unless (/^Z_(?:Infill|Rubbish)/is) {
                             require FileMgt106::LoadSave;
-                            FileMgt106::LoadSave::normaliseFileNames('.');
+                            FileMgt106::LoadSave::renameFilesToNormalisedScannable(
+                                '.');
                         }
                         my $frotl = /^Z_(?:Archive|Cellar)/is
                           ? 2_000_000_000    # This will go wrong in 2033
@@ -711,11 +712,49 @@ sub new {
                 if ( $binName =~ /^Y_(?:In-?fill|Re-?use)/is ) {
                     warn "Infilling from $dir/$path: $binName";
                     unless ( defined $filter ) {
-                        require FileMgt106::InfillFilter;
-                        $filter = FileMgt106::InfillFilter::makeInfillFilter();
-                        $hashref = $scanDir->( $locid, $path )
-                          if $runningUnderWatcher;
-                        $filter->($hashref);
+                        my %seen;
+                        $filter = sub {
+                            my ($hash) = @_;
+                            my %newHash;
+                            foreach (
+                                sort { length $a <=> length $b }
+                                keys %$hash
+                              )
+                            {
+                                my $what = $hash->{$_};
+                                if ( ref $what eq 'HASH' ) {
+                                    $what = $filter->($what);
+                                    $newHash{$_} = $what if $what;
+                                }
+                                elsif ( defined $what && !exists $seen{$what} )
+                                {
+                                    undef $seen{$what};
+                                    s/\s+/ /gs;
+                                    s/^ //;
+                                    s/ \././g;
+                                    s/ $//;
+                                    $newHash{ $_ || ( '__' . rand() ) } = $what;
+                                }
+                            }
+                            keys %newHash ? \%newHash : undef;
+                        };
+                        my $preloadFilter;
+                        $preloadFilter = sub {
+                            my ($hash) = @_;
+                            foreach ( values %$hash ) {
+                                if ( ref $_ eq 'HASH' ) {
+                                    $preloadFilter->($_);
+                                }
+                                else {
+                                    undef $seen{$_};
+                                }
+                            }
+                        };
+                        $preloadFilter->(
+                              $runningUnderWatcher
+                            ? $scanDir->( $locid, $path )
+                            : $hashref
+                        );
                     }
                     my $filtered = $filter->( $binDataArrayRef->[0] );
                     if ( $filtered && keys %$filtered ) {

@@ -2,7 +2,7 @@ package FileMgt106::CLI::ScanCLI;
 
 =head Copyright licence and disclaimer
 
-Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -237,13 +237,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                  )->scan(
+                )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                  );
+                );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -303,7 +303,7 @@ sub makeProcessor {
             if ( $cleaningFlag =~ /rename/i ) {
                 warn "Renaming in $dir";
                 $hints->beginInteractive(1);
-                FileMgt106::LoadSave::normaliseFileNames('.');
+                FileMgt106::LoadSave::renameFilesToNormalisedScannable('.');
                 $hints->commit;
             }
             elsif ( $cleaningFlag =~ /clean/i ) {
@@ -456,12 +456,8 @@ sub makeProcessor {
                 $cleaningFlag = $1;
                 next;
             }
-            elsif (/^-+((?:filter).*)$/) {
-                die 'scan.pl does not support -filter any more; use extract.pl';
-            }
-            elsif (/^-+((?:split|explode).*)$/) {
-                die
-'scan.pl does not support -split or -explode any more; use extract.pl';
+            elsif (/^-+(filter|split|explode).*$/) {
+                die "scan.pl does not support -$1 any more; use extract.pl";
             }
             elsif (/^-+grab=?(.*)/) {
                 push @grabSources, $1 || '';

@@ -43,7 +43,7 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $scalarFilter, $queryProcessor, $resultsProcessor );
+    my ( $scalarFilter, $queryProcessor, $resultsProcessor, $consolidator );
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -190,16 +190,24 @@ sub process {
             elsif ( my @stat = stat $hintsFile ) {
                 $devNo = $stat[STAT_DEV];
             }
-            if ($devNo) {
-                require FileMgt106::HintsFilter;
-                $scalarFilter =
-                  FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
-                    $devNo, $devOnly );
-            }
-            else {
-                require FileMgt106::InfillFilter;
-                $scalarFilter = FileMgt106::InfillFilter::makeInfillFilter();
-            }
+            die 'Cannot find any file system for filtering' unless $devNo;
+            require FileMgt106::HintsFilter;
+            $scalarFilter =
+              FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
+                $devNo, $devOnly );
+            next;
+        }
+
+        if (/^-+base/i) {
+            require FileMgt106::ConsolidateFilter;
+            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            $scalarFilter = $consolidator->baseProcessor;
+            next;
+        }
+        if (/^-+(add|new)/i) {
+            require FileMgt106::ConsolidateFilter;
+            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            $scalarFilter = $consolidator->additionsProcessor;
             next;
         }
 
