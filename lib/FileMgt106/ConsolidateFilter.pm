@@ -73,8 +73,11 @@ sub additionsProcessor {
         }
         my ( $scalar, $path ) = @_;
         my ( $addh, $countNew, $countDup ) = $filter->($scalar);
-        $consolidatedAdditions{$path} = $addh if $countNew;
         warn "$path processed: $countNew new, $countDup already seen.\n";
+        $path =~ s^.*/^^s;
+        $path .= '_' unless length $path;
+        $path .= '_' while exists $consolidatedAdditions{$path};
+        $consolidatedAdditions{$path} = $addh if $countNew;
         return;
     };
 }
