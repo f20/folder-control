@@ -262,7 +262,7 @@ sub process {
                     FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin);
                 } || map {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-                        if ( $1 eq 'txt' || $1 eq 'json' ) {
+                        if ( $2 eq 'txt' || $2 eq 'json' ) {
                             open my $fh, '<', $_;
                             binmode $fh;
                             local undef $/;
@@ -270,7 +270,7 @@ sub process {
                             [
                                 FileMgt106::LoadSave::jsonMachineMaker()
                                   ->decode(<$fh>),
-                                $2
+                                $1
                             ];
                         }
                         else {
