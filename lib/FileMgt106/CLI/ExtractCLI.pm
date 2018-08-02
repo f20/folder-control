@@ -305,11 +305,11 @@ sub process {
             unlink $_;
             FileMgt106::LoadSave::saveJbz( $_, $s ) if $s;
         }
+        elsif (/^[0-9a-f]{40}$/is) {    # this structure has gone wrong
+            $catalogueProcessor->($_);
+        }
         elsif ($queryProcessor) {
             $queryProcessor->($_);
-        }
-        elsif (/^[0-9a-f]{40}$/is) {
-            $catalogueProcessor->( { $_ => $_ }, $_ );
         }
         elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
             warn "Ignored: $_";
