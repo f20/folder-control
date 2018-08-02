@@ -257,10 +257,10 @@ sub process {
             binmode STDIN;
             my $missingCompilation;
             my $stdin = <STDIN>;
+            my $stdinscalar;
+            eval { FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin); };
             foreach (
-                eval {
-                    FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin);
-                } || map {
+                $stdinscalar ? [ 'stdin' => $stdinscalar ] : map {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
                         if ( $2 eq 'txt' || $2 eq 'json' ) {
                             open my $fh, '<', $_;
