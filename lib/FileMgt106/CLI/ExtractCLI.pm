@@ -297,9 +297,6 @@ sub process {
             FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
               if $missingCompilation;
         }
-        elsif (/^[0-9a-f]{40}$/is) {
-            $catalogueProcessor->( { $_ => $_ }, $_ );
-        }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
             my $s = $catalogueProcessor->(
                 FileMgt106::LoadSave::loadNormalisedScalar($_), $1
@@ -310,6 +307,9 @@ sub process {
         }
         elsif ($queryProcessor) {
             $queryProcessor->($_);
+        }
+        elsif (/^[0-9a-f]{40}$/is) {
+            $catalogueProcessor->( { $_ => $_ }, $_ );
         }
         elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
             warn "Ignored: $_";
