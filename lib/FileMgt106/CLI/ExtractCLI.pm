@@ -43,7 +43,8 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $scalarFilter, $queryProcessor, $resultsProcessor, $consolidator );
+    my ( $catalogueProcessor, $queryProcessor, $resultsProcessor,
+        $consolidator );
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -52,7 +53,7 @@ sub process {
 
         if (/^-+(?:make|build|cwd)(symlink)?(infill)?/i) {
             require FileMgt106::Builder;
-            $scalarFilter =
+            $catalogueProcessor =
               FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
             next;
         }
@@ -62,7 +63,7 @@ sub process {
             my $hints = FileMgt106::Database->new( $hintsFile, 1 );
             require FileMgt106::ResolveFilter;
             require FileMgt106::Scanner;
-            $scalarFilter = sub {
+            $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 my ( $consolidated, $nonLinks ) =
                   FileMgt106::ResolveFilter::resolveAbsolutePaths(
@@ -78,7 +79,7 @@ sub process {
         }
 
         if (/^-+denest/) {
-            $scalarFilter = sub {
+            $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 my $denest;
                 $denest = sub {
@@ -111,7 +112,7 @@ sub process {
         }
 
         if (/^-+split/) {
-            $scalarFilter = sub {
+            $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
@@ -125,7 +126,7 @@ sub process {
         }
 
         if (/^-+explode/) {
-            $scalarFilter = sub {
+            $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 my ($module) =
                   grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
@@ -199,14 +200,14 @@ sub process {
 
         if (/^-+info/i) {
             require FileMgt106::Extraction::Extractor;
-            ( $scalarFilter, $queryProcessor ) =
+            ( $catalogueProcessor, $queryProcessor ) =
               FileMgt106::Extraction::Extractor::makeInfoExtractor($hintsFile);
             next;
         }
 
         if (/^-+nohints/i) {
             require FileMgt106::Extraction::Extractor;
-            $scalarFilter =
+            $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeSimpleExtractor(
                 FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
             next;
@@ -225,7 +226,7 @@ sub process {
             }
             die 'Cannot find any file system for filtering' unless $devNo;
             require FileMgt106::HintsFilter;
-            $scalarFilter =
+            $catalogueProcessor =
               FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
                 $devNo, $devOnly );
             next;
@@ -234,19 +235,19 @@ sub process {
         if (/^-+base/i) {
             require FileMgt106::ConsolidateFilter;
             $consolidator ||= FileMgt106::ConsolidateFilter->new;
-            $scalarFilter = $consolidator->baseProcessor;
+            $catalogueProcessor = $consolidator->baseProcessor;
             next;
         }
         if (/^-+(add|new)/i) {
             require FileMgt106::ConsolidateFilter;
             $consolidator ||= FileMgt106::ConsolidateFilter->new;
-            $scalarFilter = $consolidator->additionsProcessor;
+            $catalogueProcessor = $consolidator->additionsProcessor;
             next;
         }
 
-        unless ($scalarFilter) {
+        unless ($catalogueProcessor) {
             require FileMgt106::Extraction::Extractor;
-            $scalarFilter =
+            $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
                 FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
         }
@@ -267,14 +268,14 @@ sub process {
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            +{ $_ => FileMgt106::LoadSave::jsonMachineMaker()
-                                  ->decode(<$fh>) };
+                            [ $_ => FileMgt106::LoadSave::jsonMachineMaker()
+                                  ->decode(<$fh>) ];
                         }
                         else {
                             my $scalar =
                               FileMgt106::LoadSave::loadNormalisedScalar($_);
                             tr#/#|#;
-                            +{ $_ => $scalar };
+                            [ $_ => $scalar ];
                         }
                     }
                     else {
@@ -285,27 +286,18 @@ sub process {
                 $stdin
               )
             {
-                my $missing = $scalarFilter->($_);
-                if ($missing) {
-                    if ( !$missingCompilation ) {
-                        $missingCompilation = $missing;
-                    }
-                    elsif ( keys %$missing == 1 ) {
-                        my ( $k, $v ) = %$missing;
-                        $missingCompilation->{"$k $_"} = $v;
-                    }
-                    else { $missingCompilation->{$_} = $missing; }
-                }
+                my $missing = $catalogueProcessor->(@$_);
+                $missingCompilation->{"@$_"} = $missing if $missing;
             }
             unlink '+missing.jbz';
             FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
               if $missingCompilation;
         }
         elsif (/^[0-9a-f]{40}$/is) {
-            $scalarFilter->($_);
+            $catalogueProcessor->( { $_ => $_ }, $_ );
         }
         elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-            my $s = $scalarFilter->(
+            my $s = $catalogueProcessor->(
                 FileMgt106::LoadSave::loadNormalisedScalar($_), $1
             );
             s/(\.jbz|json\.bz2)$/+missing$1/s;
@@ -320,7 +312,7 @@ sub process {
         }
     }
 
-    $scalarFilter->() if $scalarFilter;
+    $catalogueProcessor->() if $catalogueProcessor;
 
 }
 
