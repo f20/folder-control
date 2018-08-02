@@ -263,8 +263,9 @@ sub process {
                   FileMgt106::LoadSave::jsonMachineMaker()->decode($stdinblob);
             };
             foreach (
-                $stdinscalar ? [ 'stdin' => $stdinscalar ] : map {
+                $stdinscalar ? [ $stdinscalar, 'stdin' ] : map {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
+
                         if ( $2 eq 'txt' || $2 eq 'json' ) {
                             open my $fh, '<', $_;
                             binmode $fh;
