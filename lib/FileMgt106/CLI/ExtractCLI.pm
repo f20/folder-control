@@ -261,21 +261,23 @@ sub process {
                 eval {
                     FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin);
                 } || map {
-                    if ( -f $_ && /(?:.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-                        warn "Filtering $_";
+                    if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
                         if ( $1 eq 'txt' || $1 eq 'json' ) {
                             open my $fh, '<', $_;
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            [ $_ => FileMgt106::LoadSave::jsonMachineMaker()
-                                  ->decode(<$fh>) ];
+                            [
+                                FileMgt106::LoadSave::jsonMachineMaker()
+                                  ->decode(<$fh>),
+                                $2
+                            ];
                         }
                         else {
                             my $scalar =
                               FileMgt106::LoadSave::loadNormalisedScalar($_);
                             tr#/#|#;
-                            [ $_ => $scalar ];
+                            [ $scalar, "$scalar" ];
                         }
                     }
                     else {
