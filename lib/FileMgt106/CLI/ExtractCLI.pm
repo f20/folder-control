@@ -256,9 +256,12 @@ sub process {
             local undef $/;
             binmode STDIN;
             my $missingCompilation;
-            my $stdin = <STDIN>;
+            my $stdinblob = <STDIN>;
             my $stdinscalar;
-            eval { FileMgt106::LoadSave::jsonMachineMaker()->decode($stdin); };
+            eval {
+                $stdinscalar =
+                  FileMgt106::LoadSave::jsonMachineMaker()->decode($stdinblob);
+            };
             foreach (
                 $stdinscalar ? [ 'stdin' => $stdinscalar ] : map {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
@@ -285,7 +288,7 @@ sub process {
                         ();
                     }
                 } split /[\r\n]+/,
-                $stdin
+                $stdinblob
               )
             {
                 my $missing = $catalogueProcessor->(@$_);
