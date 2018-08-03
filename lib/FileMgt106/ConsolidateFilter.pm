@@ -68,7 +68,8 @@ sub additionsProcessor {
     sub {
         unless (@_) {
             FileMgt106::LoadSave::saveJbz( "+consolidated-additions.jbz",
-                \%consolidatedAdditions );
+                \%consolidatedAdditions )
+              if keys %consolidatedAdditions;
             return;
         }
         my ( $scalar, $path ) = @_;
