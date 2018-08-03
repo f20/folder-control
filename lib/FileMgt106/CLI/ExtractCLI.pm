@@ -257,11 +257,18 @@ sub process {
             binmode STDIN;
             my $missingCompilation;
             my $stdinblob = <STDIN>;
-            foreach (
-                eval {
+            if (
+                my $stdinscalar = eval {
                     FileMgt106::LoadSave::jsonMachineMaker()
                       ->decode($stdinblob);
-                } || map {
+                }
+              )
+            {
+                $missingCompilation =
+                  $catalogueProcessor->( $stdinscalar, 'stdin' );
+            }
+            else {
+                foreach ( split /[\r\n]+/, $stdinblob ) {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
 
                         if ( $2 eq 'txt' || $2 eq 'json' ) {
@@ -279,19 +286,16 @@ sub process {
                             my $scalar =
                               FileMgt106::LoadSave::loadNormalisedScalar($_);
                             tr#/#|#;
-                            [ $scalar, "$scalar" ];
+                            my $missing =
+                              $catalogueProcessor->( $scalar, "$scalar" );
+                            $missingCompilation->{"$scalar"} = $missing
+                              if $missing;
                         }
                     }
                     else {
                         warn "Not processed: $_";
-                        ();
                     }
-                } split /[\r\n]+/,
-                $stdinblob
-              )
-            {
-                my $missing = $catalogueProcessor->(@$_);
-                $missingCompilation->{"@$_"} = $missing if $missing;
+                }
             }
             unlink '+missing.jbz';
             FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
