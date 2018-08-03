@@ -270,17 +270,18 @@ sub process {
             else {
                 foreach ( split /[\r\n]+/, $stdinblob ) {
                     if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-
                         if ( $2 eq 'txt' || $2 eq 'json' ) {
                             open my $fh, '<', $_;
                             binmode $fh;
                             local undef $/;
                             tr#/#|#;
-                            [
+                            my $missing = $catalogueProcessor->(
                                 FileMgt106::LoadSave::jsonMachineMaker()
                                   ->decode(<$fh>),
                                 $1
-                            ];
+                            );
+                            $missingCompilation->{$1} = $missing
+                              if $missing;
                         }
                         else {
                             my $scalar =
