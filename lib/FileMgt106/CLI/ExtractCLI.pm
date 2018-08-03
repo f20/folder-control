@@ -264,8 +264,7 @@ sub process {
                 }
               )
             {
-                $missingCompilation =
-                  $catalogueProcessor->( $stdinscalar, 'stdin' );
+                $missingCompilation = $catalogueProcessor->($stdinscalar);
             }
             else {
                 foreach ( split /[\r\n]+/, $stdinblob ) {
