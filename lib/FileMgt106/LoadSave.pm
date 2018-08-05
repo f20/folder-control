@@ -147,6 +147,7 @@ sub loadNormalisedScalar {
 
 sub saveBzOctets {
     my ( $file, $blob ) = @_;
+    return unless defined $file && defined $blob;
     $file =~ s/'/'"'"'/g;
     open my $fh, qq%|bzip2>'$file'% or goto FAIL;
     binmode $fh or goto FAIL;
