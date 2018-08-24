@@ -74,7 +74,10 @@ sub explodeByType {
             $cat = 'Database'
               if $ext eq 'db' || $ext eq 'apdb';
             $cat = 'Document'
-              if $ext =~ /^doc/s || $ext eq 'rtf' || $ext eq 'odt';
+              if $ext =~ /^doc/s
+              || $ext eq 'pages'
+              || $ext eq 'rtf'
+              || $ext eq 'odt';
             $cat = 'iOS'
               if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
@@ -113,11 +116,14 @@ sub explodeByType {
             $cat = 'Perl'
               if $ext eq 'pl' || $ext eq 'pm';
             $cat = 'Presentation'
-              if $ext eq 'ppt' || $ext eq 'pptx';
+              if $ext eq 'ppt' || $ext eq 'pptx' || $ext eq 'key';
             $cat = 'Python'
               if $ext eq 'py' || $ext eq 'pyc';
             $cat = 'Spreadsheet'
-              if $ext =~ /^xl/s || $ext eq 'csv' || $ext eq 'ods';
+              if $ext =~ /^xl/s
+              || $ext eq 'csv'
+              || $ext eq 'numbers'
+              || $ext eq 'ods';
             $cat = 'Text'
               if $ext eq 'txt';
             $cat = 'Video'
