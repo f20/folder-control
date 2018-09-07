@@ -55,6 +55,7 @@ sub new {
         ^cyrus\.cache$|
         ^write-lock$|
         ^~\$|
+        \.core$|
         \.pyc$
       )/sx;
 
