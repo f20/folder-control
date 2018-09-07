@@ -52,6 +52,7 @@ sub new {
         ^\._|
         ^\.git$|
         ^\.svn$|
+        ^\.vs$|
         ^cyrus\.cache$|
         ^write-lock$|
         ^~\$|
