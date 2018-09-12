@@ -1,31 +1,27 @@
 package FileMgt106::CLI::ExtractCLI;
 
-=head Copyright licence and disclaimer
-
-Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-
-1. Redistributions of source code must retain the above copyright notice,
-this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright notice,
-this list of conditions and the following disclaimer in the documentation
-and/or other materials provided with the distribution.
-
-THIS SOFTWARE IS PROVIDED BY AUTHORS AND CONTRIBUTORS "AS IS" AND ANY
-EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL AUTHORS OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
-THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-=cut
+# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY AUTHORS AND CONTRIBUTORS "AS IS" AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL AUTHORS OR CONTRIBUTORS BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+# (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+# ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use warnings;
 use strict;
@@ -286,9 +282,8 @@ sub process {
                             my $scalar =
                               FileMgt106::LoadSave::loadNormalisedScalar($_);
                             tr#/#|#;
-                            my $missing =
-                              $catalogueProcessor->( $scalar, "$scalar" );
-                            $missingCompilation->{"$scalar"} = $missing
+                            my $missing = $catalogueProcessor->( $scalar, $1 );
+                            $missingCompilation->{$1} = $missing
                               if $missing;
                         }
                     }
@@ -301,23 +296,40 @@ sub process {
             FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
               if $missingCompilation;
         }
-        elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2)$/s ) {
-            my $s = $catalogueProcessor->(
-                FileMgt106::LoadSave::loadNormalisedScalar($_), $1
-            );
-            s/(\.jbz|json\.bz2)$/+missing$1/s;
-            unlink $_;
-            FileMgt106::LoadSave::saveJbz( $_, $s ) if $s;
+
+        elsif ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
+            my $missingFile = "$1+missing.jbz";
+            unlink $missingFile;
+            my $missing;
+            if ( $2 eq 'txt' || $2 eq 'json' ) {
+                open my $fh, '<', $_;
+                binmode $fh;
+                local undef $/;
+                tr#/#|#;
+                $missing = $catalogueProcessor->(
+                    FileMgt106::LoadSave::jsonMachineMaker()->decode(<$fh>), $1
+                );
+            }
+            else {
+                my $scalar = FileMgt106::LoadSave::loadNormalisedScalar($_);
+                tr#/#|#;
+                $missing = $catalogueProcessor->( $scalar, $1 );
+            }
+            FileMgt106::LoadSave::saveJbz( $missingFile, $missing ) if $missing;
         }
-        elsif (/^[0-9a-f]{40}$/is) {    # this structure has gone wrong
+
+        elsif (/^[0-9a-f]{40}$/is) {    # this is not very sensible
             $catalogueProcessor->($_);
         }
+
         elsif ($queryProcessor) {
             $queryProcessor->($_);
         }
+
         elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
             warn "Ignored: $_";
         }
+
     }
 
     $catalogueProcessor->() if $catalogueProcessor;
