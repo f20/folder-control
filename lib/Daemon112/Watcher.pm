@@ -1,6 +1,6 @@
 package Daemon112::Watcher;
 
-# Copyright 2011-2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -55,8 +55,7 @@ sub stopWatching {
 sub kevented {
     my ( $self, $runner, $kevent ) = @_;
     $runner->{kq}->stopWatchingOnDeath( $self, $kevent );
-    $self->schedule( ( $self->{timestamp} = time ) + $self->{delay},
-        $runner->{pq} );
+    $self->schedule( time + $self->{delay}, $runner->{pq} );
 }
 
 sub schedule {

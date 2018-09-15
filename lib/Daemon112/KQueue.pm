@@ -1,6 +1,6 @@
 package Daemon112::KQueue;
 
-# Copyright 2008-2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2008-2018 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -118,7 +118,6 @@ sub startWatching {
         NOTE_WRITE | NOTE_DELETE | NOTE_RENAME,
         0, $obj
     );
-    $obj->{timestamp} = time;
     $obj->{sysHandle}{$sh} = $sh;
     weaken( $watchedByFileno{$no} = $obj );
     $priorityByFileno{$no} = ( $priority || 0 ) + rand();
