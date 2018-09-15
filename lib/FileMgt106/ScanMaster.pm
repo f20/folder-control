@@ -1,6 +1,6 @@
 package FileMgt106::ScanMaster;
 
-# Copyright 2012-2017 Franck Latrémolière, Reckon LLP.
+# Copyright 2012-2018 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -429,7 +429,8 @@ sub watchFolder {
                 }
             );
         },
-        "Watcher: $self->[DIR]/$path"
+        "Watcher: $self->[DIR]/$path",
+        $self->[WATCHING][2],
       );
     $controller->startWatching( $self->[WATCHING][1], $whatToWatch, $priority );
     $self->[WATCHERS]{ $path . $whatToWatch } = $controller;
