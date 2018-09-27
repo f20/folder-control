@@ -131,6 +131,8 @@ sub makeHintsBuilder {
             foreach ( @candidates, @reservelist ) {
                 next ENTRY
                   if $useSymlinksNotCopies
+                  && ( $fileName !~ m^\.aplibrary/^
+                    || $fileName =~ m^\.aplibrary/Masters/^ )
                   ? symlink( $_, $fileName )
                   : _copyFile( $_, $fileName );
             }
