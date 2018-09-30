@@ -28,13 +28,14 @@ use strict;
 
 sub resolveAbsolutePaths {
     my ( $inputValue, $sha1FromStat, $sha1calc ) = @_;
-    my ( $consolidated, $nonLinks );
+    my $consolidated;
     while ( my ( $k, $v ) = each %$inputValue ) {
-        if ( ref $v eq 'HASH' ) {
-            my ( $c, $n ) =
+        if ( substr( $k, 0, 1 ) eq '/' ) {
+            $consolidated->{$k} = $v;
+        }
+        elsif ( ref $v eq 'HASH' ) {
+            $consolidated->{$k} =
               resolveAbsolutePaths( $v, $sha1FromStat, $sha1calc );
-            $consolidated->{$k} = $c if $c;
-            $nonLinks->{$k}     = $n if $n;
         }
         elsif ( $v =~ m#^/.*?([^/]+)$#s && -f $v && -r _ ) {
             my $sha1 =
@@ -43,10 +44,10 @@ sub resolveAbsolutePaths {
             $consolidated->{$k} = defined $sha1 ? unpack( 'H*', $sha1 ) : $v;
         }
         else {
-            $consolidated->{$k} = $nonLinks->{$k} = $v;
+            $consolidated->{$k} = $v;
         }
     }
-    $consolidated, $nonLinks;
+    $consolidated;
 }
 
 1;

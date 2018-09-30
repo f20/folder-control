@@ -61,14 +61,15 @@ sub process {
             require FileMgt106::Scanner;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
-                my ( $consolidated, $nonLinks ) =
-                  FileMgt106::ResolveFilter::resolveAbsolutePaths(
-                    $scalar,
-                    $hints->{sha1FromStat},
-                    \&FileMgt106::Scanner::_sha1File
-                  );
                 rename "$path.jbz", "$path+symlinks.jbz";
-                FileMgt106::LoadSave::saveJbz( "$path.jbz", $consolidated );
+                FileMgt106::LoadSave::saveJbz(
+                    "$path.jbz",
+                    FileMgt106::ResolveFilter::resolveAbsolutePaths(
+                        $scalar,
+                        $hints->{sha1FromStat},
+                        \&FileMgt106::Scanner::_sha1File
+                    )
+                );
                 return;
             };
             next;
