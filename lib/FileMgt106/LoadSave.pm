@@ -87,9 +87,9 @@ sub renameFilesToNormalisedScannable {
 sub normaliseHash {
     my ($hr) = @_;
     return $hr unless ref $hr eq 'HASH';
-    my @original   = sort keys %$hr;
-    my @normalised = map { $normaliser->($_); } @original;
-    my @unique     = map { lc($_); } @normalised;
+    my @original   = sort grep { substr( $_, 0, 1 ) ne '/'; } keys %$hr;
+    my @normalised = map       { $normaliser->($_); } @original;
+    my @unique     = map       { lc($_); } @normalised;
     my %map;
     foreach ( 0 .. $#original ) {
         my $u = $unique[$_];
