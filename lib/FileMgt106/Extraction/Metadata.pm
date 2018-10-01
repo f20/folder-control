@@ -234,7 +234,7 @@ sub metadataProcessorMaker {
 sub metadataThreadedProcessorMaker {
     my ($mdbFile) = @_;
     my @tags =
-      qw(SerialNumber ShutterCount ImageCount ImageWidth ImageHeight DateCreated DateTimeOriginal CreateDate DateTimeCreated);
+      qw(SerialNumber ShutterCount ImageCount ImageWidth ImageHeight DateCreated DateTimeOriginal CreateDate DateTimeCreated LensID LensSpec);
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
