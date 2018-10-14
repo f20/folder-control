@@ -60,6 +60,7 @@ sub makeHintsBuilder {
         closedir $dh;
 
       ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
+            next unless defined $what;
             next if $name =~ m#/#;
             delete $toDelete{$name};
             my $fileName = catfile( $whereYouWantIt, $name );
