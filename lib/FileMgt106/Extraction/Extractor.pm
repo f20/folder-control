@@ -55,9 +55,9 @@ sub makeExtractAcceptor {
         }
         return sub {
             unless ( defined $_[0] ) {
-                print map { "$_->[0]\n" }
-                  sort    { $a->[1] <=> $b->[1] } @list;
-                @list = ();
+                print {$fileHandle} map { "$_->[0]\n" }
+                  sort { $a->[1] <=> $b->[1] } @list;
+                close $fileHandle;
                 return;
             }
             my $size = -s $_[0];
@@ -198,8 +198,12 @@ sub makeDataExtractor {
             $ext = '' unless defined $ext;
             next unless defined $parid;
             next unless my $folder = $pathFinder->($parid);
-            next unless my @lstat = lstat catfile($folder, $name);
-            next unless -f _ && $lstat[STAT_INO] == $inode && $lstat[STAT_SIZE] == $size && $lstat[STAT_MTIME] == $mtime;
+            next unless my @lstat = lstat catfile( $folder, $name );
+            next
+              unless -f _
+              && $lstat[STAT_INO] == $inode
+              && $lstat[STAT_SIZE] == $size
+              && $lstat[STAT_MTIME] == $mtime;
             $mtime = POSIX::strftime( '%Y-%m-%d %H:%M:%S', gmtime $mtime );
             $writer->(
                 $sha1,   $mtime, $size,   $ext, $name,
