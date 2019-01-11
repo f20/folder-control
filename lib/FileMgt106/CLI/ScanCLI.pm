@@ -92,7 +92,7 @@ sub autograb {
         my $canonical  = pop @components;
         next
           unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
-        $canonical .= " (mirrored from $components[1])";
+        $canonical .= " (mirrored from $components[0])";
         if ( my ( $scalar, $folder ) = $chooser->( $_, $canonical, $1 ) ) {
             $processScalar->(
                 $scalar, $folder, $1,
