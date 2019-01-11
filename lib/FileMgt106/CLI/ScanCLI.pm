@@ -330,7 +330,7 @@ sub makeProcessor {
                 my ( $cellarScanner, $cellarDir );
                 unless ( $grabSource eq 'done' ) {
                     $cellarDir = dirname($perl5dir);
-                    if ( -d ( my $d = $cellarDir . '/~$grab' ) ) {
+                    if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
                         $cellarDir = $d;
                     }
                     {
