@@ -1,6 +1,6 @@
 package FileMgt106::Builder;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -56,7 +56,7 @@ sub makeHintsBuilder {
         opendir $dh, $whereYouWantIt;
         my %toDelete =
           map { ( decode_utf8($_) => undef ); }
-          grep { !/^(?:\.\.?|Icon\s|\.git|.* \(mirrored from .*\))$/s; }
+          grep { !/^(?:\.\.?|Icon\r|\.git|.* \(mirrored from .*\))$/s; }
           readdir $dh;
         closedir $dh;
 
