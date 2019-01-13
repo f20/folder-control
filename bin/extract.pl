@@ -63,4 +63,12 @@ BEGIN {
 use lib @otherLibs, $perl5dir;
 
 use FileMgt106::CLI::ExtractCLI;
-FileMgt106::CLI::ExtractCLI::process( $startFolder, $perl5dir, @ARGV );
+FileMgt106::CLI::ExtractCLI::process(
+    $startFolder,
+    $perl5dir,
+    grep {
+        /^-+carp$/s
+          ? ( require Carp, $SIG{__DIE__} = \&Carp::confess, undef )
+          : 1;
+    } @ARGV
+);
