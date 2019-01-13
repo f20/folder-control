@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -323,8 +323,9 @@ sub makeProcessor {
           SOURCE: foreach (@grabSources) {
                 my $grabSource = $_;    # a true copy, not a loop alias variable
                 unless ($grabSource) {
-                    FileMgt106::LoadSave::saveJbz( "$startFolder/+missing.jbz",
-                        $missing );
+                    binmode STDOUT;
+                    print FileMgt106::LoadSave::jsonMachineMaker()
+                      ->encode($missing);
                     next;
                 }
                 my ( $cellarScanner, $cellarDir );

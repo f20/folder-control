@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ExtractCLI;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -39,8 +39,11 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $catalogueProcessor, $queryProcessor, $resultsProcessor,
-        $consolidator );
+    my (
+        $catalogueProcessor, $queryProcessor, $resultsProcessor,
+        $consolidator,       $missingCompilation
+    );
+    my $missingStream = \*STDERR;
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -51,6 +54,7 @@ sub process {
             require FileMgt106::Builder;
             $catalogueProcessor =
               FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
+            $missingStream = \*STDOUT;
             next;
         }
 
@@ -252,7 +256,6 @@ sub process {
         if (/^-$/) {
             local undef $/;
             binmode STDIN;
-            my $missingCompilation;
             my $stdinblob = <STDIN>;
             if (
                 my $stdinscalar = eval {
@@ -293,14 +296,9 @@ sub process {
                     }
                 }
             }
-            unlink '+missing.jbz';
-            FileMgt106::LoadSave::saveJbz( '+missing.jbz', $missingCompilation )
-              if $missingCompilation;
         }
 
         elsif ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-            my $missingFile = "$1+missing.jbz";
-            unlink $missingFile;
             my $missing;
             if ( $2 eq 'txt' || $2 eq 'json' ) {
                 open my $fh, '<', $_;
@@ -316,10 +314,10 @@ sub process {
                 tr#/#|#;
                 $missing = $catalogueProcessor->( $scalar, $1 );
             }
-            FileMgt106::LoadSave::saveJbz( $missingFile, $missing ) if $missing;
+            $missingCompilation->{$1} = $missing if $missing;
         }
 
-        elsif (/^[0-9a-f]{40}$/is) {    # this is not very sensible
+        elsif (/^[0-9a-f]{40}$/is) {
             $catalogueProcessor->($_);
         }
 
@@ -331,6 +329,12 @@ sub process {
             warn "Ignored: $_";
         }
 
+    }
+
+    if ($missingCompilation) {
+        binmode $missingStream;
+        print {$missingStream}
+          FileMgt106::LoadSave::jsonMachineMaker()->encode($missingCompilation);
     }
 
     $catalogueProcessor->() if $catalogueProcessor;
