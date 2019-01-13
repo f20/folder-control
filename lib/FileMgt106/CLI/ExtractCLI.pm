@@ -230,6 +230,7 @@ sub process {
             $catalogueProcessor =
               FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
                 $devNo, $devOnly );
+            $missingStream = \*STDOUT;
             next;
         }
 
