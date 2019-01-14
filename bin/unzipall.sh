@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2014-2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2014-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -28,7 +28,7 @@ if [ "$ZIP_FOLDER_NAME" == "" ]; then ZIP_FOLDER_NAME=Z_Zip; fi
 unzipper ( ) {
     find "$1" -iname \*.zip | while read -r x
     do
-        if [ "`echo "$x" | egrep '/(^|\/)(Z_|~\$)'`" == "" ]
+        if [ "$(echo "$x" | egrep '/(^|\/)(Z_|~\$)')" == "" ]
         then
             y="${x%.zip}"
             y="${y%.ZIP}"
@@ -36,7 +36,7 @@ unzipper ( ) {
             if mkdir "$y"
             then
                 unzip -d "$y" -o "$x"
-                z=`dirname "$x"`/"$ZIP_FOLDER_NAME"
+                z="$(dirname "$x")"/"$ZIP_FOLDER_NAME"
                 if [ ! -e "$z" ]; then mkdir "$z"; fi
                 mv -n "$x" "$z"
                 unzipper "$y"
