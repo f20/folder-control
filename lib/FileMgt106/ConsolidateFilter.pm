@@ -63,8 +63,9 @@ sub additionsProcessor {
     my %consolidatedAdditions;
     sub {
         unless (@_) {
-            FileMgt106::LoadSave::saveJbz( "+consolidated-additions.jbz",
-                \%consolidatedAdditions )
+            binmode STDOUT;
+            print FileMgt106::LoadSave::jsonMachineMaker()
+              ->encode( \%consolidatedAdditions )
               if keys %consolidatedAdditions;
             return;
         }
