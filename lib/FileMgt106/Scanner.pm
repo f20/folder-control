@@ -209,8 +209,7 @@ sub new {
         my ( $whatYouWant, $devNo, $folderLocid, $pathToFolder, $backuper ) =
           @_;
 
-        # Returns a scalar representing missing objects (or false if none).
-
+        # Scalar representing missing objects (or false if none).
         my $returnValue;
 
         while ( my ( $name, $what ) = each %$whatYouWant ) {

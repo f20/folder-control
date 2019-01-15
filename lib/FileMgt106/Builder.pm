@@ -49,7 +49,7 @@ sub makeHintsBuilder {
               unless $devNo = ( stat $whereYouWantIt )[STAT_DEV];
         }
 
-        # To contain a scalar representing missing objects (or false if none).
+        # Scalar representing missing objects (or false if none).
         my $returnValue;
         my $stashFolder;
         my $dh;
@@ -138,6 +138,7 @@ sub makeHintsBuilder {
                   ? symlink( $_, $fileName )
                   : _copyFile( $_, $fileName );
             }
+            symlink $what, $fileName unless $useSymlinksNotCopies;
             $returnValue->{$name} = $what;
 
         }
