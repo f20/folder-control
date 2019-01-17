@@ -233,13 +233,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                )->scan(
+                  )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                );
+                  );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -317,7 +317,6 @@ sub makeProcessor {
     };
 
     my $finish = sub {
-        unlink "$startFolder/+missing.jbz" if grep { !$_; } @grabSources;
         if ($missing) {
             my @rmdirList;
           SOURCE: foreach (@grabSources) {
