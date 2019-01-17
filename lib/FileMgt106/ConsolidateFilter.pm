@@ -1,6 +1,6 @@
 package FileMgt106::ConsolidateFilter;
 
-# Copyright 2018 Franck Latrémolière.
+# Copyright 2018-2019 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -76,6 +76,54 @@ sub additionsProcessor {
         $path =~ s^.*/^^s;
         $path .= '_' while exists $consolidatedAdditions{$path};
         $consolidatedAdditions{$path} = $addh if $countNew;
+        return;
+    };
+}
+
+sub duplicationsProcessor {
+    my ($seen) = @_;
+    my $filter;
+    $filter = sub {
+        my ($hash) = @_;
+        my %newHash;
+        my $countNew = 0;
+        my $countDup = 0;
+        foreach ( keys %$hash ) {
+            my $w = $hash->{$_};
+            if ( ref $w eq 'HASH' ) {
+                my ( $nh, $cn, $cd ) = $filter->($w);
+                $newHash{$_} = $nh if $cd;
+                $countNew += $cn;
+                $countDup += $cd;
+            }
+            else {
+                if ( exists $seen->{$w} ) {
+                    $newHash{$_} = $w;
+                    ++$countDup;
+                }
+                else {
+                    ++$countNew;
+                }
+            }
+        }
+        \%newHash, $countNew, $countDup;
+    };
+    my %duplicatedFiles;
+    sub {
+        unless (@_) {
+            binmode STDOUT;
+            print FileMgt106::LoadSave::jsonMachineMaker()
+              ->encode( \%duplicatedFiles )
+              if keys %duplicatedFiles;
+            return;
+        }
+        my ( $scalar, $path ) = @_;
+        my ( $addh, $countNew, $countDup ) = $filter->($scalar);
+        $path ||= 0;
+        warn "$path: $countNew new, $countDup duplicates.\n";
+        $path =~ s^.*/^^s;
+        $path .= '_' while exists $duplicatedFiles{$path};
+        $duplicatedFiles{$path} = $addh if $countDup;
         return;
     };
 }

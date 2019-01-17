@@ -246,6 +246,12 @@ sub process {
             $catalogueProcessor = $consolidator->additionsProcessor;
             next;
         }
+        if (/^-+dup/i) {
+            require FileMgt106::ConsolidateFilter;
+            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            $catalogueProcessor = $consolidator->duplicationsProcessor;
+            next;
+        }
 
         unless ($catalogueProcessor) {
             require FileMgt106::Extraction::Extractor;
