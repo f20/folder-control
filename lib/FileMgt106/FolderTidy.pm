@@ -41,7 +41,7 @@ sub deepClean {
                     : $b =~ /\.tmp$/si        ? "T $b"
                     : $b =~ /^Y_.* folder$/s  ? "B $b"
                     :                           "E $b"
-                  ) cmp(
+                ) cmp(
                     $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
                     : $a =~ /\.tmp$/si       ? "T $a"
                     : $a =~ /^Y_.* folder$/s ? "B $a"
@@ -185,7 +185,8 @@ sub datemarkFolder {
                 rename $prefix . $path, $prefix . $np;
             }
         }
-        utime time, $maxt, $prefix . $np;   # only works if root or folder owner
+        utime time, $maxt, $prefix . $np
+          if $maxt;    # only works if we are root or the folder's owner
         $maxt;
     };
     $datemarker->('');
@@ -211,7 +212,8 @@ sub restampFolder {
             }
             $maxt = $mtime if $mtime > $maxt;
         }
-        utime time, $maxt, $path if $maxt;  # only works if root or folder owner
+        utime time, $maxt, $path
+          if $maxt;    # only works if we are root or the folder's owner
         $maxt;
     };
     $restamper->( defined $_[0] && length $_[0] ? "$_[0]" : '.' );
