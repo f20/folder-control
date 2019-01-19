@@ -85,6 +85,7 @@ sub makeSimpleExtractor {
             }
         }
         $acceptor->($path) unless ref $what;
+        return;
     };
 }
 
