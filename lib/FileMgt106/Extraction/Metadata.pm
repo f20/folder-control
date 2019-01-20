@@ -65,7 +65,7 @@ sub metadataExtractionWorker {
         $sha3      = Digest::SHA3->new;
         $shake128  = Digest::SHA3->new(128000);
         $et        = Image::ExifTool->new;
-      }, sub {
+    }, sub {
         my ( $path, $basics ) = @_;
         warn "$path\n";
         my $results =
@@ -82,7 +82,7 @@ sub metadataExtractionWorker {
             $results->{$k} = $v;
         }
         $results;
-      };
+    };
 }
 
 sub metadataStorageWorker {
@@ -233,8 +233,20 @@ sub metadataProcessorMaker {
 
 sub metadataThreadedProcessorMaker {
     my ($mdbFile) = @_;
-    my @tags =
-      qw(SerialNumber ShutterCount ImageCount ImageWidth ImageHeight DateCreated DateTimeOriginal CreateDate DateTimeCreated LensID LensSpec);
+    my @tags = qw(
+      CreateDate
+      DateCreated
+      DateTimeCreated
+      DateTimeOriginal
+      ImageCount
+      ImageHeight
+      ImageWidth
+      LensID
+      LensSpec
+      MemoryCardNumber
+      SerialNumber
+      ShutterCount
+    );
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
