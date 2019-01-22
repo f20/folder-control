@@ -47,10 +47,10 @@ sub process {
     local $_ = $arguments[0];
     return $self->help unless defined $_;
     return $self->$_(@arguments) if s/^-+//s && UNIVERSAL::can( $self, $_ );
-    my ( $processScalar, $processCwd, $finish, $processLegacyArguments ) =
-      $self->makeProcessor;
-    $processLegacyArguments->(@arguments);
-    $finish->();
+    my ( $scalarAcceptor, $folderAcceptor, $finisher, $legacyArgumentsAcceptor )
+      = $self->makeProcessor;
+    $legacyArgumentsAcceptor->(@arguments);
+    $finisher->();
 }
 
 sub help {
@@ -65,7 +65,7 @@ EOW
 sub autograb {
     my ( $self,        @arguments ) = @_;
     my ( $startFolder, $perl5dir )  = @$self;
-    my ( $processScalar, $processCwd, $finish, undef, $chooserMaker ) =
+    my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
       $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
     my $chooser =
       $chooserMaker->( map { /^-+caseid=([0-9-]+)/ ? $1 : (); } @arguments );
@@ -92,9 +92,15 @@ sub autograb {
         my $canonical  = pop @components;
         next
           unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
-        $canonical .= " (mirrored from $components[0])";
-        if ( my ( $scalar, $folder ) = $chooser->( $_, $canonical, $1 ) ) {
-            $processScalar->(
+        my $extension = $1;
+        my $source    = $components[0];
+        $source =~ s/^[^a-z]+//;
+        $canonical .= " (mirrored from $source)";
+
+        if ( my ( $scalar, $folder ) =
+            $chooser->( $_, $canonical, $extension ) )
+        {
+            $scalarAcceptor->(
                 $scalar, $folder, $1,
                 \@targetStat,
                 {
@@ -104,7 +110,7 @@ sub autograb {
             );
         }
     }
-    $finish->();
+    $finisher->();
 }
 
 sub migrate {
@@ -114,7 +120,7 @@ sub migrate {
       if defined $oldFileName;
     chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
     unless ( $oldFileName && -f $oldFileName ) {
-        my $mtime = ( stat '~$hints' )[STAT_MTIME]
+        my $mtime = ( stat ' ~$hints' )[STAT_MTIME]
           or die 'No existing hints file';
         $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
         $oldFileName = '~$hints ' . $mtime;
@@ -193,7 +199,7 @@ sub makeProcessor {
     my ( $hints, $missing, %scanners, $cleaningFlag,
         $syncDestination, @toRestamp );
 
-    my $processScalar = sub {
+    my $scalarAcceptor = sub {
         my ( $scalar, $path, $fileExtension, $targetStatRef, $options ) = @_;
         push @toRestamp, $path if $options->{restamp};
         $hints ||=
@@ -233,13 +239,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                  )->scan(
+                )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                  );
+                );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -257,7 +263,7 @@ sub makeProcessor {
         }
     };
 
-    my $processCwd = sub {
+    my $folderAcceptor = sub {
         my (@scanMasterConfigClosures) = @_;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
@@ -316,7 +322,7 @@ sub makeProcessor {
         $scanner->dequeued;
     };
 
-    my $finish = sub {
+    my $finisher = sub {
         if ($missing) {
             my @rmdirList;
           SOURCE: foreach (@grabSources) {
@@ -416,7 +422,7 @@ sub makeProcessor {
         FileMgt106::FolderTidy::restampFolder($_) foreach @toRestamp;
     };
 
-    my $processLegacyArguments = sub {
+    my $legacyArgumentsAcceptor = sub {
 
         my ( %locs, @otherConfigClosures );
 
@@ -559,11 +565,12 @@ sub makeProcessor {
             }
 
             if ($target) {
-                $processScalar->( $target, $root, $ext, \@argumentStat,
-                    \%locs );
+                $scalarAcceptor->(
+                    $target, $root, $ext, \@argumentStat, \%locs
+                );
             }
             elsif ( -d _ && chdir $_ ) {
-                $processCwd->(
+                $folderAcceptor->(
                     %locs ? sub { $_[0]->setRepoloc( \%locs ); } : (),
                     @otherConfigClosures,
                 );
@@ -621,7 +628,7 @@ sub makeProcessor {
         };
     };
 
-    $processScalar, $processCwd, $finish, $processLegacyArguments,
+    $scalarAcceptor, $folderAcceptor, $finisher, $legacyArgumentsAcceptor,
       $chooserMaker;
 
 }
