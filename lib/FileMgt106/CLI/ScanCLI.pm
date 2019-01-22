@@ -94,7 +94,7 @@ sub autograb {
           unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         my $extension = $1;
         my $source    = $components[0];
-        $source =~ s/^[^a-z]+//;
+        $source =~ s/^[^a-z]+//i;
         $canonical .= " (mirrored from $source)";
 
         if ( my ( $scalar, $folder ) =
