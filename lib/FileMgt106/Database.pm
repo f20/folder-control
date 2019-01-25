@@ -402,11 +402,11 @@ EOL
 
     {
         my $oldDbPath = sub {
-            my $oldrootid = -1;
+            my $locid = -1;
             my ( $parid, $name );
-            my $oldpath = '';
+            my $path = '';
             while (1) {
-                $qGetParidName->execute($oldrootid);
+                $qGetParidName->execute($locid);
                 ( $parid, $name ) = $qGetParidName->fetchrow_array;
                 $qGetParidName->finish;
 
@@ -414,12 +414,12 @@ EOL
                 $dbHandle->rollback if $writeable;
 
                 last unless defined $parid;
-                $oldpath = "$name/$oldpath";
+                $path = "$name/$path";
                 last unless $parid;
-                $oldrootid = $parid;
+                $locid = $parid;
             }
-            chop $oldpath;
-            $oldpath, $name, $oldrootid;
+            chop $path;
+            $path, $name, $locid;
         };
         while (1) {
             my ( $sqlitePath, $mountPointPath, $mountPointId ) = $oldDbPath->();

@@ -143,8 +143,9 @@ sub migrate {
               . ' (nl integer primary key, ol integer, nr integer)' );
         $db->do('create temporary table t1'
               . ' (nl integer primary key, ol integer, nr integer)' );
-        $db->do("insert or replace into t0 (nl, ol) values (0, 0)");
-        $db->do("insert or replace into t0 (nl, ol) values (-42, -42)");
+        $db->do('insert or replace into t0 (nl, ol) values (0, 0)');
+        $db->do('insert or replace into t0 (nl, ol)'
+              . ' select locid, locid from old.locations where locid<-1' );
         my $total = 0;
 
         my $prettifyWarning = sub {
@@ -590,10 +591,10 @@ sub makeProcessor {
           unless $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         $hints->beginInteractive;
-        my $caseidMap         = $hints->{childrenSha1}->($caseidRoot);
-        my @caseidOrderedKeys = keys %$caseidMap;
+        my $caseidMap           = $hints->{childrenSha1}->($caseidRoot);
+        my @keysForHintsCaseids = keys %$caseidMap;
         $hints->commit;
-        return \&_chooserNoCaseids unless @caseidOrderedKeys;
+        return \&_chooserNoCaseids unless @keysForHintsCaseids;
         sub {
             my ( $catalogue, $canonical, $fileExtension ) = @_;
             unlink $canonical . $fileExtension;
@@ -602,11 +603,11 @@ sub makeProcessor {
             my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
             my $destination;
           CASEID: foreach my $caseid (@caseids) {
-              CONCODE: foreach my $conCode (@caseidOrderedKeys) {
-                    next CONCODE unless $caseidMap->{$conCode} eq $caseid;
-                    my $container = $conCode;
+              HINTSKEY: foreach my $hintsKey (@keysForHintsCaseids) {
+                    next HINTSKEY unless $caseidMap->{$hintsKey} eq $caseid;
+                    my $container = $hintsKey;
                     $container =~ s#//[0-9]+$##s;
-                    next CONCODE unless -d $container;
+                    next HINTSKEY unless -d $container;
                     $destination = catdir( $container, $canonical );
                     lstat $canonical;
                     unlink $canonical if -l _;
