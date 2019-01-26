@@ -612,7 +612,7 @@ sub makeProcessor {
                       unless $path =~
                       s#( \(mirrored from .+\))/.*\.caseid$#$1#s;
                     symlink $path, $canonical;
-                    return $target, $destination;
+                    return $target, $path;
                 }
             }
             symlink rel2abs($catalogue), $canonical . $fileExtension;
