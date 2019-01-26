@@ -70,7 +70,7 @@ sub autograb {
     my ( $startFolder, $perl5dir )  = @$self;
     my @grabSources = map { /^-+grab=(.+)/s ? $1 : (); } @arguments;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
-      $self->makeProcessor( @grabSources || ('') );
+      $self->makeProcessor( @grabSources ? @grabSources : '' );
     my $chooser = $chooserMaker->();
     my $stashLoc;
     my @fileList = map {
@@ -245,13 +245,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                )->scan(
+                  )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                );
+                  );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
