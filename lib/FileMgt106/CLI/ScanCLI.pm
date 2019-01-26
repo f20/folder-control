@@ -68,8 +68,9 @@ sub autograb {
 
     my ( $self,        @arguments ) = @_;
     my ( $startFolder, $perl5dir )  = @$self;
+    my @grabSources = map { /^-+grab=(.+)/s ? $1 : (); } @arguments;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
-      $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
+      $self->makeProcessor( @grabSources || (undef) );
     my $chooser = $chooserMaker->();
     my $stashLoc;
     my @fileList = map {
