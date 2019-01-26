@@ -37,6 +37,8 @@ use FileMgt106::LoadSave;
 use FileMgt106::ScanMaster;
 use FileMgt106::Scanner;
 
+use constant { STAT_DEV => 0, };
+
 sub new {
     my $class = shift;
     bless [@_], $class;
@@ -63,25 +65,26 @@ EOW
 }
 
 sub autograb {
+
     my ( $self,        @arguments ) = @_;
     my ( $startFolder, $perl5dir )  = @$self;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
       $self->makeProcessor( map { /^-+grab=(.+)/s ? $1 : (); } @arguments );
-    my $chooser =
-      $chooserMaker->( map { /^-+caseid=([0-9-]+)/ ? $1 : (); } @arguments );
+    my $chooser = $chooserMaker->();
     my $stashLoc;
-    foreach (@arguments) {
-        next unless /^-+stash=(.+)/;
-        local $_ = $1;
-        $stashLoc = m#^/# ? $_ : "$startFolder/$_";
-    }
     my @fileList = map {
-        /^-$/s
-          ? eval {
+        if (/^-+stash=(.+)/) {
+            local $_ = $1;
+            $stashLoc = m#^/# ? $_ : "$startFolder/$_";
+            ();
+        }
+        elsif (/^-$/s) {
             local $/ = "\n";
             map { chomp; $_; } <STDIN>;
-          }
-          : $_;
+        }
+        else {
+            $_;
+        }
     } @arguments;
 
     foreach (@fileList) {
@@ -98,7 +101,7 @@ sub autograb {
         $canonical .= " (mirrored from $source)";
 
         if ( my ( $scalar, $folder ) =
-            $chooser->( $_, $canonical, $extension ) )
+            $chooser->( $_, $canonical, $extension, $targetStat[STAT_DEV] ) )
         {
             $scalarAcceptor->(
                 $scalar, $folder, $1,
@@ -110,7 +113,9 @@ sub autograb {
             );
         }
     }
+
     $finisher->();
+
 }
 
 sub migrate {
@@ -144,8 +149,6 @@ sub migrate {
         $db->do('create temporary table t1'
               . ' (nl integer primary key, ol integer, nr integer)' );
         $db->do('insert or replace into t0 (nl, ol) values (0, 0)');
-        $db->do('insert or replace into t0 (nl, ol)'
-              . ' select locid, locid from old.locations where locid<-1' );
         my $total = 0;
 
         my $prettifyWarning = sub {
@@ -585,47 +588,35 @@ sub makeProcessor {
     };
 
     my $chooserMaker = sub {
-        my ($caseidRoot) = @_;
-        return \&_chooserNoCaseids unless $caseidRoot;
-        return \&_chooserNoCaseids
-          unless $hints ||=
-          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
-        $hints->beginInteractive;
-        my $caseidMap           = $hints->{childrenSha1}->($caseidRoot);
-        my @keysForHintsCaseids = keys %$caseidMap;
-        $hints->commit;
-        return \&_chooserNoCaseids unless @keysForHintsCaseids;
         sub {
-            my ( $catalogue, $canonical, $fileExtension ) = @_;
-            unlink $canonical . $fileExtension;
+            my ( $catalogue, $canonical, $fileExtension, $devNo ) = @_;
             my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
-            delete $target->{$_} foreach grep { /\//; } keys %$target;
-            my @caseids = FileMgt106::ScanMaster::extractCaseids($target);
-            my $destination;
-          CASEID: foreach my $caseid (@caseids) {
-              HINTSKEY: foreach my $hintsKey (@keysForHintsCaseids) {
-                    next HINTSKEY unless $caseidMap->{$hintsKey} eq $caseid;
-                    my $container = $hintsKey;
-                    $container =~ s#//[0-9]+$##s;
-                    next HINTSKEY unless -d $container;
-                    $destination = catdir( $container, $canonical );
-                    lstat $canonical;
-                    unlink $canonical if -l _;
-                    rename $canonical, $destination if -d _;
-                    last CASEID;
+            return $target, $canonical if -d $canonical;
+            unlink $canonical;
+            unlink $canonical . $fileExtension;
+            if (
+                ( my $sha1hex = $target->{'.caseid'} )
+                && (
+                    $hints ||= FileMgt106::Database->new(
+                        catfile( dirname($perl5dir), '~$hints' )
+                    )
+                )
+              )
+            {
+                my $iterator =
+                  $hints->{searchSha1}->( pack( 'H*', $sha1hex ), $devNo );
+                while ( my ( $path, $statref, $locid ) = $iterator->() ) {
+                    next if $path =~ m#/\.Trash/#;
+                    next if $path =~ m#/Recycling/#;
+                    next
+                      unless $path =~
+                      s#( \(mirrored from .+\))/.*\.caseid$#$1#s;
+                    symlink $path, $canonical;
+                    return $target, $destination;
                 }
             }
-            $destination = $canonical unless defined $destination;
-            unless ( -d $destination ) {
-                mkdir $destination;
-                open my $fh, '>', catdir( $destination, '~$excluded.jbz' );
-            }
-            unless ( defined $destination ) {
-                symlink rel2abs($catalogue), $canonical . $fileExtension;
-                return;
-            }
-            symlink $destination, $canonical;
-            $target, $destination;
+            symlink rel2abs($catalogue), $canonical . $fileExtension;
+            return;
         };
     };
 
@@ -650,18 +641,6 @@ sub _filterByFileName {
         $filtered{$_} = $v;
     }
     \%filtered;
-}
-
-sub _chooserNoCaseids {
-    my ( $catalogue, $canonical, $fileExtension ) = @_;
-    unlink $canonical . $fileExtension;
-    if ( !-d $canonical ) {
-        symlink rel2abs($catalogue), $canonical . $fileExtension;
-        return;
-    }
-    my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
-    delete $target->{$_} foreach grep { /\//; } keys %$target;
-    $target, $canonical;
 }
 
 1;

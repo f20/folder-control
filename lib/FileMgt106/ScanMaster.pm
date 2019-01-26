@@ -42,20 +42,19 @@ use FileMgt106::FileSystem;
 use constant {
     DIR          => 0,
     HINTS        => 1,
-    CASEIDS      => 2,
-    FROTL        => 3,
-    QID          => 4,
-    REPOPAIR     => 5,
-    RESCANTIME   => 6,
-    ROOTLOCID    => 7,
-    SCALAR       => 8,
-    SCALARFILTER => 9,
-    SCALARTAKER  => 10,
-    SHA1         => 11,
-    STASHPAIR    => 12,
-    TTR          => 13,
-    WATCHERS     => 14,
-    WATCHING     => 15,
+    FROTL        => 2,
+    QID          => 3,
+    REPOPAIR     => 4,
+    RESCANTIME   => 5,
+    ROOTLOCID    => 6,
+    SCALAR       => 7,
+    SCALARFILTER => 8,
+    SCALARTAKER  => 9,
+    SHA1         => 10,
+    STASHPAIR    => 11,
+    TTR          => 12,
+    WATCHERS     => 13,
+    WATCHING     => 14,
 };
 
 sub new {
@@ -67,43 +66,18 @@ sub setRepoloc {
 
     my ( $self, $repolocs ) = @_;
 
-    my ( $repoFolder, $gitFolder, $jbzFolder, $caseidRoot, $stashFolder ) =
-      @{$repolocs}{qw(repo git jbz caseid stash)};
+    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder, $omitMirrored ) =
+      @{$repolocs}{qw(repo git jbz stash omitMirrored)};
 
-    if ($caseidRoot) {
-        $self->[CASEIDS] = ['uninitialised'];
-        my $dev = ( stat $self->[DIR] )[STAT_DEV];
-        push @{ $self->[SCALARFILTER] }, sub {
-            my ( $runner, $scalar ) = @_;
-            my @caseids = extractCaseids($scalar);
-            unless ( "@caseids" eq "@{$self->[CASEIDS]}" ) {
-                $self->[CASEIDS] = \@caseids;
-                my $updateHintsDb = sub {
-                    my ($hints) = @_;
-                    my $children = $hints->{children}->($caseidRoot);
-                    while ( my ( $folder, $locid ) = each %$children ) {
-                        $folder =~ s#//([0-9]+)$##s;
-                        next if $1 && $1 < @caseids;
-                        $hints->{uproot}->($locid)
-                          if $folder eq $self->[DIR];
-                    }
-                    for ( my $i = 0 ; $i < @caseids ; ++$i ) {
-                        my ( $locid, $sha1 ) =
-                          $hints->{file}
-                          ->( $caseidRoot, "$self->[DIR]//$i", $dev, 0, 0, 0 );
-                        $hints->{updateSha1}->( $caseids[$i], $locid );
-                    }
-                    $hints->commit;
-                };
-                $self->[HINTS]->enqueue( $runner->{pq}, $updateHintsDb );
-            }
-            my %filtered;
-            while ( my ( $k, $v ) = each %$scalar ) {
-                $filtered{$k} = $v unless $k =~ / \(mirrored from .+\)$/is;
-            }
-            \%filtered;
-        };
-    }
+    push @{ $self->[SCALARFILTER] }, sub {
+        my ( $runner, $scalar ) = @_;
+        my %filtered;
+        while ( my ( $k, $v ) = each %$scalar ) {
+            $filtered{$k} = $v unless $k =~ / \(mirrored from .+\)$/is;
+        }
+        \%filtered;
+      }
+      if $omitMirrored;
 
     my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
     my @components =
