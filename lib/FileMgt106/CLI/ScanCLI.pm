@@ -30,7 +30,7 @@ require POSIX;
 use Cwd qw(getcwd);
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
-use File::Spec::Functions qw(catdir catfile rel2abs);
+use File::Spec::Functions qw(catdir catfile rel2abs abs2rel);
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
 use FileMgt106::LoadSave;
@@ -89,6 +89,7 @@ sub autograb {
     } @arguments;
 
     foreach (@fileList) {
+        $_ = abs2rel( $_, $startFolder ) if m#^/#s;
         chdir $startFolder;
         my @targetStat = stat;
         -f _ or next;
