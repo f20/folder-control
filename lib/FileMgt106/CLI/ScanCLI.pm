@@ -70,7 +70,7 @@ sub autograb {
     my ( $startFolder, $perl5dir )  = @$self;
     my @grabSources = map { /^-+grab=(.+)/s ? $1 : (); } @arguments;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
-      $self->makeProcessor( @grabSources || (undef) );
+      $self->makeProcessor( @grabSources || ('') );
     my $chooser = $chooserMaker->();
     my $stashLoc;
     my @fileList = map {
@@ -605,16 +605,23 @@ sub makeProcessor {
                 )
               )
             {
+                $hints->beginInteractive;
                 my $iterator =
                   $hints->{searchSha1}->( pack( 'H*', $sha1hex ), $devNo );
+                my $destination;
                 while ( my ( $path, $statref, $locid ) = $iterator->() ) {
+                    next if defined $destination;
                     next if $path =~ m#/\.Trash/#;
                     next if $path =~ m#/Recycling/#;
                     next
                       unless $path =~
                       s#( \(mirrored from .+\))/.*\.caseid$#$1#s;
-                    symlink $path, $canonical;
-                    return $target, $path;
+                    $destination = $path;
+                }
+                $hints->commit;
+                if ( defined $destination ) {
+                    symlink $destination, $canonical;
+                    return $target, $destination;
                 }
             }
             symlink rel2abs($catalogue), $canonical . $fileExtension;
