@@ -100,7 +100,7 @@ sub autograb {
         my $extension = $1;
         my $source    = $components[0];
         $source =~ s/^[^a-z]+//i;
-        $canonical = "\@$source canonical";
+        $canonical = "\@$source $canonical";
 
         if ( my ( $scalar, $folder ) =
             $chooser->( $_, $canonical, $extension, $targetStat[STAT_DEV] ) )
