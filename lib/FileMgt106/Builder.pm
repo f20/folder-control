@@ -56,7 +56,7 @@ sub makeHintsBuilder {
         opendir $dh, $whereYouWantIt;
         my %toDelete =
           map { ( decode_utf8($_) => undef ); }
-          grep { !/^(?:\.\.?|Icon\r|\.git|.* \(mirrored from .*\))$/s; }
+          grep { !/^(?:\.\.?|Icon\r|\.git|\@.*|.* \(mirrored from .*\))$/s; }
           readdir $dh;
         closedir $dh;
 

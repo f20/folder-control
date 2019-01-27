@@ -1,6 +1,6 @@
 package FileMgt106::Scanner;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -72,9 +72,9 @@ sub new {
 
     my $regexCheckThisFile = qr/\.xls$/is;
 
-    my $regexDoNotWatchFolder = qr/^Y_| \(mirrored from .+\)$/is;
+    my $regexNeverWatchFolder = qr/^Y_|^\@| \(mirrored from .+\)$/is;
 
-    my $regexWatchThisFolder = qr/^[OWXZ]_/is;
+    my $regexAlwaysWatchFolder = qr/^[OWXZ]_/is;
 
     my $regexMakeReadOnly = qr/^[XY]_/is;
 
@@ -623,10 +623,10 @@ sub new {
                     my ( $reserveWatchMasterForChild, $watchMasterForChild );
                     $reserveWatchMasterForChild =
                       ( $watchMaster || $reserveWatchMaster )
-                      unless /$regexDoNotWatchFolder/is;
+                      unless /$regexNeverWatchFolder/is;
                     $watchMasterForChild = $reserveWatchMasterForChild
                       if $reserveWatchMasterForChild
-                      and /$regexWatchThisFolder/is
+                      and /$regexAlwaysWatchFolder/is
                       || $stat[STAT_MTIME] > $timeLimitAutowatch;
 
                     my $forceReadOnlyTimeLimitForChild =

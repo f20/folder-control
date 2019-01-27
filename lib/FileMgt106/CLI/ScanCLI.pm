@@ -100,7 +100,7 @@ sub autograb {
         my $extension = $1;
         my $source    = $components[0];
         $source =~ s/^[^a-z]+//i;
-        $canonical .= " (mirrored from $source)";
+        $canonical = "\@$source canonical";
 
         if ( my ( $scalar, $folder ) =
             $chooser->( $_, $canonical, $extension, $targetStat[STAT_DEV] ) )
@@ -245,13 +245,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                  )->scan(
+                )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                  );
+                );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -615,7 +615,7 @@ sub makeProcessor {
                     next if $path =~ m#/Recycling/#;
                     next
                       unless $path =~
-                      s#( \(mirrored from .+\))/.*\.caseid$#$1#s;
+                      s#(/\@[^/]+| \(mirrored from .+\))/.*\.caseid$#$1#s;
                     $destination = $path;
                 }
                 $hints->commit;

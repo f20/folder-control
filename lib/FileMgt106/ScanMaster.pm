@@ -1,6 +1,6 @@
 package FileMgt106::ScanMaster;
 
-# Copyright 2012-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2012-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -72,8 +72,9 @@ sub setRepoloc {
     push @{ $self->[SCALARFILTER] }, sub {
         my ( $runner, $scalar ) = @_;
         my %filtered;
-        while ( my ( $k, $v ) = each %$scalar ) {
-            $filtered{$k} = $v unless $k =~ / \(mirrored from .+\)$/is;
+        foreach ( keys %$scalar ) {
+            $filtered{$_} = $scalar->{$_}
+              unless /^\@/s || / \(mirrored from .+\)$/is;
         }
         \%filtered;
       }
