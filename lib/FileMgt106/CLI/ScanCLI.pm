@@ -245,13 +245,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                )->scan(
+                  )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                );
+                  );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -593,9 +593,10 @@ sub makeProcessor {
         sub {
             my ( $catalogue, $canonical, $fileExtension, $devNo ) = @_;
             my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
+            unlink $canonical if -l $canonical;
+            unlink $canonical . $fileExtension
+              if -l $canonical . $fileExtension;
             return $target, $canonical if -d $canonical;
-            unlink $canonical;
-            unlink $canonical . $fileExtension;
             if (
                 ( my $sha1hex = $target->{'.caseid'} )
                 && (
