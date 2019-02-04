@@ -1,6 +1,6 @@
 package Daemon112::TopMaster;
 
-# Copyright 2012-2017 Franck Latrémolière and Reckon LLP.
+# Copyright 2012-2019 Franck Latrémolière and Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -94,11 +94,11 @@ sub attach {
                 $scanMaster = $topMaster->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )
                   ->setRepoloc( $runner->{locs} );
+                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_, $dir )
+                  if $topMaster->{'/scanMasterConfig'};
                 $scanMaster->setWatch( 'Daemon112::Watcher',
                     $topMaster->{'/kq'} )
                   if $topMaster->{'/kq'};
-                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_ )
-                  if $topMaster->{'/scanMasterConfig'};
                 $time ||= time + 2;
                 $runner->{qu}->enqueue( ++$time, $scanMaster );
             }

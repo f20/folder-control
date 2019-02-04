@@ -428,19 +428,4 @@ sub unwatchAll {
     $self;
 }
 
-sub extractCaseids {
-    my ($hashref) = @_;
-    return unless $hashref;
-    my @caseids;
-    while ( my ( $k, $v ) = each %$hashref ) {
-        if ( 'HASH' eq ref $v ) {
-            push @caseids, extractCaseids($v);
-        }
-        elsif ( $k =~ /\.caseid$/is && $v =~ /^[0-9a-f]{40}$/is ) {
-            push @caseids, pack( 'H*', $v );
-        }
-    }
-    sort @caseids;
-}
-
 1;
