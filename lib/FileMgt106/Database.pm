@@ -1,6 +1,6 @@
 package FileMgt106::Database;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -246,7 +246,7 @@ select name from locations where parid=? and name like ? order by name desc
 update locations set parid=null where locid=?
 update or replace locations set parid=?, name=? where parid=? and name=?
 update or replace locations set parid=?, name=? where locid=?
-insert or replace into locations (parid, name, rootid, ino, size, mtime, sha1) select ?, name, rootid, ino, size, mtime, case when size is null then null else sha1 end from locations where locid=?
+insert or replace into locations (parid, name, rootid, ino, size, mtime, sha1) select ?, name, ?, ino, size, mtime, case when size is null then null else sha1 end from locations where locid=?
 select 1 from locations where parid=? and sha1=? and (name=? or name like ?)
 EOL
     };
@@ -296,7 +296,7 @@ EOL
                 $qGetLocidByNameRootidIno->fetchrow_array )
             {
                 $qGetLocidByNameRootidIno->finish;
-                $qClone->execute( $parid, $locidToClone );
+                $qClone->execute( $parid, $rootid, $locidToClone );
                 $qGetLocation->execute( $parid, $name );
                 ( $locid, $lrootid, $lino, $lsize, $lmtime, $sha1 ) =
                   $qGetLocation->fetchrow_array;
@@ -325,13 +325,13 @@ EOL
 
     my $clone;
     $clone = sub {
-        my ( $locid, $parid, $name ) = @_;
-        $qClone->execute( $parid, $locid );
+        my ( $locid, $parid, $rootid, $name ) = @_;
+        $qClone->execute( $parid, $rootid, $locid );
         $qGetLocid->execute( $parid, $name );
         my ($cloneLocid) = $qGetLocid->fetchrow_array;
         $qGetLocid->finish;
         $qGetChildren->execute($locid);
-        $clone->( $_->[0], $cloneLocid, $_->[1] )
+        $clone->( $_->[0], $cloneLocid, $rootid, $_->[1] )
           foreach @{ $qGetChildren->fetchall_arrayref };
     };
 
@@ -340,43 +340,56 @@ EOL
         my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
         die "Device $dev not known" unless defined $rootid;
         $qGetLocidRootidIno->execute( $parid, $name );
-        my ( $locid, $rootiddb, $inodb ) = $qGetLocidRootidIno->fetchrow_array
+        my ( $locid, $rootidFromHints, $inoFromHints ) =
+          $qGetLocidRootidIno->fetchrow_array
           or return;
         $qGetLocidRootidIno->finish;
-        return unless $rootiddb && $rootid && $rootiddb == $rootid;
-        return unless $inodb && $ino == $inodb;
+        return
+          unless $rootidFromHints && $rootid && $rootidFromHints == $rootid;
+        return unless $inoFromHints && $ino == $inoFromHints;
         $locid;
     };
 
-    my $folder = $self->{folder} = sub {
+    my $folder;
+    $folder = $self->{folder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
-        my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
-        die "Device $dev not known" unless defined $rootid;
+        my $rootidFromDev = $parid ? $rootidFromDev{$dev} : $dev;
+        die "Device $dev not known" unless defined $rootidFromDev;
         $qGetLocidRootidIno->execute( $parid, $name );
-        if ( my ( $locid, $rootiddb, $inodb ) =
+        if ( my ( $locid, $rootidFromHints, $inoFromHints ) =
             $qGetLocidRootidIno->fetchrow_array )
         {
             $qGetLocidRootidIno->finish;
-            $qChangeRootid->execute( $rootid, $locid )
-              unless $rootiddb && $rootid && $rootiddb == $rootid;
+            $qChangeRootid->execute( $rootidFromDev, $locid )
+              unless $rootidFromHints
+              && $rootidFromDev
+              && $rootidFromHints == $rootidFromDev;
             $qChangeIno->execute( $ino, $locid )
-              unless $inodb && $ino == $inodb;
-            $rootidFromDev{$dev} = $locid unless $parid;
+              unless $inoFromHints && $ino == $inoFromHints;
             return $locid;
         }
-        $qGetLocidByNameRootidIno->execute( $name, $rootid, $ino );
+        $qGetLocidByNameRootidIno->execute( $name, $rootidFromDev, $ino );
         if ( my ($locidToClone) = $qGetLocidByNameRootidIno->fetchrow_array ) {
             $qGetLocidByNameRootidIno->finish;
-            $clone->( $locidToClone, $parid, $name );
+            $clone->( $locidToClone, $parid, $rootidFromDev, $name );
             $qUproot->execute($locidToClone);
         }
         else {
-            $qInsertLocid->execute( $parid, $name, $rootid, $ino );
+            $qInsertLocid->execute( $parid, $name, $rootidFromDev, $ino );
         }
         $qGetLocid->execute( $parid, $name );
         my ($locid) = $qGetLocid->fetchrow_array;
         $qGetLocid->finish;
-        $rootidFromDev{$dev} = $locid unless $parid;
+        unless ($parid) {
+            $rootidFromDev{$dev} = $locid;
+            if ( $name =~ s#/\.zfs/snapshot/[^/]+$##s ) {
+                my $motherLocid =
+                  $folder->( 0, $name, ( stat $name )[ STAT_DEV, STAT_INO ] );
+                $qGetChildren->execute($motherLocid);
+                $clone->( $_->[0], $locid, $locid, $_->[1] )
+                  foreach @{ $qGetChildren->fetchall_arrayref };
+            }
+        }
         $locid;
     };
 
@@ -384,9 +397,12 @@ EOL
     $topFolder = $self->{topFolder} = sub {
         my ( $path, $dev, $ino ) = @_;
         $qGetLocid->execute( 0, $path );
-        if ( !$qGetLocid->fetchrow_array
-            && ( my ( $root, $seg ) = ( $path =~ m#^(.*?)/+([^/]*)/*$#s ) ) )
-        {
+        if ( $qGetLocid->fetchrow_array ) {
+            $qGetLocid->finish;
+            my $locid = $folder->( 0, $path, $dev, $ino );
+            return wantarray ? ( $locid, $locid, $path ) : $locid;
+        }
+        if ( my ( $root, $seg ) = ( $path =~ m#^(.*?)/+([^/]*)/*$#s ) ) {
             my @stat = lstat( $root eq '' ? '/' : $root );
             if ( @stat && $stat[STAT_DEV] == $dev ) {
                 my ( $parid, $rootid, $rootname ) =
@@ -395,7 +411,6 @@ EOL
                 return wantarray ? ( $locid, $rootid, $rootname ) : $locid;
             }
         }
-        $qGetLocid->finish;
         my $locid = $folder->( 0, $path, $dev, $ino );
         return wantarray ? ( $locid, $locid, $path ) : $locid;
     };
