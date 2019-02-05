@@ -127,7 +127,7 @@ sub migrate {
       if defined $oldFileName;
     chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
     unless ( $oldFileName && -f $oldFileName ) {
-        my $mtime = ( stat ' ~$hints' )[STAT_MTIME]
+        my $mtime = ( stat '~$hints' )[STAT_MTIME]
           or die 'No existing hints file';
         $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
         $oldFileName = '~$hints ' . $mtime;
