@@ -612,8 +612,7 @@ sub makeProcessor {
                 my $destination;
                 while ( my ( $path, $statref, $locid ) = $iterator->() ) {
                     next if defined $destination;
-                    next if $path =~ m#/\.Trash/#;
-                    next if $path =~ m#/Recycling/#;
+                    next if $path =~ m#/Y_Cellar.*/#;
                     next
                       unless $path =~
                       s#(/\@[^/]+| \(mirrored from .+\))/.*\.caseid$#$1#s;
