@@ -58,7 +58,7 @@ BEGIN {
     push @otherLibs, $cpanLib if -d $cpanLib;
     chdir $perl5dir or die "chdir $perl5dir: $!";
     $perl5dir = decode_utf8 getcwd();
-    chdir $startFolder;
+    chdir $startFolder if defined $startFolder;
 }
 use lib @otherLibs, $perl5dir;
 
