@@ -101,13 +101,16 @@ sub new {
     my $create = sub {
         my ( $name, $folderLocid, $whatYouWant, $devNo, $pathToFolder ) = @_;
 
-        # $whatYouWant is either a hashref in JSON-like format or a binary sha1.
+        # $whatYouWant is either a hashref or a binary sha1.
 
         my $fileName = defined $pathToFolder ? "$pathToFolder/$name" : $name;
         my $sha1;
         if ( ref $whatYouWant ) {
             if ( $whatYouWant->{$name} =~ /([0-9a-fA-F]{40})/ ) {
                 $sha1 = pack( 'H*', $1 );
+            }
+            elsif ( ref $whatYouWant->{$name} eq 'ARRAY' ) {
+                return 1;
             }
             elsif ( symlink $whatYouWant->{$name}, $fileName ) {
                 delete $whatYouWant->{$name};
@@ -348,6 +351,7 @@ sub new {
                 }
                 elsif ( ref $target->{$_} eq 'ARRAY' ) {
                     delete $target->{$_};
+                    undef $mustBeTargeted;
                 }
             }
 
@@ -503,23 +507,23 @@ sub new {
                             die "mkdir $stash/$binName: $!" unless $_;
                             $binName = $name . ' #' . _randomString(3);
                         }
-                        my $crashRecoverySymlink = "$dir/$path~\$temp $_";
+                        my $crashIndicatorSymlink = "$dir/$path~\$temp $_";
                         if (
-                            -e $crashRecoverySymlink
+                            -e $crashIndicatorSymlink
                             || !symlink "$stash/$binName",
-                            $crashRecoverySymlink
+                            $crashIndicatorSymlink
                           )
                         {
                             foreach ( -9 .. 0 ) {
                                 my $n =
-                                  $crashRecoverySymlink . ' #'
+                                  $crashIndicatorSymlink . ' #'
                                   . _randomString(3);
                                 if ( symlink "$stash/$binName", $n ) {
-                                    $crashRecoverySymlink = $n;
+                                    $crashIndicatorSymlink = $n;
                                     last;
                                 }
                             }
-                            die $crashRecoverySymlink unless $_;
+                            die $crashIndicatorSymlink unless $_;
                         }
                         rename( $_, "$stash/$binName/$_" )
                           || die "rename $_, $stash/$binName/$_: $!"
@@ -552,7 +556,7 @@ sub new {
                           )
                           : FileMgt106::Scanner->new( "$stash/$binName",
                             $hints, $rstat )->scan($frotl);
-                        $binned{"$binName"} = [ $cat, $crashRecoverySymlink ];
+                        $binned{"$binName"} = [ $cat, $crashIndicatorSymlink ];
                     }
                 }
                 else {

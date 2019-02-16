@@ -214,7 +214,7 @@ sub makeProcessor {
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
         my ($grabExclusions);
-        if ( $dir =~ m#(.+)/[⛔️🚫⚠️⚠︎☁︎⟲=+-][^/]*$#s ) {
+        if ( $dir =~ m#(.+)/[⚠✘=+-][^/]*$#s ) {
             $path = $1;
             my $rgid = ( stat _ )[STAT_GID];
             chdir $1 or die "chdir $1: $!";
@@ -242,20 +242,33 @@ sub makeProcessor {
             my $message = $fileExtension ? " and $fileExtension file" : '';
             if ( my ($buildExclusionsFile) = grep { -f $_; } "🚫.txt" ) {
                 $message .= ', with build exclusions';
-                $scalar->{$buildExclusionsFile} = unpack 'H*',
-                  FileMgt106::Scanner::sha1File($buildExclusionsFile);
-                $scalar = _filterExclusions(
+                $scalar->{$buildExclusionsFile} = [];
+                ( $scalar, my $excluded ) = _filterExclusions(
                     $scalar,
                     FileMgt106::LoadSave::loadNormalisedScalar(
                         $buildExclusionsFile)
                 );
+                if ($excluded) {
+                    my $tmpFile = "✘$$.txt";
+                    open my $fh, '>', $tmpFile;
+                    binmode $fh;
+                    print {$fh}
+                      FileMgt106::LoadSave::jsonMachineMaker()
+                      ->encode($excluded);
+                    close $fh;
+                    rename $tmpFile, "✘.txt";
+                    $scalar->{"✘.txt"} = [];
+                }
+                else {
+                    unlink "✘.txt";
+                }
             }
             if ( my ($grabExclusionsFile) = grep { -f $_; } "⛔️.txt",
                 "\N{U+26A0}.txt" )
             {
                 $message .= ', with grab exclusions';
-                $scalar->{$grabExclusionsFile} = unpack 'H*',
-                  FileMgt106::Scanner::sha1File($grabExclusionsFile);
+                $scalar->{$grabExclusionsFile} = []
+                  unless $grabExclusionsFile eq "\N{U+26A0}.txt";
                 $grabExclusions = FileMgt106::LoadSave::loadNormalisedScalar(
                     $grabExclusionsFile);
             }
@@ -674,13 +687,20 @@ sub _saveMissingFilesCatalogues {
 
 sub _filterExclusions {
     my ( $src, $excl ) = @_;
-    return $src  unless $excl;
-    return undef unless ref $excl;
-    my %result = %$src;
-    $result{$_} = _filterExclusions( $result{$_}, $excl->{$_} )
+    return $src unless $excl;
+    return wantarray ? ( undef, $src ) : undef unless ref $excl;
+    my %included = %$src;
+    my %excluded;
+    ( $included{$_}, $excluded{$_} ) =
+      _filterExclusions( $included{$_}, $excl->{$_} )
       foreach keys %$excl;
-    delete $result{$_} foreach grep { !defined $result{$_}; } keys %result;
-    %result ? \%result : undef;
+    delete $included{$_}
+      foreach grep { !defined $included{$_}; } keys %included;
+    my $included = %included ? \%included : undef;
+    return $included unless wantarray;
+    delete $excluded{$_}
+      foreach grep { !defined $excluded{$_}; } keys %excluded;
+    $included, %excluded ? \%excluded : undef;
 }
 
 1;
