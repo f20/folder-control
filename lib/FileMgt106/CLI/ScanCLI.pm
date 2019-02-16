@@ -266,11 +266,14 @@ sub makeProcessor {
             if ( my ($grabExclusionsFile) = grep { -f $_; } "⛔️.txt",
                 "\N{U+26A0}.txt" )
             {
-                $message .= ', with grab exclusions';
                 $scalar->{$grabExclusionsFile} = []
                   unless $grabExclusionsFile eq "\N{U+26A0}.txt";
-                $grabExclusions = FileMgt106::LoadSave::loadNormalisedScalar(
-                    $grabExclusionsFile);
+                if (@grabSources) {
+                    $message .= ', with grab exclusions';
+                    $grabExclusions =
+                      FileMgt106::LoadSave::loadNormalisedScalar(
+                        $grabExclusionsFile);
+                }
             }
             warn "Rebuilding $dir with rgid=$rgid$message\n";
             $hints->beginInteractive;
@@ -292,21 +295,22 @@ sub makeProcessor {
             utime time, $targetStatRef->[STAT_MTIME], $dir;
         }
         if ( ref $scalar && keys %$scalar ) {
-            my ( $toGrab, $excluded ) =
-              _filterExclusions( $scalar, $grabExclusions );
-            if ($excluded) {
-                my $tmpFile = "✘$$.txt";
-                open my $fh, '>', $tmpFile;
-                binmode $fh;
-                print {$fh}
-                  FileMgt106::LoadSave::jsonMachineMaker()->encode($excluded);
-                close $fh;
-                rename $tmpFile, "✘⬇️.txt";
-            }
-            else {
-                unlink "✘⬇️.txt";
-            }
             if (@grabSources) {
+                my ( $toGrab, $excluded ) =
+                  _filterExclusions( $scalar, $grabExclusions );
+                if ($excluded) {
+                    my $tmpFile = "✘$$.txt";
+                    open my $fh, '>', $tmpFile;
+                    binmode $fh;
+                    print {$fh}
+                      FileMgt106::LoadSave::jsonMachineMaker()
+                      ->encode($excluded);
+                    close $fh;
+                    rename $tmpFile, "✘⬇️.txt";
+                }
+                else {
+                    unlink "✘⬇️.txt";
+                }
                 $missing->{$dir} = $toGrab if $toGrab;
             }
             else {
@@ -701,7 +705,7 @@ sub _saveMissingFilesCatalogues {
 sub _filterExclusions {
     my ( $src, $excl ) = @_;
     return $src unless $excl;
-    return wantarray ? ( undef, $src ) : undef unless ref $excl;
+    return wantarray ? ( undef, $src ) : undef if !ref $excl || $excl->{'.'};
     my %included = %$src;
     my %excluded;
     ( $included{$_}, $excluded{$_} ) =
