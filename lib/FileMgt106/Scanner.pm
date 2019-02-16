@@ -380,34 +380,26 @@ sub new {
                   && _isMergeable( \@stat );
 
                 if ($rehash) {
-
                     my $newsha1 = sha1File($_);
                     unless ( defined $newsha1 ) {
                         warn "Could not sha1 $dir/$path$_";
                         next;
                     }
-
-                    if ( $rehash = !defined $sha1 || $newsha1 ne $sha1 ) {
-
-                        # First updateSha1 so that the backup task can find it
-                        $updateSha1->( $newsha1, $fileLocid );
-
-                        if ($backuper) {
-                            $backuper->( $_, $locid, $sha1 ) if defined $sha1;
-                            unless ( $backuper->( $_, $locid, $newsha1 ) ) {
-                                warn "Could not backup $dir/$path$_";
-
-                                # undo sha1 storage
-                                $updateSha1->( undef, $fileLocid );
-
-                                # inform file system watcher
-                                mkdir "Could not backup $_";
-                                rmdir "Could not backup $_";
-
-                            }
+                    $updateSha1->( $newsha1, $fileLocid )
+                      unless defined $sha1 && $newsha1 eq $sha1;
+                    if ($backuper) {
+                        $backuper->( $_, $locid, $sha1 )
+                          if defined $sha1 && $newsha1 ne $sha1;
+                        unless ( $backuper->( $_, $locid, $newsha1 ) ) {
+                            warn "Could not backup $dir/$path$_";
+                            $updateSha1->( undef, $fileLocid )
+                              ;    # undo sha1 storage
+                            mkdir "Could not backup $_"
+                              ;    # inform file system watcher
+                            rmdir "Could not backup $_";    # clean up
                         }
-                        $sha1 = $newsha1;
                     }
+                    $sha1 = $newsha1;
                 }
 
                 if ($mergeCandidate) {
