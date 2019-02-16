@@ -25,6 +25,7 @@ package FileMgt106::CLI::ScanCLI;
 
 use warnings;
 use strict;
+use utf8;
 
 require POSIX;
 use Cwd qw(getcwd);
@@ -212,7 +213,8 @@ sub makeProcessor {
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
-        if ( $dir =~ /(.+)\+missing$/s && -d $1 ) {
+        my ($grabExclusions);
+        if ( $dir =~ m#(.+)/[⛔️🚫⚠️⚠︎☁︎⟲=+-][^/]*$#s ) {
             $path = $1;
             my $rgid = ( stat _ )[STAT_GID];
             chdir $1 or die "chdir $1: $!";
@@ -237,8 +239,27 @@ sub makeProcessor {
             chmod 0770, $dir;
             chdir $dir or die "chdir $dir: $!";
             $dir = decode_utf8 getcwd();
-            warn "Rebuilding $dir with rgid=$rgid"
-              . ( $fileExtension ? " and $fileExtension file" : '' );
+            my $message = $fileExtension ? " and $fileExtension file" : '';
+            if ( my ($buildExclusionsFile) = grep { -f $_; } "🚫.txt" ) {
+                $message .= ', with build exclusions';
+                $scalar->{$buildExclusionsFile} = unpack 'H*',
+                  FileMgt106::Scanner::sha1File($buildExclusionsFile);
+                $scalar = _filterExclusions(
+                    $scalar,
+                    FileMgt106::LoadSave::loadNormalisedScalar(
+                        $buildExclusionsFile)
+                );
+            }
+            if ( my ($grabExclusionsFile) = grep { -f $_; } "⛔️.txt",
+                "\N{U+26A0}.txt" )
+            {
+                $message .= ', with grab exclusions';
+                $scalar->{$grabExclusionsFile} = unpack 'H*',
+                  FileMgt106::Scanner::sha1File($grabExclusionsFile);
+                $grabExclusions = FileMgt106::LoadSave::loadNormalisedScalar(
+                    $grabExclusionsFile);
+            }
+            warn "Rebuilding $dir with rgid=$rgid$message\n";
             $hints->beginInteractive;
             eval {
                 (
@@ -257,14 +278,13 @@ sub makeProcessor {
             $hints->commit;
             utime time, $targetStatRef->[STAT_MTIME], $dir;
         }
-        my $missingFile = "$path+missing.jbz";
-        unlink $missingFile;
         if ( ref $scalar && keys %$scalar ) {
             if (@grabSources) {
-                $missing->{$dir} = $scalar;
+                $missing->{$dir} =
+                  _filterExclusions( $scalar, $grabExclusions );
             }
             else {
-                FileMgt106::LoadSave::saveJbz( $missingFile, $scalar );
+                _saveMissingFilesCatalogues( $path, $scalar );
             }
         }
     };
@@ -415,12 +435,7 @@ sub makeProcessor {
             }
             $missing = _filterByFileName($missing)
               unless grep { /:\+$/s; } @grabSources;
-            while ( my ( $dir, $stillMissing ) = each %$missing ) {
-                FileMgt106::LoadSave::saveJbz(
-                    catfile( $dir, "\N{U+26A0}.jbz" ),
-                    $stillMissing )
-                  if $stillMissing;
-            }
+            _saveMissingFilesCatalogues(%$missing);
             rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
@@ -490,7 +505,7 @@ sub makeProcessor {
                 };
                 next;
             }
-            elsif (/^-+(?:jbz|repo)=?(.*)/) {
+            elsif (/^-repo=?(.*)/) {
                 local $_ = $1;
                 my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 push @otherConfigClosures, sub { $_[0]->addJbzFolder($loc); };
@@ -533,12 +548,6 @@ sub makeProcessor {
             }
             elsif (/^-+migrate(?:=(.+))?/) {
                 $self->migrate( undef, $1 );
-                next;
-            }
-            if (/^-+missing=(.*)/) {
-                chdir $startFolder;
-                $missing = FileMgt106::LoadSave::loadNormalisedScalar($1);
-                push @grabSources, '';
                 next;
             }
 
@@ -650,6 +659,28 @@ sub _filterByFileName {
         $filtered{$_} = $v;
     }
     \%filtered;
+}
+
+sub _saveMissingFilesCatalogues {
+    while ( my ( $path, $missing ) = splice @_, 0, 2 ) {
+        my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
+        open my $fh, '>', $tmpFile;
+        binmode $fh;
+        print {$fh} FileMgt106::LoadSave::jsonMachineMaker()->encode($missing);
+        close $fh;
+        rename $tmpFile, catfile( $path, "\N{U+26A0}.txt" );
+    }
+}
+
+sub _filterExclusions {
+    my ( $src, $excl ) = @_;
+    return $src  unless $excl;
+    return undef unless ref $excl;
+    my %result = %$src;
+    $result{$_} = _filterExclusions( $result{$_}, $excl->{$_} )
+      foreach keys %$excl;
+    delete $result{$_} foreach grep { !defined $result{$_}; } keys %result;
+    %result ? \%result : undef;
 }
 
 1;

@@ -161,7 +161,7 @@ sub new {
                 @stat = $rstat->(
                     $fileName, 2_000_000_000    # This will go wrong in 2033
                 );
-                my $newsha1 = _sha1File($fileName);
+                my $newsha1 = sha1File($fileName);
                 unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
                     warn 'SHA1 mismatch after trying to copy '
                       . "$source to $fileName in " . `pwd`;
@@ -290,44 +290,6 @@ sub new {
         }
         if ($target) {
             my %list = map { $_ => undef } @list;
-            my $excludedJbz;
-            $excludedJbz = '~$excluded.jbz'
-              if -e '~$excluded.jbz'
-              or -e '~$nomkdir' and rename '~$nomkdir',
-              '~$excluded.jbz';
-            $excludedJbz = '~$exclusions.jbz'
-              if !defined $excludedJbz && -s '~$exclusions.jbz';
-            if ( defined $excludedJbz ) {
-                require FileMgt106::LoadSave;
-                my $definedExclusions;
-                $definedExclusions =
-                  FileMgt106::LoadSave::loadNormalisedScalar($excludedJbz)
-                  if $excludedJbz =~ /exclusions/;
-                my %excluded;
-                foreach ( keys %$target ) {
-                    next if /\.caseid$/is;
-                    next if exists $list{$_};
-                    $excluded{$_} = delete $target->{$_}
-                      if !$definedExclusions
-                      || exists $definedExclusions->{$_};
-                }
-                if (%excluded) {
-                    my $tjbz = $excludedJbz . $$;
-                    FileMgt106::LoadSave::saveJbz( $tjbz, \%excluded );
-                    if (
-                        !-e $excludedJbz
-                        || FileMgt106::FileSystem::filesDiffer(
-                            $excludedJbz, $tjbz
-                        )
-                      )
-                    {
-                        rename $tjbz, $excludedJbz;
-                    }
-                    else {
-                        unlink $tjbz;
-                    }
-                }
-            }
             foreach ( grep { !/\// && !exists $list{$_}; } keys %$target ) {
                 if ( -e $_ ) {
                     warn "Unexpectedly found $_ in $dir/$path";
@@ -415,7 +377,7 @@ sub new {
 
                 if ($rehash) {
 
-                    my $newsha1 = _sha1File($_);
+                    my $newsha1 = sha1File($_);
                     unless ( defined $newsha1 ) {
                         warn "Could not sha1 $dir/$path$_";
                         next;
@@ -469,10 +431,9 @@ sub new {
                         if ( FileMgt106::FileSystem::filesDiffer( $_, $tfile ) )
                         {
                             warn 'Merging cancelled';
-                            warn unpack( 'H*', _sha1File($_) )
+                            warn unpack( 'H*', sha1File($_) )
                               . " $dir/$path$_\n";
-                            warn unpack( 'H*', _sha1File($tfile) )
-                              . " $ipath\n";
+                            warn unpack( 'H*', sha1File($tfile) ) . " $ipath\n";
                             unlink $tfile;
                             next;
                         }
@@ -886,7 +847,7 @@ sub infill {
     goto &{ shift->{infill} };
 }
 
-sub _sha1File($) {
+sub sha1File($) {
     warn "@_\n"
       ;  # warn join (' ', map { defined $_ ? $_ : undef; } @_, caller ) . "\n";
     my ( %sig, %received );

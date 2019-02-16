@@ -71,7 +71,7 @@ sub process {
                     FileMgt106::ResolveFilter::resolveAbsolutePaths(
                         $scalar,
                         $hints->{sha1FromStat},
-                        \&FileMgt106::Scanner::_sha1File
+                        \&FileMgt106::Scanner::sha1File
                     )
                 );
                 return;
