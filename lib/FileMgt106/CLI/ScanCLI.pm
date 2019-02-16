@@ -256,11 +256,11 @@ sub makeProcessor {
                       FileMgt106::LoadSave::jsonMachineMaker()
                       ->encode($excluded);
                     close $fh;
-                    rename $tmpFile, "✘.txt";
-                    $scalar->{"✘.txt"} = [];
+                    rename $tmpFile, "✘📁.txt";
+                    $scalar->{"✘📁.txt"} = [];
                 }
                 else {
-                    unlink "✘.txt";
+                    unlink "✘📁.txt";
                 }
             }
             if ( my ($grabExclusionsFile) = grep { -f $_; } "⛔️.txt",
@@ -292,9 +292,22 @@ sub makeProcessor {
             utime time, $targetStatRef->[STAT_MTIME], $dir;
         }
         if ( ref $scalar && keys %$scalar ) {
+            my ( $toGrab, $excluded ) =
+              _filterExclusions( $scalar, $grabExclusions );
+            if ($excluded) {
+                my $tmpFile = "✘$$.txt";
+                open my $fh, '>', $tmpFile;
+                binmode $fh;
+                print {$fh}
+                  FileMgt106::LoadSave::jsonMachineMaker()->encode($excluded);
+                close $fh;
+                rename $tmpFile, "✘⬇️.txt";
+            }
+            else {
+                unlink "✘⬇️.txt";
+            }
             if (@grabSources) {
-                $missing->{$dir} =
-                  _filterExclusions( $scalar, $grabExclusions );
+                $missing->{$dir} = $toGrab if $toGrab;
             }
             else {
                 _saveMissingFilesCatalogues( $path, $scalar );
