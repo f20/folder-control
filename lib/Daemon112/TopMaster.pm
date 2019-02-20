@@ -94,11 +94,11 @@ sub attach {
                 $scanMaster = $topMaster->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )
                   ->setRepoloc( $runner->{locs} );
-                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_, $dir )
-                  if $topMaster->{'/scanMasterConfig'};
                 $scanMaster->setWatch( 'Daemon112::Watcher',
                     $topMaster->{'/kq'} )
                   if $topMaster->{'/kq'};
+                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_, $dir )
+                  if $topMaster->{'/scanMasterConfig'};
                 $time ||= time + 2;
                 $runner->{qu}->enqueue( ++$time, $scanMaster );
             }

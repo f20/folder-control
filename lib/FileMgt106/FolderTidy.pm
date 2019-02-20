@@ -1,6 +1,6 @@
 package FileMgt106::FolderTidy;
 
-# Copyright 2011-2017 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -30,84 +30,56 @@ require POSIX;
 
 sub deepClean {
     my $count = 0;
-  ITEM: foreach (@_) {
+    foreach my $folder (@_) {
         my @list;
-        {
-            my $dh;
-            opendir $dh, $_ or return;
-            @list = sort {
-                (
-                      $b =~ /^(?:\~?\$|Z?_)/s ? "X $b"
-                    : $b =~ /\.tmp$/si        ? "T $b"
-                    : $b =~ /^Y_.* folder$/s  ? "B $b"
-                    :                           "E $b"
-                ) cmp(
-                    $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
-                    : $a =~ /\.tmp$/si       ? "T $a"
-                    : $a =~ /^Y_.* folder$/s ? "B $a"
-                    :                          "E $a"
-                  )
-            } grep { !/^\.\.?$/s } readdir $dh;
-        }
+        my $dh;
+        opendir $dh, $folder or next;
+        @list = sort {
+            (
+                  $b =~ /^(?:\~?\$|Z?_)/s ? "X $b"
+                : $b =~ /\.tmp$/si        ? "T $b"
+                : $b =~ /^Y_.* folder$/s  ? "B $b"
+                :                           "E $b"
+              ) cmp(
+                $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
+                : $a =~ /\.tmp$/si       ? "T $a"
+                : $a =~ /^Y_.* folder$/s ? "B $a"
+                :                          "E $a"
+              )
+        } grep { !/^\.\.?$/s } readdir $dh;
+        closedir $dh;
         foreach my $file (@list) {
             if ( $file eq '.git' ) {
                 ++$count;
                 next;
             }
-            my $d2 = "$_/$file";
-            if ( $file =~ /^(?:\.|\:2e)(?:DS_Store$|Parent$|_)/ ) {
-                unlink $d2;
+            my $fullPath = "$folder/$file";
+            if ( $file =~ /^(?:\.|\:2e)(?:DS_Store$|_)/ ) {
+                unlink $fullPath;
                 next;
             }
-            if ( $file =~ s/^(\~\$|Z_|\.)/_$1/is ) {
-                my $d3 = "$_/$file";
-                if ( -e $d3 ) {
-                    my ( $base, $extension ) = ( $d3 =~ m#(.*)(\.[^ /]+)$#s );
-                    ( $base, $extension ) = ( $d3, '' )
+            my $newPath;
+            $newPath = "$folder/_$file" if $file =~ /^(\~\$|Z_|\.)/is;
+            $newPath = "$folder/${file}_"
+              if $file =~ /\.(?:app|download|lrcat|lrdata|tmp)$/is;
+            if ($newPath) {
+                if ( -e $newPath ) {
+                    my ( $base, $extension ) =
+                      ( $newPath =~ m#(.*)(\.[^ /]+)$#s );
+                    ( $base, $extension ) = ( $newPath, '' )
                       unless defined $extension;
                     my $c = 2;
-                    while ( -e ( $d3 = "$base~$c$extension" ) ) { ++$c; }
+                    while ( -e ( $newPath = "$base~$c$extension" ) ) { ++$c; }
                 }
-                $d2 = $d3 if rename $d2, $d3;
+                $fullPath = $newPath if rename $fullPath, $newPath;
             }
-            if ( $file =~ s/\.(download|tmp|aplibrary)$/.${1}_/is ) {
-                my $d3 = "$_/$file";
-                if ( -e $d3 ) {
-                    my ( $base, $extension ) = ( $d3 =~ m#(.*)(\.\S+)$#s );
-                    ( $base, $extension ) = ( $d3, '' )
-                      unless defined $extension;
-                    my $c = 2;
-                    while ( -e ( $d3 = "$base~$c$extension" ) ) { ++$c; }
-                }
-                $d2 = $d3 if rename $d2, $d3;
-            }
-            my $nlinks = ( lstat $d2 )[3];
-            if ( undef && @list == 1 && -d _ ) {
-                warn "$d2";
-                my $dh;
-                my $d3 = rand();
-                opendir $dh, $d2;
-                my @sub = grep { !/^\.\.?$/s } readdir $dh;
-                closedir $dh;
-                $d3 = rand() while grep { $d3 eq $_ } @sub;
-                $d3 = "$_/$d3";
-
-                if ( rename $d2, $d3 ) {
-
-                    foreach my $file (@sub) {
-                        rename "$d3/$file", "$_/$file";
-                    }
-                }
-                ++$count if deepClean($_);
-            }
-            else {
-                ++$count
-                  unless -d _ and !deepClean($d2) and rmdir $d2
-                  or -l _ || -z _ and unlink $d2
-                  or -f _
-                  and $nlinks > 1
-                  and unlink $d2;
-            }
+            my $nlinks = ( lstat $fullPath )[3];
+            ++$count
+              unless -d _ and !deepClean($fullPath) and rmdir $fullPath
+              or -l _ || -z _ and unlink $fullPath
+              or -f _
+              and $nlinks > 1
+              and unlink $fullPath;
         }
     }
     $count;

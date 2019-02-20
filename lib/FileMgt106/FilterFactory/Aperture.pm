@@ -146,8 +146,9 @@ sub subLibraryScalar {
     };
 }
 
-sub exploded {
-    my ($self) = @_;
+sub explode {
+    my ( $self, $path ) = @_;
+    $path =~ s/\.aplibrary$//s;
     my %exploded;
     foreach my $rating ( -1 .. 5 ) {
         if ( my ( $k, $v ) = $self->masters( $rating, $rating ) ) {
@@ -166,7 +167,7 @@ sub exploded {
     $exploded{'3to5.aplibrary'} = $self->subLibraryScalar( 3, 5 );
     $exploded{'0to5.aplibrary'} = $self->subLibraryScalar( 0, 5 );
     $exploded{'-1to5.aplibrary'} = $self->subLibraryScalar;
-    \%exploded;
+    \%exploded, $path;
 }
 
 sub _explodeByLcExtension {

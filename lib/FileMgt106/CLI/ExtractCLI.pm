@@ -135,16 +135,17 @@ sub process {
                     undef $module unless eval "require $module";
                     warn $@ if $@;
                 }
-                my $exploded =
+                my ( $exploded, $newPath ) =
                     $module
-                  ? $module->new($scalar)->exploded
+                  ? $module->new($scalar)->explode($path)
                   : (
                     require FileMgt106::FilterFactory::ByType,
-                    FileMgt106::FilterFactory::ByType::explodeByType($scalar)
+                    FileMgt106::FilterFactory::ByType::explodeByType(
+                        $scalar, $path
+                    )
                   );
-                $path =~ s/\.aplibrary$//s;
                 while ( my ( $k, $v ) = each %$exploded ) {
-                    FileMgt106::LoadSave::saveJbz( "$path \$$k.jbz", $v )
+                    FileMgt106::LoadSave::saveJbz( "$newPath \$$k.jbz", $v )
                       if ref $v;
                 }
                 return;

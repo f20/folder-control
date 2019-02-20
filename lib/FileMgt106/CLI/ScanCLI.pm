@@ -140,8 +140,7 @@ sub migrate {
       or die "Cannot create database $hintsFile";
     my $db = $hints->{dbHandle};
     $db->{AutoCommit} = 1;
-    $hints->{dbHandle}
-      ->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
+    $db->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
       if /wal/i;
     $db->do("attach '$oldFileName' as old");
 
@@ -375,9 +374,9 @@ sub makeProcessor {
             }
             return if $cleaningFlag =~ /only/i;
         }
-        my $scanner = FileMgt106::ScanMaster->new( $hints, $dir );
-        $_->( $scanner, $dir ) foreach @scanMasterConfigClosures;
-        $scanner->dequeued;
+        my $scanMaster = FileMgt106::ScanMaster->new( $hints, $dir );
+        $_->( $scanMaster, $dir ) foreach @scanMasterConfigClosures;
+        $scanMaster->dequeued;
     };
 
     my $finisher = sub {
@@ -428,7 +427,7 @@ sub makeProcessor {
                     }
                     require FileMgt106::FolderTidy;
                     $hints->beginInteractive(1);
-                    FileMgt106::FolderTidy::deepClean('.');
+                    FileMgt106::FolderTidy::deepClean('.');    #use Scanner
                     $hints->commit;
                     $cellarScanner =
                       FileMgt106::ScanMaster->new( $hints,
@@ -487,18 +486,14 @@ sub makeProcessor {
                 my $module   = 'Daemon112::SimpleWatch';
                 my $nickname = 'watch';
                 my $logging  = $1;
-                my ( $hintsFile, $top, $repo, $git, $jbz, $parent ) =
+                my ( $hintsFile, $top, $repoPath, $gitPath, $jbzPath, $parent )
+                  = map { defined $_ ? rel2abs($_) : $_; }
                   map { /^-+watch/ ? () : /^-/ ? undef : $_; } @_;
-                $_ = rel2abs($_)
-                  foreach grep { defined $_; } $hintsFile, $top, $repo,
-                  $git,
-                  $jbz,
-                  $parent;
                 $parent ||= $startFolder;
                 require Daemon112::Daemon;
                 Daemon112::Daemon->run(
-                    $module, $nickname, $logging, $hintsFile, $top,
-                    $repo,   $git,      $jbz,     $parent
+                    $module,   $nickname, $logging, $hintsFile, $top,
+                    $repoPath, $gitPath,  $jbzPath, $parent
                 );
             }
             elsif (/^-+sync=(.+)$/) {
@@ -560,25 +555,12 @@ sub makeProcessor {
                   !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 next;
             }
+
             $hints ||=
               FileMgt106::Database->new(
                 catfile( dirname($perl5dir), '~$hints' ) );
-            if (/^-+aperture=?(.*)/) {
-                my $jbzDir = $startFolder;
-                if ($1) {
-                    chdir $startFolder;
-                    chdir $1 and $jbzDir = decode_utf8 getcwd();
-                }
-                require FileMgt106::ScanMasterAperture;
-                eval {
-                    $_->updateJbz( $hints, $jbzDir )
-                      foreach FileMgt106::ScanMasterAperture
-                      ->findOrMakeApertureLibraries( $hints, @_ );
-                };
-                warn "Aperture scan: $@" if $@;
-                last;
-            }
-            elsif (/^-+migrate(?:=(.+))?/) {
+
+            if (/^-+migrate(?:=(.+))?/) {
                 $self->migrate( undef, $1 );
                 next;
             }

@@ -1,6 +1,6 @@
 package FileMgt106::ScanMasterAperture;
 
-# Copyright 2011-2017 Franck Latrémolière.
+# Copyright 2011-2019 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,26 +26,24 @@ package FileMgt106::ScanMasterAperture;
 use strict;
 use warnings;
 use Cwd;
-use Sys::Hostname qw(hostname);
 use Encode qw(decode_utf8 encode_utf8);
-use FileMgt106::Scanner;
 use FileMgt106::FileSystem;
+use FileMgt106::ScanMaster;
+use FileMgt106::Scanner;
+
+our @ISA = 'FileMgt106::ScanMaster';
 
 use constant {
-    LIB_DIR   => 0,
-    LIB_MTIME => 1,
-    LIB_JBZ   => 2,
+    SM_DIR       => 0,
+    SM_REPOPAIR  => 4,
+    SM_ROOTLOCID => 6,
+    SM_SCALAR    => 7,
 };
 
-sub new {
-    my $class = shift;
-    bless [@_], $class;
-}
-
 sub repairPermissions {
-    my ($lib) = @_;
-    unless ( chdir $lib->[LIB_DIR] ) {
-        warn die "Cannot chdir $lib->[LIB_DIR]";
+    my ($self) = @_;
+    unless ( chdir $self->[SM_DIR] ) {
+        warn die "Cannot chdir $self->[SM_DIR]";
         return;
     }
     my $rgid = ( stat '.' )[STAT_GID];
@@ -68,13 +66,13 @@ sub repairPermissions {
                     unless ( rename 'aperture_repair_permissions_temporary',
                         $_ )
                     {
-                        warn "Cannot rename to $_ in $lib->[LIB_DIR]";
+                        warn "Cannot rename to $_ in $self->[SM_DIR]";
                         next;
                     }
                     @stat = lstat $_;
                 }
                 if ( $stat[STAT_NLINK] > 1 ) {
-                    warn "$_ still multilinked in $lib->[LIB_DIR]";
+                    warn "$_ still multilinked in $self->[SM_DIR]";
                     next;
                 }
                 chown -1, $rgid, $_ unless $rgid == $stat[STAT_GID];
@@ -87,23 +85,23 @@ sub repairPermissions {
     closedir DIR;
     $repairer->(@list);
     {
-        local $_ = $lib->[LIB_DIR];
+        local $_ = $self->[SM_DIR];
         s/\.aplibrary$/ (Masters)/;
         unlink $_;
-        symlink "$lib->[LIB_DIR]/Masters", $_;
+        symlink "$self->[SM_DIR]/Masters", $_;
     }
     $rgid;
 }
 
 sub extractApertureMetadata {
-    my ($lib) = @_;
-    return unless -s "$lib->[LIB_DIR]/Database/apdb/Library.apdb";
+    my ($self) = @_;
+    return unless -s "$self->[SM_DIR]/Database/apdb/Library.apdb";
     my $libDbh =
       DBI->connect(
-        "dbi:SQLite:dbname=$lib->[LIB_DIR]/Database/apdb/Library.apdb",
+        "dbi:SQLite:dbname=$self->[SM_DIR]/Database/apdb/Library.apdb",
         '', '', { sqlite_unicode => 0, AutoCommit => 1, } );
     unless ($libDbh) {
-        warn "Cannot open $lib->[LIB_DIR]/Database/apdb/Library.apdb";
+        warn "Cannot open $self->[SM_DIR]/Database/apdb/Library.apdb";
         return;
     }
     my %metadata;
@@ -168,99 +166,18 @@ sub extractApertureMetadata {
 }
 
 sub scan {
-    my ( $lib, $hints ) = @_;
-    my $stat = $hints->statFromGid( $lib->repairPermissions );
-    $hints->beginInteractive;
-    warn "Scanning $lib->[LIB_DIR]/Masters";
-    FileMgt106::Scanner->new( "$lib->[LIB_DIR]/Masters", $hints, $stat )
-      ->scan( time - 27 )
-      if -d "$lib->[LIB_DIR]/Masters";
-    warn "Scanning $lib->[LIB_DIR]";
+    my ( $self, $hints, $rgid, $frotl ) = @_;
+    my $stat = $hints->statFromGid( $self->repairPermissions );
+    FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
+      ->scan( time - 7, undef, undef, $self->[SM_REPOPAIR] )
+      if -d "$self->[SM_DIR]/Masters";
     my $scalar =
-      FileMgt106::Scanner->new( $lib->[LIB_DIR], $hints, $stat )->scan(0);
-    $hints->commit;
-    $scalar->{'/FilterFactory::Aperture'} = $lib->extractApertureMetadata;
-    $scalar;
-}
-
-sub findOrMakeApertureLibraries {
-    my $class   = shift;
-    my $hints   = shift;
-    my @liblist = map { /\.aplibrary(\/*|\.jbz)$/s ? decode_utf8($_) : (); } @_;
-    foreach my $lib ( grep { s/\.jbz$//; } @liblist ) {
-        my @stat = stat "$lib.jbz";
-        unless (@stat) {
-            warn "Ignored: $lib.jbz";
-            next;
-        }
-        eval {
-            unless ( -d $lib ) {
-                mkdir $lib or die "Failed to mkdir $lib";
-            }
-            require FileMgt106::LoadSave;
-            my $target = FileMgt106::LoadSave::loadNormalisedScalar("$lib.jbz");
-            delete $target->{$_} foreach grep { /\//; } keys %$target;
-            $hints->beginInteractive;
-            FileMgt106::Scanner->new( $lib, $hints,
-                $hints->statFromGid( $stat[STAT_GID] ) )->scan( 0, $target );
-            $hints->commit;
-            utime time, $stat[STAT_MTIME], $lib;
-        };
-        warn "Failed to rebuild $lib: $@" if $@;
-    }
-    unless (@liblist) {
-        warn 'Looking for Aperture libraries';
-        my $pathFinder = $hints->{pathFinderFactory}->();
-        $hints->beginInteractive;
-        @liblist =
-          map { defined $_ ? decode_utf8($_) : (); }
-          map { $pathFinder->( $_->[0] ); } @{
-            $hints->{dbHandle}->selectall_arrayref(
-                'select locid from locations where name like "%.aplibrary"')
-          };
-        $hints->commit;
-    }
-    map {
-        my @t = stat "$_/Database/apdb";
-        @t ? $class->new( $_, $t[STAT_MTIME] ) : ();
-    } @liblist;
-}
-
-sub setPathsCheckUpToDate {
-    my ( $lib, $jbzDir ) = @_;
-    chdir $lib->[LIB_DIR] or return;
-    local $_ = $lib->[LIB_DIR] = decode_utf8 getcwd();
-    {
-        my $location;
-        if (s#/Volumes/(.*)/##gs) {
-            $location = $1;
-        }
-        elsif (s#(.*)/##gs) {
-            $location = $1;
-            local $_ = hostname();
-            s/\..*//;
-            $location = $_ . $location;
-        }
-        if ($location) {
-            $location =~ tr#/#.#;
-            s/\.aplibrary$/ in $location/s;
-        }
-    }
-    if ( length( encode_utf8 $_) > 200 ) {
-        require Digest::SHA;
-        $_ = substr( $_, 0, 150 ) . ' ' . Digest::SHA::sha1_hex($_);
-    }
-    my @stat = stat( $lib->[LIB_JBZ] = "$jbzDir/$_.aplibrary.jbz" );
-    @stat and $stat[STAT_MTIME] > $lib->[LIB_MTIME];
-}
-
-sub updateJbz {
-    my ( $lib, $hints, $jbzDir ) = @_;
-    return if $lib->setPathsCheckUpToDate($jbzDir);
-    my $scalar = $lib->scan($hints);
-    require FileMgt106::LoadSave;
-    FileMgt106::LoadSave::saveJbz( $lib->[LIB_JBZ] . $$, $scalar );
-    rename $lib->[LIB_JBZ] . $$, $lib->[LIB_JBZ];
+      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )->scan(0);
+    @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
+      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )
+      ->scan( 0, undef, undef, $self->[SM_REPOPAIR] );
+    $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
+      $self->extractApertureMetadata;
 }
 
 1;

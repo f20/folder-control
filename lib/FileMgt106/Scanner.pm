@@ -56,14 +56,7 @@ sub new {
         \.pyc$
       )/sx;
 
-    my $regexIgnoreFolderContents = qr/(?:
-        \.aplibrary|
-        \.app|
-        \.download|
-        \.lrcat|
-        \.lrdata|
-        \.tmp
-      )$/sx;
+    my $regexIgnoreFolderContents = qr/\.(?:app|download|lrcat|lrdata|tmp)$/is;
 
     my $regexWatchThisFile =
       -e '/System/Library'
@@ -72,7 +65,8 @@ sub new {
 
     my $regexCheckThisFile = qr/\.xls$/is;
 
-    my $regexNeverWatchFolder = qr/^Y_|^\@| \(mirrored from .+\)$/is;
+    my $regexNeverWatchFolder =
+      qr/^Y_|^\@|\.aplibrary$| \(mirrored from .+\)$/is;
 
     my $regexAlwaysWatchFolder = qr/^[OWXZ]_/is;
 

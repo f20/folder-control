@@ -40,21 +40,21 @@ use FileMgt106::Scanner;
 use FileMgt106::FileSystem;
 
 use constant {
-    DIR          => 0,
-    HINTS        => 1,
-    FROTL        => 2,
-    QID          => 3,
-    REPOPAIR     => 4,
-    RESCANTIME   => 5,
-    ROOTLOCID    => 6,
-    SCALAR       => 7,
-    SCALARFILTER => 8,
-    SCALARTAKER  => 9,
-    SHA1         => 10,
-    STASHPAIR    => 11,
-    TTR          => 12,
-    WATCHERS     => 13,
-    WATCHING     => 14,
+    SM_DIR          => 0,
+    SM_HINTS        => 1,
+    SM_FROTL        => 2,
+    SM_QID          => 3,
+    SM_REPOPAIR     => 4,
+    SM_RESCANTIME   => 5,
+    SM_ROOTLOCID    => 6,
+    SM_SCALAR       => 7,
+    SM_SCALARFILTER => 8,
+    SM_SCALARTAKER  => 9,
+    SM_SHA1         => 10,
+    SM_STASHPAIR    => 11,
+    SM_TTR          => 12,
+    SM_WATCHERS     => 13,
+    SM_WATCHING     => 14,
 };
 
 sub new {
@@ -69,16 +69,16 @@ sub setRepoloc {
     my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder ) =
       @{$repolocs}{qw(repo git jbz stash)};
 
-    my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
+    my $gid = ( stat( dirname( $self->[SM_DIR] ) ) )[STAT_GID];
     my @components =
-      splitdir( $self->[HINTS]->{canonicalPath}->( $self->[DIR] ) );
+      splitdir( $self->[SM_HINTS]->{canonicalPath}->( $self->[SM_DIR] ) );
     map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
     my $name = pop(@components) || 'No name';
     $name = "_$name" if $name =~ /^\./s;
     my $category = join( '.', map { length $_ ? $_ : '_' } @components )
       || 'No category';
 
-    $self->[STASHPAIR] = [ $stashFolder, $name ] if defined $stashFolder;
+    $self->[SM_STASHPAIR] = [ $stashFolder, $name ] if defined $stashFolder;
 
     foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
         $gitFolder, $jbzFolder )
@@ -99,7 +99,7 @@ sub setRepoloc {
             chmod 02750, $repoFolder;
         }
         if ( -d $repoFolder && -w _ ) {
-            $self->[REPOPAIR] = [ $repoFolder, 'No date' ];
+            $self->[SM_REPOPAIR] = [ $repoFolder, 'No date' ];
         }
     }
 
@@ -118,7 +118,7 @@ sub setRepoloc {
                 if ($scalar) {
                     my $result =
                       $hints->{updateSha1if}
-                      ->( $self->[SHA1], $self->[ROOTLOCID] );
+                      ->( $self->[SM_SHA1], $self->[SM_ROOTLOCID] );
                     $hints->commit;
                     return if defined $result && $result == 0;
                 }
@@ -139,7 +139,7 @@ sub setRepoloc {
                         close $f;
                         rename "$name.txt.$$", "$name.txt";
                         system qw(git commit -q --untracked-files=no -m),
-                          $self->[DIR]
+                          $self->[SM_DIR]
                           if !system qw(git add), "$name.txt"
                           or !system qw(git init)
                           and !system qw(git add), "$name.txt";
@@ -155,7 +155,7 @@ sub setRepoloc {
                           if defined $jbzFolder && -d $jbzFolder;
                         system qw(git rm --cached), "$name.txt";
                         system qw(git commit -q --untracked-files=no -m),
-                          "Removing $self->[DIR]";
+                          "Removing $self->[SM_DIR]";
                     }
                 }
                 else {
@@ -167,11 +167,11 @@ sub setRepoloc {
 
             };
             if ($runner) {
-                delete $self->[SCALAR] unless $self->[WATCHING];
-                $self->[HINTS]->enqueue( $runner->{pq}, $run );
+                delete $self->[SM_SCALAR] unless $self->[SM_WATCHING];
+                $self->[SM_HINTS]->enqueue( $runner->{pq}, $run );
             }
             else {
-                $run->( $self->[HINTS] );
+                $run->( $self->[SM_HINTS] );
             }
         }
     );
@@ -198,7 +198,7 @@ sub addJbzName {
 
 sub addJbzFolder {
     my ( $self, $jbzFolder ) = @_;
-    my $name = basename( $self->[DIR] );
+    my $name = basename( $self->[SM_DIR] );
     $name =~ s/^\./_./s;
     $self->addJbzName( catfile( $jbzFolder, "$name.jbz" ) );
 }
@@ -206,93 +206,98 @@ sub addJbzFolder {
 sub setWatch {
     my $self = shift;
     if ( $_[0] && $_[1] ) {
-        $self->[WATCHING] = \@_;
+        $self->[SM_WATCHING] = \@_;
         warn "Started watching $self";
     }
     else {
-        delete $self->[WATCHING];
+        delete $self->[SM_WATCHING];
     }
     $self;
 }
 
 sub setFrotl {
-    $_[0][FROTL] = $_[1];
+    $_[0][SM_FROTL] = $_[1];
     $_[0];
 }
 
 sub addScalarTaker {
     my $self = shift;
-    push @{ $self->[SCALARTAKER] }, @_;
-    delete $self->[SHA1];
+    push @{ $self->[SM_SCALARTAKER] }, @_;
+    delete $self->[SM_SHA1];
     $self;
 }
 
 sub addScalarFilter {
     my $self = shift;
-    push @{ $self->[SCALARFILTER] }, @_;
+    push @{ $self->[SM_SCALARFILTER] }, @_;
     $self;
 }
 
 sub setToRescan {
-    delete $_[0][RESCANTIME];
+    delete $_[0][SM_RESCANTIME];
     $_[0];
+}
+
+sub scan {
+    my ( $self, $hints, $rgid, $frotl ) = @_;
+    @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
+      FileMgt106::Scanner->new( $self->[SM_DIR], $hints,
+        $hints->statFromGid($rgid) )
+      ->scan( $frotl, undef, $self->[SM_STASHPAIR], $self->[SM_REPOPAIR],
+        $self->[SM_WATCHING] ? $self : undef );
 }
 
 sub dequeued {
 
     my ( $self, $runner ) = @_;
-    delete $self->[QID];
+    delete $self->[SM_QID];
     my $time         = time;
     my @refLocaltime = localtime( $time - 17_000 );
 
-    unless ( $self->[SCALAR]
-        && $self->[RESCANTIME]
-        && $self->[RESCANTIME] > $time )
+    unless ( $self->[SM_SCALAR]
+        && $self->[SM_RESCANTIME]
+        && $self->[SM_RESCANTIME] > $time )
     {
         $self->unwatchAll;
-        chdir $self->[DIR] or die "Cannot chdir to $self->[DIR]: $!";
+        chdir $self->[SM_DIR] or die "Cannot chdir to $self->[SM_DIR]: $!";
         my $rgid = ( stat '.' )[STAT_GID];
         my $frotl =
-            defined $self->[FROTL] ? $self->[FROTL]
-          : $rgid < 500            ? 0
-          : $self->[DIR] =~ m#/(\~\$|Y_)#i
+            defined $self->[SM_FROTL] ? $self->[SM_FROTL]
+          : $rgid < 500               ? 0
+          : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i
           ? 2_000_000_000    # This will go wrong in 2033
-          : $self->[DIR] =~ m#/X_#i ? -13            # 13 seconds
-          :                           -4_233_600;    # Seven weeks
+          : $self->[SM_DIR] =~ m#/X_#i ? -13            # 13 seconds
+          :                              -4_233_600;    # Seven weeks
         $frotl += $time if $frotl < 0;
-        $self->[REPOPAIR][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
-          if $self->[REPOPAIR];
-        warn join ' ', "rgid=$rgid", "timelimit=$frotl", $self->[DIR], "\n";
+        $self->[SM_REPOPAIR][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
+          if $self->[SM_REPOPAIR];
+        warn join ' ', "rgid=$rgid", "timelimit=$frotl", $self->[SM_DIR], "\n";
         my $run = sub {
             my ($hints) = @_;
-            @{$self}[ SCALAR, ROOTLOCID ] =
-              FileMgt106::Scanner->new( $self->[DIR], $hints,
-                $hints->statFromGid($rgid) )
-              ->scan( $frotl, undef, $self->[STASHPAIR], $self->[REPOPAIR],
-                $self->[WATCHING] ? $self : undef );
+            $self->scan( $hints, $rgid, $frotl );
             $self->schedule( $time, $runner->{qu} ) if $runner;
         };
         if ($runner) {
-            $self->[HINTS]->enqueue( $runner->{pq}, $run );
+            $self->[SM_HINTS]->enqueue( $runner->{pq}, $run );
             my $leftInDay =
               3_600 * ( 24 - $refLocaltime[2] ) -
               $refLocaltime[0] -
               $refLocaltime[1] * 60;
-            $self->[RESCANTIME] =
+            $self->[SM_RESCANTIME] =
               $time + ( $leftInDay > 7_200 ? 7_200 : $leftInDay );
             return $self;
         }
         else {
-            $self->[HINTS]->beginInteractive;
-            eval { $run->( $self->[HINTS] ); };
-            warn "scan $self->[DIR]: $@" if $@;
-            $self->[HINTS]->commit;
+            $self->[SM_HINTS]->beginInteractive;
+            eval { $run->( $self->[SM_HINTS] ); };
+            warn "scan $self->[SM_DIR]: $@" if $@;
+            $self->[SM_HINTS]->commit;
         }
     }
 
     $self->schedule(
         $time - int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) + 3_600 * (
-            $self->[WATCHING]
+            $self->[SM_WATCHING]
             ? (
                 $refLocaltime[6] == 6
                   || $refLocaltime[6] == 0 || $refLocaltime[2] > 19
@@ -304,7 +309,7 @@ sub dequeued {
         $runner->{qu}
     ) if $runner;
 
-    $self->takeScalar( $runner, $self->[SCALAR] );
+    $self->takeScalar( $runner, $self->[SM_SCALAR] );
 
     $self;
 
@@ -312,10 +317,11 @@ sub dequeued {
 
 sub takeScalar {
     my ( $self, $runner, $scalar ) = @_;
-    if ( $scalar && $self->[SCALARFILTER] ) {
-        $scalar = $_->( $runner, $scalar ) foreach @{ $self->[SCALARFILTER] };
+    if ( $scalar && $self->[SM_SCALARFILTER] ) {
+        $scalar = $_->( $runner, $scalar )
+          foreach @{ $self->[SM_SCALARFILTER] };
     }
-    if ( $self->[SCALARTAKER] ) {
+    if ( $self->[SM_SCALARTAKER] ) {
         my ( $blob, $newSha1 );
         if ($scalar) {
             require FileMgt106::LoadSave;
@@ -323,11 +329,12 @@ sub takeScalar {
             $newSha1 = sha1($blob);
         }
         unless ( defined $newSha1
-            && defined $self->[SHA1]
-            && $self->[SHA1] eq $newSha1 )
+            && defined $self->[SM_SHA1]
+            && $self->[SM_SHA1] eq $newSha1 )
         {
-            $self->[SHA1] = $newSha1;
-            $_->( $scalar, \$blob, $runner ) foreach @{ $self->[SCALARTAKER] };
+            $self->[SM_SHA1] = $newSha1;
+            $_->( $scalar, \$blob, $runner )
+              foreach @{ $self->[SM_SCALARTAKER] };
         }
     }
 
@@ -335,17 +342,17 @@ sub takeScalar {
 
 sub schedule {
     my ( $self, $ttr, $queue ) = @_;
-    if ( exists $self->[QID] ) {
-        delete $self->[QID]
-          if $self->[TTR] > $ttr
+    if ( exists $self->[SM_QID] ) {
+        delete $self->[SM_QID]
+          if $self->[SM_TTR] > $ttr
           and !$queue->set_priority(
-            $self->[QID],
+            $self->[SM_QID],
             sub { $_[0] == $self },
-            $self->[TTR] = $ttr
+            $self->[SM_TTR] = $ttr
           );
     }
-    $self->[QID] = $queue->enqueue( $self->[TTR] = $ttr, $self )
-      unless exists $self->[QID];
+    $self->[SM_QID] = $queue->enqueue( $self->[SM_TTR] = $ttr, $self )
+      unless exists $self->[SM_QID];
     $self;
 }
 
@@ -360,23 +367,24 @@ sub watchFolder {
     # A controller rescans a single folder, but can be triggered
     # by changes to several files and folders.
     my ( $controller, $frozensha1 );
-    $controller = $self->[WATCHERS]{ $path . '.' }
-      || $self->[WATCHING][0]->new(
+    $controller = $self->[SM_WATCHERS]{ $path . '.' }
+      || $self->[SM_WATCHING][0]->new(
         sub {
             my ($runner) = @_;
-            $controller->stopWatching( $self->[WATCHING][1] );
-            $self->[HINTS]->enqueue(
+            $controller->stopWatching( $self->[SM_WATCHING][1] );
+            $self->[SM_HINTS]->enqueue(
                 $runner->{pq},
                 sub {
                     eval {
                     # Validate locid as well as folder existence before running.
-                        my $fullPath = $self->[HINTS]{pathFromLocid}->($locid)
+                        my $fullPath =
+                          $self->[SM_HINTS]{pathFromLocid}->($locid)
                           or die "No path for locid=$locid";
                         chdir $fullPath or die "Could not chdir $fullPath";
                         $frozensha1 ||= sha1_base64( freeze($hashref) );
                         $scanDir->(
                             $locid,
-                            $path,    # relative to $self->[DIR]
+                            $path,    # relative to $self->[SM_DIR]
                             !$frotl      ? 0
                             : $frotl < 0 ? ( time - $frotl )
                             : $frotl,
@@ -399,11 +407,12 @@ sub watchFolder {
                 }
             );
         },
-        "Watcher: $self->[DIR]/$path",
-        $self->[WATCHING][2],
+        "Watcher: $self->[SM_DIR]/$path",
+        $self->[SM_WATCHING][2],
       );
-    $controller->startWatching( $self->[WATCHING][1], $whatToWatch, $priority );
-    $self->[WATCHERS]{ $path . $whatToWatch } = $controller;
+    $controller->startWatching( $self->[SM_WATCHING][1],
+        $whatToWatch, $priority );
+    $self->[SM_WATCHERS]{ $path . $whatToWatch } = $controller;
 }
 
 sub watchFile {
@@ -417,9 +426,9 @@ sub watchFile {
 
 sub unwatchAll {
     my ($self) = @_;
-    $_->stopWatching( $self->[WATCHING][1] )
-      foreach values %{ $self->[WATCHERS] };
-    $self->[WATCHERS] = {};
+    $_->stopWatching( $self->[SM_WATCHING][1] )
+      foreach values %{ $self->[SM_WATCHERS] };
+    $self->[SM_WATCHERS] = {};
     $self;
 }
 

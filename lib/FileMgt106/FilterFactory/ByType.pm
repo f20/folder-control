@@ -1,6 +1,6 @@
 package FileMgt106::FilterFactory::ByType;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@ use warnings;
 use strict;
 
 sub explodeByType {
-    my ($what) = @_;
+    my ( $what, $path ) = @_;
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
         if ( ref $val eq 'HASH' ) {
@@ -143,7 +143,7 @@ sub explodeByType {
             $newHash{$cat}{$key} = $val;
         }
     }
-    \%newHash;
+    \%newHash, $path;
 }
 
 1;
