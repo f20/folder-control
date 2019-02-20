@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2016-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,13 +25,13 @@
 
 if [ "$*" != "" ]
 then
-	find "$@" -type f -links 1 -not -perm -0220 -not -name .DS_Store -exec chmod ug+w {} \;
-	find "$@" -type f -not -perm -0220 -not -name .DS_Store | while read x
-	do
-		echo $x
-		cp "$x" "$x$$"
-		chmod ug+w "$x$$"
-		if [ -x "$x" ]; then chmod +x "$x$$"; fi
-		mv -f "$x$$" "$x"
-	done
+	find "$@" -type f -not -name .DS_Store -links 1 -not -perm -0220 -exec chmod ug+w {} \;
+	find "$@" -type f -not -name .DS_Store -not \( -links 1 -perm -0220 \) | while read FILE
+    do
+        echo "$FILE: unlocking by duplication"
+        cp "$FILE" "$FILE$$"
+        chmod ug+w "$FILE$$"
+        if [ -x "$FILE" ]; then chmod +x "$FILE$$"; fi
+        mv -f "$FILE$$" "$FILE"
+    done
 fi
