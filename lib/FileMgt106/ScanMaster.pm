@@ -45,7 +45,7 @@ use constant {
     SM_FROTL        => 2,
     SM_QID          => 3,
     SM_REPOPAIR     => 4,
-    SM_RESCANTIME   => 5,
+    SM_FULLRESCAN   => 5,
     SM_ROOTLOCID    => 6,
     SM_SCALAR       => 7,
     SM_SCALARFILTER => 8,
@@ -234,7 +234,7 @@ sub addScalarFilter {
 }
 
 sub setToRescan {
-    delete $_[0][SM_RESCANTIME];
+    delete $_[0][SM_FULLRESCAN];
     $_[0];
 }
 
@@ -255,8 +255,8 @@ sub dequeued {
     my @refLocaltime = localtime( $time - 17_000 );
 
     unless ( $self->[SM_SCALAR]
-        && $self->[SM_RESCANTIME]
-        && $self->[SM_RESCANTIME] > $time )
+        && $self->[SM_FULLRESCAN]
+        && $self->[SM_FULLRESCAN] > $time )
     {
         $self->unwatchAll;
         chdir $self->[SM_DIR] or die "Cannot chdir to $self->[SM_DIR]: $!";
@@ -279,12 +279,8 @@ sub dequeued {
         };
         if ($runner) {
             $self->[SM_HINTS]->enqueue( $runner->{pq}, $run );
-            my $leftInDay =
-              3_600 * ( 24 - $refLocaltime[2] ) -
-              $refLocaltime[0] -
-              $refLocaltime[1] * 60;
-            $self->[SM_RESCANTIME] =
-              $time + ( $leftInDay > 7_200 ? 7_200 : $leftInDay );
+            $self->[SM_FULLRESCAN] =
+              $time + $self->fullRescanTimeOffset(@refLocaltime);
             return $self;
         }
         else {
@@ -430,6 +426,15 @@ sub unwatchAll {
       foreach values %{ $self->[SM_WATCHERS] };
     $self->[SM_WATCHERS] = {};
     $self;
+}
+
+sub fullRescanTimeOffset {
+    my ( $self, @refLocaltime ) = @_;
+    my $leftInDay =
+      3_600 * ( 24 - $refLocaltime[2] ) -
+      $refLocaltime[0] -
+      $refLocaltime[1] * 60;
+    $leftInDay > 7_200 ? 7_200 : $leftInDay;
 }
 
 1;

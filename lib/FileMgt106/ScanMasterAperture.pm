@@ -38,6 +38,7 @@ use constant {
     SM_REPOPAIR  => 4,
     SM_ROOTLOCID => 6,
     SM_SCALAR    => 7,
+    SM_WATCHING  => 14,
 };
 
 sub repairPermissions {
@@ -171,13 +172,21 @@ sub scan {
     FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
       ->scan( time - 7, undef, undef, $self->[SM_REPOPAIR] )
       if -d "$self->[SM_DIR]/Masters";
-    my $scalar =
-      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )->scan(0);
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
       FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )
-      ->scan( 0, undef, undef, $self->[SM_REPOPAIR] );
+      ->scan( undef, undef, undef, $self->[SM_REPOPAIR] );
     $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
       $self->extractApertureMetadata;
+    $self->{SM_SCALAR}{Database} =
+      FileMgt106::Scanner->new( "$self->[SM_DIR]/Database", $hints,
+        $hints->statFromGid($rgid) )
+      ->scan( undef, undef, undef, $self->[SM_REPOPAIR],
+        $self->[SM_WATCHING] ? $self : undef )
+      if -d "$self->[SM_DIR]/Database";
+}
+
+sub fullRescanTimeOffset {
+    1_200;
 }
 
 1;
