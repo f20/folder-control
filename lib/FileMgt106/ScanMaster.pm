@@ -66,19 +66,8 @@ sub setRepoloc {
 
     my ( $self, $repolocs ) = @_;
 
-    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder, $omitMirrored ) =
-      @{$repolocs}{qw(repo git jbz stash omitMirrored)};
-
-    push @{ $self->[SCALARFILTER] }, sub {
-        my ( $runner, $scalar ) = @_;
-        my %filtered;
-        foreach ( keys %$scalar ) {
-            $filtered{$_} = $scalar->{$_}
-              unless /^\@/s || / \(mirrored from .+\)$/is;
-        }
-        \%filtered;
-      }
-      if $omitMirrored;
+    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder ) =
+      @{$repolocs}{qw(repo git jbz stash)};
 
     my $gid = ( stat( dirname( $self->[DIR] ) ) )[STAT_GID];
     my @components =
@@ -235,6 +224,12 @@ sub addScalarTaker {
     my $self = shift;
     push @{ $self->[SCALARTAKER] }, @_;
     delete $self->[SHA1];
+    $self;
+}
+
+sub addScalarFilter {
+    my $self = shift;
+    push @{ $self->[SCALARFILTER] }, @_;
     $self;
 }
 
