@@ -72,9 +72,8 @@ sub setRepoloc {
     my $gid = ( stat( dirname( $self->[SM_DIR] ) ) )[STAT_GID];
     my @components =
       splitdir( $self->[SM_HINTS]->{canonicalPath}->( $self->[SM_DIR] ) );
-    map { s#^\.#_#s; } @components;
+    map { s#^\.#_.#s; } @components;
     my $name = pop(@components) || 'No name';
-    $name = "_$name" if $name =~ /^\./s;
     my $category = join( '.', map { length $_ ? $_ : '_' } @components )
       || 'No category';
 

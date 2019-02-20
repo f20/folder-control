@@ -35,7 +35,6 @@ our @ISA = 'FileMgt106::ScanMaster';
 
 use constant {
     SM_DIR       => 0,
-    SM_REPOPAIR  => 4,
     SM_ROOTLOCID => 6,
     SM_SCALAR    => 7,
     SM_WATCHING  => 14,
@@ -170,18 +169,14 @@ sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
     my $stat = $hints->statFromGid( $self->repairPermissions );
     FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
-      ->scan( time - 7, undef, undef, $self->[SM_REPOPAIR] )
+      ->scan( time - 7 )    # don't copy files to repository -- wasteful
       if -d "$self->[SM_DIR]/Masters";
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
       FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )
-      ->scan( undef, undef, undef, $self->[SM_REPOPAIR] );
+      ->scan
+      ; # don't watch "$self->[SM_DIR]/Database/apdb" -- far too many uninteresting changes
     $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
       $self->extractApertureMetadata;
-    $self->[SM_SCALAR]{Database}{apdb} =
-      FileMgt106::Scanner->new( "$self->[SM_DIR]/Database/apdb", $hints, $stat )
-      ->scan( undef, undef, undef, $self->[SM_REPOPAIR],
-        $self->[SM_WATCHING] ? $self : undef )
-      if -d "$self->[SM_DIR]/Database/apdb";
 }
 
 sub fullRescanTimeOffset {
