@@ -282,13 +282,13 @@ sub makeProcessor {
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints, $hints->statFromGid($rgid)
                     )
-                )->scan(
+                  )->scan(
                     0,
                     $scalar,
                     $options->{stash}
                     ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                     : (),
-                );
+                  );
             };
             warn "scan $dir: $@" if $@;
             $hints->commit;
@@ -298,9 +298,9 @@ sub makeProcessor {
             if (@grabSources) {
                 my ( $toGrab, $excluded ) =
                   _filterExclusions( $scalar, $grabExclusions );
-                $toGrab->{'.caseid'} = delete $excluded->{'.caseid'}
-                  if defined $excluded->{'.caseid'};
                 if ($excluded) {
+                    $toGrab->{'.caseid'} = delete $excluded->{'.caseid'}
+                      if defined $excluded->{'.caseid'};
                     my $tmpFile = "✘$$.txt";
                     open my $fh, '>', $tmpFile;
                     binmode $fh;
