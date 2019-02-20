@@ -177,9 +177,8 @@ sub scan {
       ->scan( undef, undef, undef, $self->[SM_REPOPAIR] );
     $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
       $self->extractApertureMetadata;
-    $self->{SM_SCALAR}{Database} =
-      FileMgt106::Scanner->new( "$self->[SM_DIR]/Database", $hints,
-        $hints->statFromGid($rgid) )
+    $self->[SM_SCALAR]{Database} =
+      FileMgt106::Scanner->new( "$self->[SM_DIR]/Database", $hints, $stat )
       ->scan( undef, undef, undef, $self->[SM_REPOPAIR],
         $self->[SM_WATCHING] ? $self : undef )
       if -d "$self->[SM_DIR]/Database";
