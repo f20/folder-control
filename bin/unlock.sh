@@ -26,7 +26,7 @@
 if [ "$*" != "" ]
 then
 	find "$@" -type f -not -name .DS_Store -links 1 -not -perm -0220 -exec chmod ug+w {} \;
-	find "$@" -type f -not -name .DS_Store -not -links 1 -perm -0220 -exec chmod ug-w {} \;
+	find "$@" -type f -not -name .DS_Store -not -links 1 -perm +0020 -exec chmod ug-w {} \;
 	find "$@" -type f -not -name .DS_Store -not -perm -0220 | while read FILE
     do
         echo "$FILE: unlocking by duplication"
