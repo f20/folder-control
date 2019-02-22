@@ -26,7 +26,13 @@ package FileMgt106::FolderTidy;
 use warnings;
 use strict;
 use Encode qw(decode_utf8 encode_utf8);
-require POSIX;
+use File::Spec::Functions qw(catfile catdir);
+use POSIX ();
+
+use constant {
+    STAT_NLINK => 3,
+    STAT_MTIME => 9,
+};
 
 sub deepClean {
     my $count = 0;
@@ -73,7 +79,7 @@ sub deepClean {
                 }
                 $fullPath = $newPath if rename $fullPath, $newPath;
             }
-            my $nlinks = ( lstat $fullPath )[3];
+            my $nlinks = ( lstat $fullPath )[STAT_NLINK];
             ++$count
               unless -d _ and !deepClean($fullPath) and rmdir $fullPath
               or -l _ || -z _ and unlink $fullPath
@@ -137,7 +143,7 @@ sub datemarkFolder {
           map { decode_utf8 $_; } grep { !/^(?:|cyrus)\./s } readdir $dh;
         foreach (@list) {
             my $p2    = "$path/$_";
-            my $mtime = ( lstat $prefix . $p2 )[9];
+            my $mtime = ( lstat $prefix . $p2 )[STAT_MTIME];
             if ( -d _ ) {
                 $mtime = $datemarker->($p2);
             }
@@ -175,7 +181,7 @@ sub restampFolder {
           map { decode_utf8 $_; } grep { !/^(?:|cyrus)\./s } readdir $dh;
         foreach (@list) {
             my $p2    = "$path/$_";
-            my $mtime = ( lstat $p2 )[9];
+            my $mtime = ( lstat $p2 )[STAT_MTIME];
             if ( -d _ ) {
                 $mtime = $restamper->($p2);
             }
@@ -191,6 +197,67 @@ sub restampFolder {
     $restamper->( defined $_[0] && length $_[0] ? "$_[0]" : '.' );
 }
 
+sub automaticNumbering {
+    my ( $path, $contents ) = @_;
+    return unless ref $contents eq 'HASH';
+    my $numberPadding = 0;
+    my $highestNumber = 0;
+    my @statusByNumber;
+    my @toBeNumbered = grep {
+        if (/^( *)([0-9]+)\. /s) {
+            if ( length $1 ) {
+                my $l = length( $1 . $2 );
+                $numberPadding = $l if $l > $numberPadding;
+            }
+            $highestNumber = $2 if $2 > $highestNumber;
+            ++$statusByNumber[$2];
+            0;
+        }
+        else {
+            1;
+        }
+    } keys %$contents;
+    foreach my $number (
+        grep { defined $statusByNumber[$_] && $statusByNumber[$_] > 1; }
+        1 .. $highestNumber )
+    {
+        push @toBeNumbered, grep { /^ *$_\. /s; } keys %$contents;
+    }
+    push @toBeNumbered, grep { /^[ 0-9]{1,@{[$numberPadding-1]}}\. /s; }
+      keys %$contents
+      if $numberPadding;
+    return unless @toBeNumbered;
+    restampFolder($path);
+    foreach (
+        sort { $a->[1] <=> $b->[1]; } map {
+            my $p = catdir( $path, $_ );
+            my @s = stat $p;
+            @s ? [ $_, $s[STAT_MTIME], $p, -d _ ] : ();
+        } @toBeNumbered
+      )
+    {
+        my $name = $_->[0];
+        my $number;
+        if ( $name =~ s/^ *([0-9]+)\. //s && $statusByNumber[$1] ) {
+            $number = $1;
+            undef $statusByNumber[$1];
+        }
+        $number ||= ++$highestNumber;
+        $number = " $number" while length($number) < $numberPadding;
+        $name = "$number. $name";
+        if ( $_->[3] ) {
+            rename $_->[2], catdir( $path, $name )
+              unless $_->[0] eq $name;
+        }
+        else {
+            $name =~ s/\.[0-9a-z]+$//si;
+            my $newFolder = catdir( $path, $name );
+            mkdir $newFolder;
+            rename $_->[2], catfile( $newFolder, $_->[0] );
+        }
+    }
+}
+
 sub categoriseByDay {
     my ($path) = @_;
     my $maxt = 0;
@@ -199,7 +266,7 @@ sub categoriseByDay {
     my @list = map { decode_utf8 $_; } grep { !/^\./s } readdir $dh;
     foreach (@list) {
         my $p2    = "$path/$_";
-        my $mtime = ( lstat $p2 )[9];
+        my $mtime = ( lstat $p2 )[STAT_MTIME];
         next unless -f _;
         my $date = POSIX::strftime( '%Y-%m-%d', localtime($mtime) );
         mkdir "$path/$date";

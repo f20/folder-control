@@ -25,6 +25,7 @@ package Daemon112::SimpleWatch;
 
 use warnings;
 use strict;
+use utf8;
 
 use File::Spec::Functions qw(catfile catdir);
 use File::Basename 'dirname';
