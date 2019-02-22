@@ -72,7 +72,7 @@ sub autograb {
     my @grabSources = map { /^-+grab=(.+)/s ? $1 : (); } @arguments;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
       $self->makeProcessor( @grabSources ? @grabSources : '' );
-    my $chooser = $chooserMaker->();
+    my $chooser = $chooserMaker->( grep { /^-initial/s; } @arguments );
     my $stashLoc;
     my @fileList = map {
         if (/^-+stash=(.+)/) {
@@ -239,7 +239,7 @@ sub makeProcessor {
             chdir $dir or die "chdir $dir: $!";
             $dir = decode_utf8 getcwd();
             my $message = $fileExtension ? " and $fileExtension file" : '';
-            if ( my ($buildExclusionsFile) = grep { -f $_; } "🚫.txt" ) {
+            if ( my ($buildExclusionsFile) = grep { -f $_; } '🚫.txt' ) {
                 $message .= ', with build exclusions';
                 $scalar->{$buildExclusionsFile} = [];
                 ( $scalar, my $excluded ) = _filterExclusions(
@@ -255,14 +255,14 @@ sub makeProcessor {
                       FileMgt106::LoadSave::jsonMachineMaker()
                       ->encode($excluded);
                     close $fh;
-                    rename $tmpFile, "✘📁.txt";
-                    $scalar->{"✘📁.txt"} = [];
+                    rename $tmpFile, '✘📁.txt';
+                    $scalar->{'✘📁.txt'} = [];
                 }
                 else {
-                    unlink "✘📁.txt";
+                    unlink '✘📁.txt';
                 }
             }
-            if ( my ($grabExclusionsFile) = grep { -f $_; } "⛔️.txt",
+            if ( my ($grabExclusionsFile) = grep { -f $_; } '⛔️.txt',
                 "\N{U+26A0}.txt" )
             {
                 $scalar->{$grabExclusionsFile} = []
@@ -307,10 +307,10 @@ sub makeProcessor {
                       FileMgt106::LoadSave::jsonMachineMaker()
                       ->encode($excluded);
                     close $fh;
-                    rename $tmpFile, "✘⬇️.txt";
+                    rename $tmpFile, '✘⬇️.txt';
                 }
                 else {
-                    unlink "✘⬇️.txt";
+                    unlink '✘⬇️.txt';
                 }
                 $missing->{$dir} = $toGrab if $toGrab;
             }
@@ -613,6 +613,7 @@ sub makeProcessor {
     };
 
     my $chooserMaker = sub {
+        my ($initialise) = @_;
         sub {
             my ( $catalogue, $canonical, $fileExtension, $devNo ) = @_;
             my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
@@ -647,8 +648,21 @@ sub makeProcessor {
                     return $target, $destination;
                 }
             }
-            symlink rel2abs($catalogue), $canonical . $fileExtension;
-            return;
+            if ( $initialise && mkdir $canonical ) {
+                {
+                    open my $fh, '>', catfile( $canonical, '🚫.txt' );
+                    print {$fh} '{}';
+                }
+                {
+                    open my $fh, '>', catfile( $canonical, '⛔️.txt' );
+                    print {$fh} '{".":"no"}';
+                }
+                return $target, $canonical;
+            }
+            else {
+                symlink rel2abs($catalogue), $canonical . $fileExtension;
+                return;
+            }
         };
     };
 
