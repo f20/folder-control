@@ -321,7 +321,7 @@ sub makeProcessor {
     };
 
     my $folderAcceptor = sub {
-        my (@scanMasterConfigClosures) = @_;
+        my (@scanMasterCliConfigClosures) = @_;
         $hints ||=
           FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
         my $dir = decode_utf8 getcwd();
@@ -375,7 +375,7 @@ sub makeProcessor {
             return if $cleaningFlag =~ /only/i;
         }
         my $scanMaster = FileMgt106::ScanMaster->new( $hints, $dir );
-        $_->( $scanMaster, $dir, $dir ) foreach @scanMasterConfigClosures;
+        $_->( $scanMaster, $dir ) foreach @scanMasterCliConfigClosures;
         $scanMaster->dequeued;
     };
 
@@ -476,7 +476,7 @@ sub makeProcessor {
 
     my $legacyArgumentsAcceptor = sub {
 
-        my ( %locs, $repolocOptions, @scanMasterConfigClosures );
+        my ( %locs, $repolocOptions, @scanMasterCliConfigClosures );
 
         foreach (@_) {
 
@@ -508,8 +508,8 @@ sub makeProcessor {
             }
             elsif (/^-+autonumber/) {
                 require FileMgt106::FolderTidy;
-                push @scanMasterConfigClosures, sub {
-                    my ($scanMaster) = @_;
+                push @scanMasterCliConfigClosures, sub {
+                    my ( $scanMaster, $path ) = @_;
                     $scanMaster->addScalarTaker(
                         sub {
                             my ( $scalar, $blobref, $runner ) = @_;
@@ -528,7 +528,7 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+read-?only/) {
-                push @scanMasterConfigClosures, sub {
+                push @scanMasterCliConfigClosures, sub {
                     $_[0]->setFrotl(
                         2_000_000_000    # This will go wrong in 2033
                     );
@@ -536,8 +536,8 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+cat/) {
-                push @scanMasterConfigClosures, sub {
-                    my ( $scanMaster, $name, $path ) = @_;
+                push @scanMasterCliConfigClosures, sub {
+                    my ( $scanMaster, $path ) = @_;
                     $scanMaster->addScalarTaker(
                         sub {
                             binmode STDOUT;
@@ -550,7 +550,7 @@ sub makeProcessor {
             elsif (/^-repo=?(.*)/) {
                 local $_ = $1;
                 my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
-                push @scanMasterConfigClosures,
+                push @scanMasterCliConfigClosures,
                   sub { $_[0]->addJbzFolder($loc); };
                 next;
             }
@@ -619,7 +619,7 @@ sub makeProcessor {
                     %locs
                     ? sub { $_[0]->setRepoloc( \%locs, $repolocOptions ); }
                     : (),
-                    @scanMasterConfigClosures,
+                    @scanMasterCliConfigClosures,
                 );
             }
             else {
