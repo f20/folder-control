@@ -64,10 +64,10 @@ sub new {
 
 sub setRepoloc {
 
-    my ( $self, $repolocs ) = @_;
-
+    my ( $self, $repolocs, $options ) = @_;
     my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder ) =
       @{$repolocs}{qw(repo git jbz stash)};
+    undef $repoFolder if $options->{omitRepo};
 
     my $gid = ( stat( dirname( $self->[SM_DIR] ) ) )[STAT_GID];
     my @components =
@@ -86,7 +86,7 @@ sub setRepoloc {
         unless ( -e $_ ) {
             mkdir $_ or warn "mkdir $_: $!";
             chown -1, $gid, $_;
-            chmod 02750, $_;
+            chmod 02770, $_;
         }
     }
 
@@ -95,7 +95,7 @@ sub setRepoloc {
         unless ( -e $repoFolder ) {
             mkdir $repoFolder or warn "mkdir $repoFolder: $!";
             chown -1, $gid, $repoFolder;
-            chmod 02750, $repoFolder;
+            chmod 02770, $repoFolder;
         }
         if ( -d $repoFolder && -w _ ) {
             $self->[SM_REPOPAIR] = [ $repoFolder, 'No date' ];

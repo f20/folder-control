@@ -476,7 +476,7 @@ sub makeProcessor {
 
     my $legacyArgumentsAcceptor = sub {
 
-        my ( %locs, @otherConfigClosures );
+        my ( %locs, $repolocOptions, @otherConfigClosures );
 
         foreach (@_) {
 
@@ -600,7 +600,9 @@ sub makeProcessor {
             }
             elsif ( -d _ && chdir $_ ) {
                 $folderAcceptor->(
-                    %locs ? sub { $_[0]->setRepoloc( \%locs ); } : (),
+                    %locs
+                    ? sub { $_[0]->setRepoloc( \%locs, $repolocOptions ); }
+                    : (),
                     @otherConfigClosures,
                 );
             }

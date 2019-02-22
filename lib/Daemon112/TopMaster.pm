@@ -93,7 +93,8 @@ sub attach {
             if ( !$scanMaster ) {
                 $scanMaster = $topMaster->{$_} =
                   FileMgt106::ScanMaster->new( $hints, $dir )
-                  ->setRepoloc( $runner->{locs} );
+                  ->setRepoloc( $runner->{locs},
+                    $topMaster->{'/repolocOptions'} );
                 $scanMaster->setWatch( 'Daemon112::Watcher',
                     $topMaster->{'/kq'} )
                   if $topMaster->{'/kq'};
