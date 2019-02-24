@@ -221,7 +221,7 @@ sub automaticNumbering {
         grep { defined $statusByNumber[$_] && $statusByNumber[$_] > 1; }
         1 .. $highestNumber )
     {
-        push @toBeNumbered, grep { /^ *$_\. /s; } keys %$contents;
+        push @toBeNumbered, grep { /^ *$number\. /s; } keys %$contents;
     }
     push @toBeNumbered, grep { /^[ 0-9]{1,@{[$numberPadding-1]}}\. /s; }
       keys %$contents
