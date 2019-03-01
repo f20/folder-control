@@ -31,7 +31,7 @@ sub explodeByType {
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
         if ( ref $val eq 'HASH' ) {
-            my $exploded = explodeByType($val);
+            my ($exploded) = explodeByType($val);
             while ( my ( $ext, $con ) = each %$exploded ) {
                 if ( $key eq $ext && ref $con eq 'HASH' ) {
                     foreach ( keys %$con ) {
