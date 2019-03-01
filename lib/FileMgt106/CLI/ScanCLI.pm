@@ -657,7 +657,7 @@ sub makeProcessor {
                     next if $path =~ m#/Y_Cellar.*/#;
                     next
                       unless $path =~
-                      s#(/\@[^/]+| \(mirrored from .+\))/.*\.caseid$#$1#s;
+                      s#(/\@[^/]+| \(mirrored from [^/]+\))/.*\.caseid$#$1#s;
                     $destination = $path;
                 }
                 $hints->commit;
