@@ -153,7 +153,7 @@ sub automaticNumbering {
             $highestNumber = $2 if $2 > $highestNumber;
             ++$statusByNumber[$2];
             $forceNumbering ||= [ $2, $1 . $2, $_ ]
-              if /^( *)([0-9]+)\. Force renumber/si;
+              if /^( *)([0-9]+)\. +Force renumber/si;
             0;
         }
         else {
@@ -194,7 +194,7 @@ sub automaticNumbering {
     {
         my $name = $_->[0];
         my $number;
-        if ( $name =~ s/^ *([0-9]+)\. //s && $statusByNumber[$1] ) {
+        if ( $name =~ s/^ *([0-9]+)\. +//s && $statusByNumber[$1] ) {
             $number = $1;
             undef $statusByNumber[$1];
         }
