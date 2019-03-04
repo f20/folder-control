@@ -1,4 +1,4 @@
-package FileMgt106::FolderTidy;
+package FileMgt106::FolderOrganise;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
@@ -29,67 +29,7 @@ use Encode qw(decode_utf8 encode_utf8);
 use File::Spec::Functions qw(catfile catdir);
 use POSIX ();
 
-use constant {
-    STAT_NLINK => 3,
-    STAT_MTIME => 9,
-};
-
-sub deepClean {
-    my $count = 0;
-    foreach my $folder (@_) {
-        my @list;
-        my $dh;
-        opendir $dh, $folder or next;
-        @list = sort {
-            (
-                  $b =~ /^(?:\~?\$|Z?_)/s ? "X $b"
-                : $b =~ /\.tmp$/si        ? "T $b"
-                : $b =~ /^Y_.* folder$/s  ? "B $b"
-                :                           "E $b"
-              ) cmp(
-                $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
-                : $a =~ /\.tmp$/si       ? "T $a"
-                : $a =~ /^Y_.* folder$/s ? "B $a"
-                :                          "E $a"
-              )
-        } grep { !/^\.\.?$/s } readdir $dh;
-        closedir $dh;
-        foreach my $file (@list) {
-            if ( $file eq '.git' ) {
-                ++$count;
-                next;
-            }
-            my $fullPath = "$folder/$file";
-            if ( $file =~ /^(?:\.|\:2e)(?:DS_Store$|_)/ ) {
-                unlink $fullPath;
-                next;
-            }
-            my $newPath;
-            $newPath = "$folder/_$file" if $file =~ /^(\~\$|Z_|\.)/is;
-            $newPath = "$folder/${file}_"
-              if $file =~ /\.(?:app|aplibrary|download|lrcat|lrdata|tmp)$/is;
-            if ($newPath) {
-                if ( -e $newPath ) {
-                    my ( $base, $extension ) =
-                      ( $newPath =~ m#(.*)(\.[^ /]+)$#s );
-                    ( $base, $extension ) = ( $newPath, '' )
-                      unless defined $extension;
-                    my $c = 2;
-                    while ( -e ( $newPath = "$base~$c$extension" ) ) { ++$c; }
-                }
-                $fullPath = $newPath if rename $fullPath, $newPath;
-            }
-            my $nlinks = ( lstat $fullPath )[STAT_NLINK];
-            ++$count
-              unless -d _ and !deepClean($fullPath) and rmdir $fullPath
-              or -l _ || -z _ and unlink $fullPath
-              or -f _
-              and $nlinks > 1
-              and unlink $fullPath;
-        }
-    }
-    $count;
-}
+use constant { STAT_MTIME => 9, };
 
 sub flattenCwd {
     require Digest::SHA;
@@ -108,8 +48,8 @@ sub flattenCwd {
             } readdir $d
           )
         {
-            my $p = "$r/$_";
-            my ( $inode, $lmod ) = ( stat $p )[ 1, 9 ];
+            my $p    = "$r/$_";
+            my $lmod = ( stat $p )[STAT_MTIME];
             if ( -d _ ) {
                 $flatten->($p);
                 next;
@@ -203,6 +143,7 @@ sub automaticNumbering {
     my $numberPadding = 0;
     my $highestNumber = 0;
     my @statusByNumber;
+    my $forceNumbering;
     my @toBeNumbered = grep {
         if (/^( *)([0-9]+)\. /s) {
             if ( length $1 ) {
@@ -211,22 +152,37 @@ sub automaticNumbering {
             }
             $highestNumber = $2 if $2 > $highestNumber;
             ++$statusByNumber[$2];
+            $forceNumbering ||= [ $2, $1 . $2, $_ ]
+              if /^( *)([0-9]+)\. Force renumber/si;
             0;
         }
         else {
             1;
         }
     } keys %$contents;
-    foreach my $number (
-        grep { defined $statusByNumber[$_] && $statusByNumber[$_] > 1; }
-        1 .. $highestNumber )
-    {
-        push @toBeNumbered, grep { /^ *$number\. /s; } keys %$contents;
+    if ($forceNumbering) {
+        $highestNumber                          = $forceNumbering->[0];
+        $numberPadding                          = length $forceNumbering->[1];
+        @statusByNumber                         = ();
+        $statusByNumber[ $forceNumbering->[0] ] = 1;
+        push @toBeNumbered,
+          grep { $_ ne $forceNumbering->[2]; } keys %$contents;
     }
-    push @toBeNumbered, grep { /^[ 0-9]{1,@{[$numberPadding-1]}}\. /s; }
-      keys %$contents
-      if $numberPadding;
+    else {
+        foreach my $number (
+            grep { defined $statusByNumber[$_] && $statusByNumber[$_] > 1; }
+            1 .. $highestNumber )
+        {
+            push @toBeNumbered, grep { /^ *$number\. /s; } keys %$contents;
+        }
+        push @toBeNumbered, grep { /^[ 0-9]{1,@{[$numberPadding-1]}}\. /s; }
+          keys %$contents
+          if $numberPadding;
+    }
     return unless @toBeNumbered;
+    rename catdir( $path, $forceNumbering->[2] ),
+      catdir( $path, $forceNumbering->[1] . '. Used for forced renumbering' )
+      if $forceNumbering;
     restampFolder($path);
     foreach (
         sort { $a->[1] <=> $b->[1]; } map {

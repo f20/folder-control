@@ -339,24 +339,24 @@ sub makeProcessor {
         if ($cleaningFlag) {
             if ( $cleaningFlag =~ /dayfolder/i ) {
                 warn "One folder per day for files in $dir";
-                require FileMgt106::FolderTidy;
-                FileMgt106::FolderTidy::categoriseByDay($dir);
+                require FileMgt106::FolderOrganise;
+                FileMgt106::FolderOrganise::categoriseByDay($dir);
             }
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
-                require FileMgt106::FolderTidy;
-                FileMgt106::FolderTidy::datemarkFolder($dir);
+                require FileMgt106::FolderOrganise;
+                FileMgt106::FolderOrganise::datemarkFolder($dir);
             }
             if ( $cleaningFlag =~ /restamp/i ) {
                 warn "Re-timestamping $dir";
-                require FileMgt106::FolderTidy;
-                FileMgt106::FolderTidy::restampFolder($dir);
+                require FileMgt106::FolderOrganise;
+                FileMgt106::FolderOrganise::restampFolder($dir);
             }
             if ( $cleaningFlag =~ /flat/i ) {
                 warn "Flattening $dir";
-                require FileMgt106::FolderTidy;
+                require FileMgt106::FolderOrganise;
                 $hints->beginInteractive(1);
-                FileMgt106::FolderTidy::flattenCwd();
+                FileMgt106::FolderOrganise::flattenCwd();
                 $hints->commit;
             }
             if ( $cleaningFlag =~ /rename/i ) {
@@ -367,9 +367,9 @@ sub makeProcessor {
             }
             elsif ( $cleaningFlag =~ /clean/i ) {
                 warn "Deep cleaning $dir";
-                require FileMgt106::FolderTidy;
+                require FileMgt106::FolderClean;
                 $hints->beginInteractive(1);
-                FileMgt106::FolderTidy::deepClean('.');
+                FileMgt106::FolderClean::deepClean('.');
                 $hints->commit;
             }
             return if $cleaningFlag =~ /only/i;
@@ -425,9 +425,9 @@ sub makeProcessor {
                           FileMgt106::LoadSave::jsonMachineMaker()
                           ->encode($toGrab);
                     }
-                    require FileMgt106::FolderTidy;
+                    require FileMgt106::FolderClean;
                     $hints->beginInteractive(1);
-                    FileMgt106::FolderTidy::deepClean('.');    #use Scanner
+                    FileMgt106::FolderClean::deepClean('.');    #use Scanner
                     $hints->commit;
                     $cellarScanner =
                       FileMgt106::ScanMaster->new( $hints,
@@ -455,9 +455,9 @@ sub makeProcessor {
                     }
                 }
                 if ( defined $cellarDir ) {
-                    require FileMgt106::FolderTidy;
+                    require FileMgt106::FolderClean;
                     $hints->beginInteractive(1);
-                    FileMgt106::FolderTidy::deepClean($cellarDir);
+                    FileMgt106::FolderClean::deepClean($cellarDir);
                     $hints->commit;
                     $cellarScanner->dequeued;
                     push @rmdirList, $cellarDir;
@@ -470,8 +470,8 @@ sub makeProcessor {
             rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
-        require FileMgt106::FolderTidy;
-        FileMgt106::FolderTidy::restampFolder($_) foreach @toRestamp;
+        require FileMgt106::FolderOrganise;
+        FileMgt106::FolderOrganise::restampFolder($_) foreach @toRestamp;
     };
 
     my $legacyArgumentsAcceptor = sub {
@@ -507,13 +507,13 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+autonumber/) {
-                require FileMgt106::FolderTidy;
+                require FileMgt106::FolderOrganise;
                 push @scanMasterCliConfigClosures, sub {
                     my ( $scanMaster, $path ) = @_;
                     $scanMaster->addScalarTaker(
                         sub {
                             my ( $scalar, $blobref, $runner ) = @_;
-                            FileMgt106::FolderTidy::automaticNumbering( $path,
+                            FileMgt106::FolderOrganise::automaticNumbering( $path,
                                 $scalar );
                         }
                     );
