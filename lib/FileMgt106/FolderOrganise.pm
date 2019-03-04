@@ -165,7 +165,7 @@ sub automaticNumbering {
         $numberPadding                          = length $forceNumbering->[1];
         @statusByNumber                         = ();
         $statusByNumber[ $forceNumbering->[0] ] = 1;
-        push @toBeNumbered,
+        @toBeNumbered =
           grep { $_ ne $forceNumbering->[2]; } keys %$contents;
     }
     else {
