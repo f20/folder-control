@@ -184,14 +184,12 @@ sub automaticNumbering {
       catdir( $path, $forceNumbering->[1] . '. Used for forced renumbering' )
       if $forceNumbering;
     restampFolder($path);
-    foreach (
-        sort { $a->[1] <=> $b->[1]; } map {
-            my $p = catdir( $path, $_ );
-            my @s = stat $p;
-            @s ? [ $_, $s[STAT_MTIME], $p, -d _ ] : ();
-        } @toBeNumbered
-      )
-    {
+    foreach (@toBeNumbered) {
+        my $p = catdir( $path, $_ );
+        my @s = stat $p or return;    # give up if something has moved
+        $_ = [ $_, $s[STAT_MTIME], $p, -d _ ];
+    }
+    foreach ( sort { $a->[1] <=> $b->[1]; } @toBeNumbered ) {
         my $name = $_->[0];
         my $number;
         if ( $name =~ s/^ *([0-9]+)\. +//s && $statusByNumber[$1] ) {
