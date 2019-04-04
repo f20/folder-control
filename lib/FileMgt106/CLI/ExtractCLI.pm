@@ -29,7 +29,7 @@ use strict;
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catfile);
-use FileMgt106::LoadSave;
+use FileMgt106::LoadSaveNormalize;
 
 use constant {
     STAT_DEV => 0,
@@ -66,7 +66,7 @@ sub process {
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 rename "$path.jbz", "$path+symlinks.jbz";
-                FileMgt106::LoadSave::saveJbz(
+                FileMgt106::LoadSaveNormalize::saveJbz(
                     "$path.jbz",
                     FileMgt106::ResolveFilter::resolveAbsolutePaths(
                         $scalar,
@@ -105,7 +105,7 @@ sub process {
                     }
                     \%d;
                 };
-                FileMgt106::LoadSave::saveJbz( "$path+denested.jbz",
+                FileMgt106::LoadSaveNormalize::saveJbz( "$path+denested.jbz",
                     $denest->($scalar) );
                 return;
             };
@@ -118,7 +118,7 @@ sub process {
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
                     s#/#..#g;
-                    FileMgt106::LoadSave::saveJbz( "$path \$$_.jbz",
+                    FileMgt106::LoadSaveNormalize::saveJbz( "$path \$$_.jbz",
                         ref $v ? $v : { $k => $v } );
                 }
                 return;
@@ -142,7 +142,8 @@ sub process {
                   : FileMgt106::FilterFactory::ByType::explodeByType( $scalar,
                     $path );
                 while ( my ( $k, $v ) = each %$exploded ) {
-                    FileMgt106::LoadSave::saveJbz( "$newPath \$$k.jbz", $v )
+                    FileMgt106::LoadSaveNormalize::saveJbz( "$newPath \$$k.jbz",
+                        $v )
                       if ref $v;
                 }
                 return;
@@ -264,7 +265,7 @@ sub process {
             my $stdinblob = <STDIN>;
             if (
                 my $stdinscalar = eval {
-                    FileMgt106::LoadSave::jsonMachineMaker()
+                    FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                       ->decode($stdinblob);
                 }
               )
@@ -280,8 +281,8 @@ sub process {
                             local undef $/;
                             tr#/#|#;
                             my $missing = $catalogueProcessor->(
-                                FileMgt106::LoadSave::jsonMachineMaker()
-                                  ->decode(<$fh>),
+                                FileMgt106::LoadSaveNormalize::jsonMachineMaker(
+                                  )->decode(<$fh>),
                                 $1
                             );
                             $missingCompilation->{$1} = $missing
@@ -289,7 +290,8 @@ sub process {
                         }
                         else {
                             my $scalar =
-                              FileMgt106::LoadSave::loadNormalisedScalar($_);
+                              FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                                $_);
                             tr#/#|#;
                             my $missing = $catalogueProcessor->( $scalar, $1 );
                             $missingCompilation->{$1} = $missing
@@ -311,11 +313,14 @@ sub process {
                 local undef $/;
                 tr#/#|#;
                 $missing = $catalogueProcessor->(
-                    FileMgt106::LoadSave::jsonMachineMaker()->decode(<$fh>), $1
+                    FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                      ->decode(<$fh>),
+                    $1
                 );
             }
             else {
-                my $scalar = FileMgt106::LoadSave::loadNormalisedScalar($_);
+                my $scalar =
+                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar($_);
                 tr#/#|#;
                 $missing = $catalogueProcessor->( $scalar, $1 );
             }
@@ -339,7 +344,8 @@ sub process {
     if ($missingCompilation) {
         binmode $missingStream;
         print {$missingStream}
-          FileMgt106::LoadSave::jsonMachineMaker()->encode($missingCompilation);
+          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+          ->encode($missingCompilation);
     }
 
     $catalogueProcessor->() if $catalogueProcessor;

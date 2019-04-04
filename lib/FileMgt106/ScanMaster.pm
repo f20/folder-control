@@ -181,8 +181,9 @@ sub addJbzName {
     my ( $self, $jbzName ) = @_;
     $self->addScalarTaker(
         sub {
-            require FileMgt106::LoadSave;
-            FileMgt106::LoadSave::saveBzOctets( $jbzName . $$, ${ $_[1] } );
+            require FileMgt106::LoadSaveNormalize;
+            FileMgt106::LoadSaveNormalize::saveBzOctets( $jbzName . $$,
+                ${ $_[1] } );
             if ( my $mtime = ( lstat $jbzName )[STAT_MTIME] ) {
                 $mtime =
                   POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
@@ -319,8 +320,9 @@ sub takeScalar {
     if ( $self->[SM_SCALARTAKER] ) {
         my ( $blob, $newSha1 );
         if ($scalar) {
-            require FileMgt106::LoadSave;
-            $blob = FileMgt106::LoadSave::jsonMachineMaker()->encode($scalar);
+            require FileMgt106::LoadSaveNormalize;
+            $blob = FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+              ->encode($scalar);
             $newSha1 = sha1($blob);
         }
         unless ( defined $newSha1

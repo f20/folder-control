@@ -523,8 +523,8 @@ sub new {
                         chdir "$stash/$binName"
                           or die "chdir $stash/$binName: $!";
                         unless (/^Z_(?:Infill|Rubbish)/is) {
-                            require FileMgt106::LoadSave;
-                            FileMgt106::LoadSave::renameFilesToNormalisedScannable(
+                            require FileMgt106::LoadSaveNormalize;
+                            FileMgt106::LoadSaveNormalize::renameFilesToNormalisedScannable(
                                 '.');
                         }
                         my $frotl = /^Z_(?:Archive|Cellar)/is
@@ -651,8 +651,8 @@ sub new {
                         $repoDev, $backuper->()
                     );
                     if ($missing) {
-                        require FileMgt106::LoadSave;
-                        FileMgt106::LoadSave::saveJbz(
+                        require FileMgt106::LoadSaveNormalize;
+                        FileMgt106::LoadSaveNormalize::saveJbz(
                             "$dir/$path$binName-failed.jbz", $missing );
                     }
                 }

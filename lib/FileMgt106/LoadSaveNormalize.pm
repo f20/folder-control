@@ -1,6 +1,6 @@
-package FileMgt106::LoadSave;
+package FileMgt106::LoadSaveNormalize;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -71,13 +71,27 @@ sub renameFilesToNormalisedScannable {
                 my ( $base, $ext ) = ( $d3 =~ m#(.*)(\.[^ /]+)$#s );
                 ( $base, $ext ) = ( $d3, '' ) unless defined $ext;
                 my $c = 2;
-                while ( -e ( $d3 = "$base~$c$ext" ) ) { ++$c; }
+                while ( -e "$base~$c$ext" ) { ++$c; }
+                if ( rename $path, "$base~$c$ext" ) {
+                    if ( -e $d3 ) {
+                        $path = "$base~$c$ext";
+                    }
+                    elsif ( rename "$base~$c$ext", $d3 ) {
+                        $path = $d3;
+                    }
+                    else {
+                        warn "Rename $base~$c$ext -> $d3: $! in " . `pwd`;
+                    }
+                }
+                else {
+                    warn "Rename $path -> $base~$c$ext: $! in " . `pwd`;
+                }
             }
-            if ( rename $path, $d3 ) {
+            elsif ( rename $path, $d3 ) {
                 $path = $d3;
             }
             else {
-                warn "rename $path -> $d3 failed: $! in " . `pwd`;
+                warn "Rename $path -> $d3: $! in " . `pwd`;
             }
         }
         lstat $path;

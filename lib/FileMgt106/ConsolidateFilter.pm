@@ -64,7 +64,7 @@ sub additionsProcessor {
     sub {
         unless (@_) {
             binmode STDOUT;
-            print FileMgt106::LoadSave::jsonMachineMaker()
+            print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
               ->encode( \%consolidatedAdditions )
               if keys %consolidatedAdditions;
             return;
@@ -112,7 +112,7 @@ sub duplicationsProcessor {
     sub {
         unless (@_) {
             binmode STDOUT;
-            print FileMgt106::LoadSave::jsonMachineMaker()
+            print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
               ->encode( \%duplicatedFiles )
               if keys %duplicatedFiles;
             return;

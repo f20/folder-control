@@ -34,7 +34,7 @@ use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs abs2rel);
 use FileMgt106::Database;
 use FileMgt106::FileSystem;
-use FileMgt106::LoadSave;
+use FileMgt106::LoadSaveNormalize;
 use FileMgt106::ScanMaster;
 use FileMgt106::Scanner;
 
@@ -244,7 +244,7 @@ sub makeProcessor {
                 $scalar->{$buildExclusionsFile} = [];
                 ( $scalar, my $excluded ) = _filterExclusions(
                     $scalar,
-                    FileMgt106::LoadSave::loadNormalisedScalar(
+                    FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
                         $buildExclusionsFile)
                 );
                 if ($excluded) {
@@ -252,7 +252,7 @@ sub makeProcessor {
                     open my $fh, '>', $tmpFile;
                     binmode $fh;
                     print {$fh}
-                      FileMgt106::LoadSave::jsonMachineMaker()
+                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                       ->encode($excluded);
                     close $fh;
                     rename $tmpFile, '✘📁.txt';
@@ -270,7 +270,7 @@ sub makeProcessor {
                 if (@grabSources) {
                     $message .= ', with grab exclusions';
                     $grabExclusions =
-                      FileMgt106::LoadSave::loadNormalisedScalar(
+                      FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
                         $grabExclusionsFile);
                 }
             }
@@ -304,7 +304,7 @@ sub makeProcessor {
                     open my $fh, '>', $tmpFile;
                     binmode $fh;
                     print {$fh}
-                      FileMgt106::LoadSave::jsonMachineMaker()
+                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                       ->encode($excluded);
                     close $fh;
                     rename $tmpFile, '✘⬇️.txt';
@@ -362,7 +362,8 @@ sub makeProcessor {
             if ( $cleaningFlag =~ /rename/i ) {
                 warn "Renaming in $dir";
                 $hints->beginInteractive(1);
-                FileMgt106::LoadSave::renameFilesToNormalisedScannable('.');
+                FileMgt106::LoadSaveNormalize::renameFilesToNormalisedScannable(
+                    '.');
                 $hints->commit;
             }
             elsif ( $cleaningFlag =~ /clean/i ) {
@@ -386,7 +387,7 @@ sub makeProcessor {
                 my $grabSource = $_;    # a true copy, not a loop alias variable
                 unless ($grabSource) {
                     binmode STDOUT;
-                    print FileMgt106::LoadSave::jsonMachineMaker()
+                    print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                       ->encode($missing);
                     next;
                 }
@@ -422,7 +423,7 @@ sub makeProcessor {
                           . ' | tar -x -f -';
                         binmode $fh;
                         print {$fh}
-                          FileMgt106::LoadSave::jsonMachineMaker()
+                          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                           ->encode($toGrab);
                     }
                     require FileMgt106::FolderClean;
@@ -513,8 +514,8 @@ sub makeProcessor {
                     $scanMaster->addScalarTaker(
                         sub {
                             my ( $scalar, $blobref, $runner ) = @_;
-                            FileMgt106::FolderOrganise::automaticNumbering( $path,
-                                $scalar );
+                            FileMgt106::FolderOrganise::automaticNumbering(
+                                $path, $scalar );
                         }
                     );
                 };
@@ -597,8 +598,10 @@ sub makeProcessor {
                 /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
             {
                 $target =
-                  FileMgt106::LoadSave::loadNormalisedScalar( $root . $ext );
-                $target = FileMgt106::LoadSave::parseText( $root . $ext )
+                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                    $root . $ext );
+                $target =
+                  FileMgt106::LoadSaveNormalize::parseText( $root . $ext )
                   if !$target && $ext =~ /txt|yml/i;
             }
             elsif ( -d _ && @grabSources && chdir $_ ) {
@@ -634,7 +637,8 @@ sub makeProcessor {
         my ($initialise) = @_;
         sub {
             my ( $catalogue, $canonical, $fileExtension, $devNo ) = @_;
-            my $target = FileMgt106::LoadSave::loadNormalisedScalar($catalogue);
+            my $target =
+              FileMgt106::LoadSaveNormalize::loadNormalisedScalar($catalogue);
             unlink $canonical if -l $canonical;
             unlink $canonical . $fileExtension
               if -l $canonical . $fileExtension;
@@ -712,7 +716,8 @@ sub _saveMissingFilesCatalogues {
         my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
         open my $fh, '>', $tmpFile;
         binmode $fh;
-        print {$fh} FileMgt106::LoadSave::jsonMachineMaker()->encode($missing);
+        print {$fh}
+          FileMgt106::LoadSaveNormalize::jsonMachineMaker()->encode($missing);
         close $fh;
         rename $tmpFile, catfile( $path, "\N{U+26A0}.txt" );
     }
