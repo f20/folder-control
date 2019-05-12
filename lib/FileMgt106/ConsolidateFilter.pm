@@ -47,7 +47,7 @@ sub additionsProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            else {
+            elsif ( defined $w ) {
                 if ( exists $seen->{$w} ) {
                     ++$countDup;
                 }
@@ -96,7 +96,7 @@ sub duplicationsProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            else {
+            elsif ( defined $w ) {
                 if ( exists $seen->{$w} ) {
                     $newHash{$_} = $w;
                     ++$countDup;
@@ -141,7 +141,7 @@ sub baseProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            else {
+            elsif ( defined $_ ) {
                 exists $seen->{$_} ? ++$countDup : ++$countNew;
                 undef $seen->{$_};
             }
