@@ -34,10 +34,10 @@ use FileMgt106::Scanner;
 our @ISA = 'FileMgt106::ScanMaster';
 
 use constant {
-    SM_DIR       => 0,
-    SM_ROOTLOCID => 6,
-    SM_SCALAR    => 7,
-    SM_WATCHING  => 14,
+    SM_DIR       => FileMgt106::ScanMaster::SM_DIR,
+    SM_ROOTLOCID => FileMgt106::ScanMaster::SM_ROOTLOCID,
+    SM_SCALAR    => FileMgt106::ScanMaster::SM_SCALAR,
+    SM_WATCHING  => FileMgt106::ScanMaster::SM_WATCHING,
 };
 
 sub repairPermissions {
