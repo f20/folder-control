@@ -37,29 +37,30 @@ require POSIX;
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile splitdir);
 use FileMgt106::Scanner;
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem qw(STAT_GID STAT_MTIME);
 
 use constant {
     SM_DIR          => 0,
     SM_HINTS        => 1,
-    SM_FROTL        => 2,
-    SM_QID          => 3,
-    SM_REPOPAIR     => 4,
-    SM_FULLRESCAN   => 5,
-    SM_ROOTLOCID    => 6,
-    SM_SCALAR       => 7,
-    SM_SCALARFILTER => 8,
-    SM_SCALARTAKER  => 9,
-    SM_SHA1         => 10,
-    SM_STASHPAIR    => 11,
-    SM_TTR          => 12,
-    SM_WATCHERS     => 13,
-    SM_WATCHING     => 14,
+    SM_FS           => 2,
+    SM_FROTL        => 3,
+    SM_QID          => 4,
+    SM_REPOPAIR     => 5,
+    SM_FULLRESCAN   => 6,
+    SM_ROOTLOCID    => 7,
+    SM_SCALAR       => 8,
+    SM_SCALARFILTER => 9,
+    SM_SCALARTAKER  => 10,
+    SM_SHA1         => 11,
+    SM_STASHPAIR    => 12,
+    SM_TTR          => 13,
+    SM_WATCHERS     => 14,
+    SM_WATCHING     => 15,
 };
 
 sub new {
-    my ( $class, $hints, $dir ) = @_;
-    bless [ $dir, $hints ], $class;
+    my ( $class, $hints, $dir, $fs ) = @_;
+    bless [ $dir, $hints, $fs || FileMgt106::FileSystem->new ], $class;
 }
 
 sub setRepoloc {
@@ -242,7 +243,7 @@ sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
       FileMgt106::Scanner->new( $self->[SM_DIR], $hints,
-        $hints->statFromGid($rgid) )
+        $self->[SM_FS]->statFromGid($rgid) )
       ->scan( $frotl, undef, $self->[SM_STASHPAIR], $self->[SM_REPOPAIR],
         $self->[SM_WATCHING] ? $self : undef );
 }

@@ -28,7 +28,8 @@ use warnings;
 use Encode qw(decode_utf8);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem
+  qw(STAT_DEV STAT_INO STAT_MODE STAT_UID STAT_SIZE STAT_MTIME);
 
 sub makeExtractAcceptor {
     my ($sort)    = grep { /^-+sort/i } @_;

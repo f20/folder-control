@@ -1,6 +1,6 @@
 package FileMgt106::FileSystem;
 
-# Copyright 2011-2015 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,8 +27,17 @@ use strict;
 use warnings;
 
 use base 'Exporter';
-our @EXPORT = qw(STAT_DEV STAT_INO STAT_MODE STAT_NLINK
-  STAT_UID STAT_GID STAT_SIZE STAT_MTIME STAT_CHMODDED);
+our @EXPORT_OK = qw(
+  STAT_DEV
+  STAT_INO
+  STAT_MODE
+  STAT_NLINK
+  STAT_UID
+  STAT_GID
+  STAT_SIZE
+  STAT_MTIME
+  STAT_CHMODDED
+);
 
 use constant {
     STAT_DEV      => 0,     # device id
@@ -37,23 +46,25 @@ use constant {
     STAT_NLINK    => 3,     # number of links
     STAT_UID      => 4,     # user
     STAT_GID      => 5,     # group
-    STAT_RDEV     => 6,     # not used
+    STAT_RDEV     => 6,     # we do not use this
     STAT_SIZE     => 7,     # bytes
-    STAT_ATIME    => 8,     # not used
+    STAT_ATIME    => 8,     # we do not use this
     STAT_MTIME    => 9,     # date modified
-    STAT_CTIME    => 10,    # not used
-    STAT_BLKSIZE  => 11,    # not used
-    STAT_BLOCKS   => 12,    # not used
-    STAT_CHMODDED => 13,    # addition
+    STAT_CTIME    => 10,    # we do not use this
+    STAT_BLKSIZE  => 11,    # we do not use this
+    STAT_BLOCKS   => 12,    # we do not use this
+    STAT_CHMODDED => 13,    # this is our own addition
 };
 
-my $diff =
+my %aclStyleDevMapSingleton;       # undef = POSIX, 1 = NFSv4, 2 = none
+my %macOSGroupFromGidSingleton;    # name from gid
+my $diffToolSingleton =
     -e '/usr/bin/diff' ? '/usr/bin/diff'
   : -e '/opt/bin/diff' ? '/opt/bin/diff'
   :                      die 'No diff found';
 
 sub filesDiffer($$) {
-    ( system $diff, '--brief', '--', @_ ) >> 8;
+    ( system $diffToolSingleton, '--brief', '--', @_ ) >> 8;
 }
 
 sub justLookingStat {
@@ -164,29 +175,76 @@ sub publishedStat {
     };
 }
 
-my %singletonGroupFomGid;
+sub new {
+    my ( $class, %gidInfo ) = @_;
+    return $class unless %gidInfo;
+    bless \%gidInfo, $class;
+}
 
-sub statFromGidAndMapping {
+sub gidInfo {
+    my ($self) = @_;
+    return $self if ref $self;
+    {
+        6    => 'imap',
+        20   => 'justlooking',
+        1037 => 'mgt',
+        1030 => 'world',
+        1025 => [qw(1026 1028 1029 1032 1034 1037 1038)],
+        1026 => [qw(1028 1029 1032 1034 1037)],
+        1066 => [qw(1028)],
+        1069 => [qw(1028 1066)],
+    };
+}
 
-    my ( $rgid, $groupStatusHashref ) = @_;
+sub statFromGid {
+
+    my ( $self, $rgid ) = @_;
+    return unless $rgid;
+    my $gidInfo = $self->gidInfo;
+    my $myInfo = $gidInfo->{$rgid} || '';
+    return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
+    return FileMgt106::FileSystem::justLookingStat($rgid)
+      if $myInfo eq 'justlooking';
+    return FileMgt106::FileSystem::imapStat($rgid)      if $myInfo eq 'imap';
+    return FileMgt106::FileSystem::publishedStat($rgid) if $myInfo eq 'world';
+
+    # Categorisation system for gids:
+    # 775 = files with this gid are world readable.
+    # 431 = we can read files with this gid.
+    # 279 = we may take over files with this gid.
+    # otherwise we know nothing about this gid.
+    my %map = ( $rgid => 431 );
+    if ( ref $myInfo eq 'ARRAY' ) {
+        $map{$_} = 279 foreach @$myInfo;
+    }
+    while ( my ( $gid, $info ) = each %$gidInfo ) {
+        if ( ref $info eq 'ARRAY' ) {
+            $map{$gid} = 431 if grep { $rgid == $_ } @$info;
+        }
+        elsif ( $info eq 'mgt' ) {
+            $map{$gid} = 279;
+        }
+        elsif ( $info eq 'world' ) {
+            $map{$gid} = 775;
+        }
+    }
 
     my $allowGroupReadACL = sub { undef; };
     if ( my $setfacl = `which setfacl` ) { # FreeBSD or Linux $allowGroupReadACL
             # Volume-specific action, defaulting to POSIX style
             # FreeBSD supports both POSIX and NFSv4
         $setfacl =~ s/\s+$//s;
-        my %devMap;    # undef = POSIX, 1 = NFSv4, 2 = none
         my @aclargsposix = ( $setfacl, '-m', "g:$rgid:r" );
         my @aclargsnfsv4 = ( $setfacl, '-m', "g:$rgid:r:allow" );
         $allowGroupReadACL = sub {
             my ( $filename, $devno ) = @_;
-            unless ( $devMap{$devno} ) {
+            unless ( $aclStyleDevMapSingleton{$devno} ) {
                 system( @aclargsposix, $filename ) or return 1;
-                ++$devMap{$devno};
+                ++$aclStyleDevMapSingleton{$devno};
             }
-            return if $devMap{$devno} > 1;
+            return if $aclStyleDevMapSingleton{$devno} > 1;
             if ( system( @aclargsnfsv4, $filename ) ) {
-                ++$devMap{$devno};
+                ++$aclStyleDevMapSingleton{$devno};
                 warn "No ACL support on $devno, tested on $filename in "
                   . `pwd`;
                 undef;
@@ -196,9 +254,9 @@ sub statFromGidAndMapping {
             }
         };
     }
-    elsif ( -e '/System/Library' ) {    # Mac OS X $allowGroupReadACL
-            # Assume Mac OS X is modern enough to use NFSv4-style ACLs
-        my $grp = $singletonGroupFomGid{$rgid} ||=
+    elsif ( -e '/System/Library' ) {    # macOS $allowGroupReadACL
+          # Modern versions of macOS use NFSv4-style ACLs but with names not ids
+        my $grp = $macOSGroupFromGidSingleton{$rgid} ||=
           `dscl . -search /Groups PrimaryGroupID $rgid`;
         $grp =~ s/\t.*//s if $grp;
         if ($grp) {
@@ -217,12 +275,12 @@ sub statFromGidAndMapping {
           && !( $stat[STAT_MODE] & 022 )
           && !( $stat[STAT_UID] && ( $stat[STAT_MODE] & 0200 ) );
 
-        # Categorisation of gids we might encounter:
-        # 775 = files with this gid are world readable.
-        # 431 = we can read files with this gid.
-        # 279 = we may take over files with this gid.
-        # 0 = we know nothing about this gid.
-        my $groupStatus = $groupStatusHashref->{ $stat[STAT_GID] } || 0;
+        # Categorisation of gids we might encounter when scanning:
+        # 775: files with this gid are world readable.
+        # 431: we can read files with this gid.
+        # 279: we may take over files with this gid.
+        # undefined or zero: we know nothing about this gid.
+        my $groupStatus = $map{ $stat[STAT_GID] } || 0;
 
         if (    $groupStatus < 400
             and $groupStatus == 279

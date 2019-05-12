@@ -33,16 +33,15 @@ use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs abs2rel);
 use FileMgt106::Database;
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem qw(STAT_DEV STAT_GID STAT_MTIME);
 use FileMgt106::LoadSaveNormalize;
 use FileMgt106::ScanMaster;
 use FileMgt106::Scanner;
 
-use constant { STAT_DEV => 0, };
-
 sub new {
-    my $class = shift;
-    bless [@_], $class;
+    my ( $class, $startFolder, $perl5dir, $fs ) = @_;
+    $fs ||= FileMgt106::FileSystem->new;
+    bless [ $startFolder, $perl5dir, $fs ], $class;
 }
 
 sub process {
@@ -200,8 +199,8 @@ sub migrate {
 
 sub makeProcessor {
 
-    my ( $self,        @grabSources ) = @_;
-    my ( $startFolder, $perl5dir )    = @$self;
+    my ( $self, @grabSources ) = @_;
+    my ( $startFolder, $perl5dir, $fs ) = @$self;
     my ( $hints, $missing, %scanners, $cleaningFlag,
         $syncDestination, @toRestamp );
 
@@ -224,7 +223,7 @@ sub makeProcessor {
                 $scalar = (
                     $scanners{$dir} = FileMgt106::Scanner->new(
                         $dir, $hints,
-                        $hints->statFromGid( ( stat $dir )[STAT_GID] )
+                        $fs->statFromGid( ( stat $dir )[STAT_GID] )
                     )
                 )->infill($scalar);
             };
@@ -279,7 +278,7 @@ sub makeProcessor {
             eval {
                 (
                     $scanners{$dir} = FileMgt106::Scanner->new(
-                        $dir, $hints, $hints->statFromGid($rgid)
+                        $dir, $hints, $fs->statFromGid($rgid)
                     )
                   )->scan(
                     0,
@@ -375,7 +374,7 @@ sub makeProcessor {
             }
             return if $cleaningFlag =~ /only/i;
         }
-        my $scanMaster = FileMgt106::ScanMaster->new( $hints, $dir );
+        my $scanMaster = FileMgt106::ScanMaster->new( $hints, $dir, $fs );
         $_->( $scanMaster, $dir ) foreach @scanMasterCliConfigClosures;
         $scanMaster->dequeued;
     };
@@ -432,7 +431,7 @@ sub makeProcessor {
                     $hints->commit;
                     $cellarScanner =
                       FileMgt106::ScanMaster->new( $hints,
-                        decode_utf8 getcwd() );
+                        decode_utf8( getcwd() ), $fs );
                     $cellarScanner->dequeued;
                 }
                 while ( my ( $dir, $scalar ) = each %$missing ) {
@@ -440,9 +439,8 @@ sub makeProcessor {
                     eval {
                         $scalar = (
                             $scanners{$dir} || FileMgt106::Scanner->new(
-                                $dir,
-                                $hints,
-                                $hints->statFromGid( ( stat $dir )[STAT_GID] )
+                                $dir, $hints,
+                                $fs->statFromGid( ( stat $dir )[STAT_GID] )
                             )
                         )->infill($scalar);
                     };

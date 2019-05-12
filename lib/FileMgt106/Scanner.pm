@@ -28,7 +28,16 @@ use warnings;
 use Encode qw/decode_utf8/;
 use POSIX       ();
 use Digest::SHA ();
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem qw(
+  STAT_DEV
+  STAT_INO
+  STAT_MODE
+  STAT_NLINK
+  STAT_UID
+  STAT_SIZE
+  STAT_MTIME
+  STAT_CHMODDED
+);
 
 my $_sha1Machine = new Digest::SHA;
 my $_sha1Empty   = $_sha1Machine->digest;

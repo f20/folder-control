@@ -26,7 +26,7 @@ package FileMgt106::HintsFilter;
 use strict;
 use warnings;
 use FileMgt106::Database;
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem qw(STAT_DEV STAT_MODE STAT_UID);
 
 sub makeHintsFilter {
 

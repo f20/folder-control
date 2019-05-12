@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use Cwd;
 use Encode qw(decode_utf8 encode_utf8);
-use FileMgt106::FileSystem;
+use FileMgt106::FileSystem qw(STAT_MODE STAT_NLINK STAT_GID);
 use FileMgt106::ScanMaster;
 use FileMgt106::Scanner;
 
@@ -167,7 +167,7 @@ sub extractApertureMetadata {
 
 sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
-    my $stat = $hints->statFromGid( $self->repairPermissions );
+    my $stat = FileMgt106::FileSystem->statFromGid( $self->repairPermissions );
     FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
       ->scan( time - 7 )    # don't copy files to repository -- wasteful
       if -d "$self->[SM_DIR]/Masters";

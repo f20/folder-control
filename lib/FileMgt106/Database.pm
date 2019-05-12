@@ -73,96 +73,15 @@ use constant {
     STAT_MTIME => 9,
 };
 
-sub gidInfo {
-    my ($self) = @_;
-    return $self->{gidInfo} if $self->{gidInfo};
-    my $file = $self->{sqliteFile} . '-gidInfo.txt';
-    my $fh;
-    if ( open $fh, '<', $file ) {
-        binmode $fh, ':utf8';
-        local $/ = "\n";
-        while (<$fh>) {
-            next unless my ( $k, $v ) = /(\S+):(.+)/;
-            $self->{gidInfo}{$k} =
-              $v =~ /^([0-9,]+)\s*$/s ? [ split /,/, $1 ] : $v;
-        }
-        close $fh;
-    }
-    unless ( $self->{gidInfo} ) {
-        $self->{gidInfo} = {
-            6    => 'imap',
-            20   => 'justlooking',
-            1037 => 'mgt',
-            1030 => 'world',
-            1025 => [qw(1026 1028 1029 1032 1034 1037 1038)],
-            1026 => [qw(1028 1029 1032 1034 1037)],
-            1066 => [qw(1028)],
-            1069 => [qw(1028 1066)],
-        };
-        if ( open $fh, '>', $file . $$ ) {
-            binmode $fh, ':utf8';
-            print $fh "$_:"
-              . (
-                ref $self->{gidInfo}{$_}
-                ? join( ',', @{ $self->{gidInfo}{$_} } )
-                : $self->{gidInfo}{$_}
-              )
-              . "\n"
-              foreach sort { $a <=> $b } keys %{ $self->{gidInfo} };
-            close $fh;
-            rename $file . $$, $file;
-        }
-    }
-    $self->{gidInfo};
-}
-
-sub statFromGid {
-
-    my ( $self, $rgid ) = @_;
-    return unless $rgid;
-    my $gidInfo = $self->gidInfo;
-
-    my $myInfo = $gidInfo->{$rgid} || '';
-    return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
-    return FileMgt106::FileSystem::justLookingStat($rgid)
-      if $myInfo eq 'justlooking';
-    return FileMgt106::FileSystem::imapStat($rgid)      if $myInfo eq 'imap';
-    return FileMgt106::FileSystem::publishedStat($rgid) if $myInfo eq 'world';
-
-    # Categorisation system for gids:
-    # 775 = files with this gid are world readable.
-    # 431 = we can read files with this gid.
-    # 279 = we may take over files with this gid.
-    # otherwise we know nothing about this gid.
-    my %map = ( $rgid => 431 );
-    if ( ref $myInfo eq 'ARRAY' ) {
-        $map{$_} = 279 foreach @$myInfo;
-    }
-    while ( my ( $gid, $info ) = each %$gidInfo ) {
-        if ( ref $info eq 'ARRAY' ) {
-            $map{$gid} = 431 if grep { $rgid == $_ } @$info;
-        }
-        elsif ( $info eq 'mgt' ) {
-            $map{$gid} = 279;
-        }
-        elsif ( $info eq 'world' ) {
-            $map{$gid} = 775;
-        }
-    }
-
-    FileMgt106::FileSystem::statFromGidAndMapping( $rgid, \%map );
-
-}
-
 sub new {
 
-    my ( $self, $sqliteFile, $readOnly ) = @_;
-    $self = bless {}, $self unless ref $self;
-    $self->{sqliteFile} = $sqliteFile;
+    my ( $hints, $sqliteFile, $readOnly ) = @_;
+    $hints = bless {}, $hints unless ref $hints;
+    $hints->{sqliteFile} = $sqliteFile;
     my $writeable = !$readOnly && ( -w $sqliteFile || !-e $sqliteFile );
 
     my $makeNewHandle = sub {
-        $self->{dbHandle} = DBI->connect(
+        $hints->{dbHandle} = DBI->connect(
             'dbi:SQLite:dbname='
               . ( -l $sqliteFile ? readlink $sqliteFile : $sqliteFile ),
             '',
@@ -255,14 +174,14 @@ EOL
 
     my $needsNap;
     my $nap = sub {
-        $self->commit;
+        $hints->commit;
         undef $needsNap;
         warn 'Commit done in ' . `pwd`;
         sleep 4;
-        $self->beginInteractive;
+        $hints->beginInteractive;
     };
-    $self->{scheduleNap} = sub { $needsNap = $nap; };
-    $self->{cleanup} = sub {
+    $hints->{scheduleNap} = sub { $needsNap = $nap; };
+    $hints->{cleanup} = sub {
         undef $needsNap;
         undef $_
           foreach $qGetLocid, $qGetLocidRootidIno,
@@ -281,7 +200,7 @@ EOL
         undef $dbHandle;
     };
 
-    my $file = $self->{file} = sub {
+    my $file = $hints->{file} = sub {
         my ( $parid, $name, $dev, $ino, $size, $mtime ) = @_;
         $needsNap->() if $needsNap;
         my $rootid = $rootidFromDev{$dev};
@@ -335,7 +254,7 @@ EOL
           foreach @{ $qGetChildren->fetchall_arrayref };
     };
 
-    $self->{checkFolder} = sub {
+    $hints->{checkFolder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
         my $rootid = $parid ? $rootidFromDev{$dev} : $dev;
         die "Device $dev not known" unless defined $rootid;
@@ -351,7 +270,7 @@ EOL
     };
 
     my $folder;
-    $folder = $self->{folder} = sub {
+    $folder = $hints->{folder} = sub {
         my ( $parid, $name, $dev, $ino ) = @_;
         my $rootidFromDev = $parid ? $rootidFromDev{$dev} : $dev;
         die "Device $dev not known" unless defined $rootidFromDev;
@@ -394,7 +313,7 @@ EOL
     };
 
     my $topFolder;
-    $topFolder = $self->{topFolder} = sub {
+    $topFolder = $hints->{topFolder} = sub {
         my ( $path, $dev, $ino ) = @_;
         $qGetLocid->execute( 0, $path );
         if ( $qGetLocid->fetchrow_array ) {
@@ -440,7 +359,7 @@ EOL
             my ( $sqlitePath, $mountPointPath, $mountPointId ) = $oldDbPath->();
             if ( $sqlitePath eq $sqliteFile ) {
                 my $dev = ( stat( $mountPointPath ||= '/' ) )[STAT_DEV];
-                $self->{canonicalPath} = sub {
+                $hints->{canonicalPath} = sub {
                     my ($dir) = @_;
                     my @stat = stat $dir;
                     @stat && $stat[STAT_DEV] == $dev
@@ -456,7 +375,7 @@ EOL
                 warn "Cannot modify $sqliteFile, giving up";
                 last;
             }
-            $self->beginInteractive;
+            $hints->beginInteractive;
             my ( $oldpath, $oldrootname, $oldrootid ) = $oldDbPath->();
             if ( $oldpath eq $sqliteFile ) {
                 warn "Someone else has recorded the move to $sqliteFile";
@@ -480,21 +399,21 @@ EOL
         }
     }
 
-    $self->{updateLocation} = sub {
+    $hints->{updateLocation} = sub {
         my ( $dev, $ino, $size, $mtime, $locid ) = @_;
         $qUpdateLocation->execute( $rootidFromDev{$dev},
             $ino, $size, $mtime, $locid );
     };
 
-    $self->{updateSha1} = sub {
+    $hints->{updateSha1} = sub {
         $qUpdateSha1->execute(@_);
     };
 
-    $self->{updateSha1if} = sub {
+    $hints->{updateSha1if} = sub {
         $qUpdateSha1if->execute( @_[ 0, 0, 1 ] );
     };
 
-    my $paridNameFromLocid = $self->{paridNameFromLocid} = sub {
+    my $paridNameFromLocid = $hints->{paridNameFromLocid} = sub {
         my ($locid) = @_;
         $qGetParidName->execute($locid);
         my @paridName = $qGetParidName->fetchrow_array;
@@ -502,7 +421,7 @@ EOL
         @paridName;
     };
 
-    $self->{pathFinderFactory} = sub {
+    $hints->{pathFinderFactory} = sub {
         my $pathFinder;
         my %paths;
         $pathFinder = sub {
@@ -517,7 +436,7 @@ EOL
         };
     };
 
-    $self->{pathFromLocid} = sub {
+    $hints->{pathFromLocid} = sub {
         my ($locid) = @_;
         $qGetParidName->execute($locid);
         my ( $parid, $path ) = $qGetParidName->fetchrow_array;
@@ -534,7 +453,7 @@ EOL
         $path;
     };
 
-    $self->{sha1FromStat} = sub {
+    $hints->{sha1FromStat} = sub {
         my ( $name, $dev, $ino, $size, $mtime ) = @_;
         my $rootid = $rootidFromDev{$dev};
         $qGetSha1->execute( $name, $rootid, $ino, $size, $mtime );
@@ -543,7 +462,7 @@ EOL
         $sha1;
     };
 
-    $self->{searchSha1} = sub {
+    $hints->{searchSha1} = sub {
         my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
         my $rootid = $rootidFromDev{$dev};
         my $q;
@@ -590,7 +509,7 @@ EOL
         };
     };
 
-    $self->{alreadyThere} = sub {
+    $hints->{alreadyThere} = sub {
         my ( $parid, $name, $sha1 ) = @_;
         my ( $base, $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S*)$#s );
         ( $base, $extension ) = ( $name, '' ) unless defined $extension;
@@ -633,7 +552,7 @@ EOL
           . $extension;
     };
 
-    $self->{findName} = sub {
+    $hints->{findName} = sub {
         my ( $parid, $name, $path ) = @_;
         while (1) {
             my $newName = $nextVersion->( $parid, $name );
@@ -649,7 +568,7 @@ EOL
         }
     };
 
-    $self->{children} = sub {
+    $hints->{children} = sub {
         $qGetChildren->execute(@_);
         my %hash;
         while ( my ( $locid, $name ) = $qGetChildren->fetchrow_array ) {
@@ -658,7 +577,7 @@ EOL
         \%hash;
     };
 
-    $self->{childrenSha1} = sub {
+    $hints->{childrenSha1} = sub {
         $qGetChildren->execute(@_);
         my %hash;
         while ( my ( undef, $name, $sha1 ) = $qGetChildren->fetchrow_array ) {
@@ -667,19 +586,19 @@ EOL
         \%hash;
     };
 
-    $self->{uproot} = sub {
+    $hints->{uproot} = sub {
         $qUproot->execute(@_);
     };
 
-    $self->{moveByParidName} = sub {
+    $hints->{moveByParidName} = sub {
         $qMoveByParidName->execute(@_);
     };
 
-    $self->{moveByLocid} = sub {
+    $hints->{moveByLocid} = sub {
         $qMoveByLocid->execute(@_);
     };
 
-    $self;
+    $hints;
 
 }
 
@@ -715,8 +634,8 @@ EOSQL
 }
 
 sub beginInteractive {
-    my ( $self, $noAutoCommit ) = @_;
-    my $dbHandle = $self->{dbHandle};
+    my ( $hints, $noAutoCommit ) = @_;
+    my $dbHandle = $hints->{dbHandle};
     alarm 0;
     my $timeout = 0;
     while (1) {
@@ -726,45 +645,45 @@ sub beginInteractive {
         die $eString unless $eString =~ /locked/;
     }
     return if $noAutoCommit;
-    $SIG{ALRM} = $self->{scheduleNap};
+    $SIG{ALRM} = $hints->{scheduleNap};
     alarm 555;
 }
 
 sub enqueue {
-    my $self  = shift;
+    my $hints = shift;
     my $queue = shift;
     my $ttr   = time + 1;
-    push @{ $self->{codequeue} }, @_;
-    unless ( $self->{queue} && $self->{queue} == $queue ) {
-        $self->{queue}->remove_item( $self->{qid}, sub { $_[0] == $self; } )
-          if defined $self->{qid};
-        $self->{queue} = $queue;
-        delete $self->{qid};
+    push @{ $hints->{codequeue} }, @_;
+    unless ( $hints->{queue} && $hints->{queue} == $queue ) {
+        $hints->{queue}->remove_item( $hints->{qid}, sub { $_[0] == $hints; } )
+          if defined $hints->{qid};
+        $hints->{queue} = $queue;
+        delete $hints->{qid};
     }
-    if ( exists $self->{qid} ) {
-        delete $self->{qid}
-          unless $self->{ttr} <= $ttr || $self->{queue}->set_priority(
-            $self->{qid},
-            sub { $_[0] == $self },
-            $self->{ttr} = $ttr
+    if ( exists $hints->{qid} ) {
+        delete $hints->{qid}
+          unless $hints->{ttr} <= $ttr || $hints->{queue}->set_priority(
+            $hints->{qid},
+            sub { $_[0] == $hints },
+            $hints->{ttr} = $ttr
           );
     }
-    $self->{qid} = $self->{queue}->enqueue( $self->{ttr} = $ttr, $self )
-      unless exists $self->{qid};
+    $hints->{qid} = $hints->{queue}->enqueue( $hints->{ttr} = $ttr, $hints )
+      unless exists $hints->{qid};
 }
 
 sub dequeued {
-    my ( $self, $runner ) = @_;
-    delete $self->{qid};
-    my $dbHandle = $self->{dbHandle};
+    my ( $hints, $runner ) = @_;
+    delete $hints->{qid};
+    my $dbHandle = $hints->{dbHandle};
     my $ttr      = time + 11;
     if ( $dbHandle->do('begin immediate transaction') ) {
-        while ( my $code = shift @{ $self->{codequeue} } ) {
-            eval { $code->($self); };
+        while ( my $code = shift @{ $hints->{codequeue} } ) {
+            eval { $code->($hints); };
             warn "$code: $@" if $@;
-            if ( time > $ttr && @{ $self->{codequeue} } ) {
-                $self->{qid} =
-                  $self->{queue}->enqueue( $self->{ttr} = $ttr, $self );
+            if ( time > $ttr && @{ $hints->{codequeue} } ) {
+                $hints->{qid} =
+                  $hints->{queue}->enqueue( $hints->{ttr} = $ttr, $hints );
                 last;
             }
         }
@@ -773,8 +692,8 @@ sub dequeued {
     }
     else {    # Database seems to be locked
         $dbHandle->rollback;
-        $self->{qid} =
-          $self->{queue}->enqueue( $self->{ttr} = $ttr, $self );
+        $hints->{qid} =
+          $hints->{queue}->enqueue( $hints->{ttr} = $ttr, $hints );
     }
 }
 

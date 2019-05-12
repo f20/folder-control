@@ -35,7 +35,7 @@ use Daemon112::TopMaster;
 require Daemon112::Watcher;    # used but not loaded by TopMaster
 
 sub new {
-    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent )
+    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent, )
       = @_;
     warn 'Daemon112::SimpleWatch started with'
       . '$hintsFile'
@@ -85,15 +85,17 @@ sub new {
     $heartbeat = sub { warn `pwd`; $qu->enqueue( time + 600, $heartbeat ); };
     $heartbeat->();
     bless {
-        # The following fields are used by TopMaster and others
+        # These fields are used by TopMaster and others
         hints => FileMgt106::Database->new($hintsFile),
         kq    => $kq,
         pq    => $pq,
         qu    => $qu,
-        locs  => { repo => $repo, git => $git, jbz => $jbz },
-
-        # The following field is private
-        topMaster =>
+        locs  => {
+            repo => $repo,
+            git  => $git,
+            jbz  => $jbz,
+        },
+        topMaster =>    # This field is private
           Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, @extras )
           ->attach($top),
     }, $class;
