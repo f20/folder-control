@@ -41,9 +41,9 @@ sub process {
     my ( $startFolder, $perl5dir, @args ) = @_;
     my (
         $catalogueProcessor, $queryProcessor, $resultsProcessor,
-        $consolidator,       $missingCompilation
+        $consolidator,       $outputScalar
     );
-    my $missingStream = \*STDERR;
+    my $outputStream = \*STDERR;
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
@@ -54,7 +54,7 @@ sub process {
             require FileMgt106::Builder;
             $catalogueProcessor =
               FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
-            $missingStream = \*STDOUT;
+            $outputStream = \*STDOUT;
             next;
         }
 
@@ -229,7 +229,7 @@ sub process {
             $catalogueProcessor =
               FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
                 $devNo, $devOnly );
-            $missingStream = \*STDOUT;
+            $outputStream = \*STDOUT;
             next;
         }
 
@@ -243,12 +243,21 @@ sub process {
             require FileMgt106::ConsolidateFilter;
             $consolidator ||= FileMgt106::ConsolidateFilter->new;
             $catalogueProcessor = $consolidator->additionsProcessor;
+            $outputStream       = \*STDOUT;
+            next;
+        }
+        if (/^-+dups/i) {
+            require FileMgt106::ConsolidateFilter;
+            $catalogueProcessor =
+              FileMgt106::ConsolidateFilter->duplicationsByPairProcessor;
+            $outputStream = \*STDOUT;
             next;
         }
         if (/^-+dup/i) {
             require FileMgt106::ConsolidateFilter;
             $consolidator ||= FileMgt106::ConsolidateFilter->new;
             $catalogueProcessor = $consolidator->duplicationsProcessor;
+            $outputStream       = \*STDOUT;
             next;
         }
 
@@ -270,7 +279,7 @@ sub process {
                 }
               )
             {
-                $missingCompilation = $catalogueProcessor->($stdinscalar);
+                $outputScalar = $catalogueProcessor->($stdinscalar);
             }
             else {
                 foreach ( split /[\r\n]+/, $stdinblob ) {
@@ -285,7 +294,7 @@ sub process {
                                   )->decode(<$fh>),
                                 $1
                             );
-                            $missingCompilation->{$1} = $missing
+                            $outputScalar->{$1} = $missing
                               if $missing;
                         }
                         else {
@@ -294,7 +303,7 @@ sub process {
                                 $_);
                             tr#/#|#;
                             my $missing = $catalogueProcessor->( $scalar, $1 );
-                            $missingCompilation->{$1} = $missing
+                            $outputScalar->{$1} = $missing
                               if $missing;
                         }
                     }
@@ -324,7 +333,7 @@ sub process {
                 tr#/#|#;
                 $missing = $catalogueProcessor->( $scalar, $1 );
             }
-            $missingCompilation->{$1} = $missing if $missing;
+            $outputScalar->{$1} = $missing if $missing;
         }
 
         elsif (/^[0-9a-f]{40}$/is) {
@@ -341,14 +350,17 @@ sub process {
 
     }
 
-    if ($missingCompilation) {
-        binmode $missingStream;
-        print {$missingStream}
-          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-          ->encode($missingCompilation);
+    if ($catalogueProcessor) {
+        my $processorOutput = $catalogueProcessor->();
+        $outputScalar ||= $processorOutput;
     }
 
-    $catalogueProcessor->() if $catalogueProcessor;
+    if ($outputScalar) {
+        binmode $outputStream;
+        print {$outputStream}
+          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+          ->encode($outputScalar);
+    }
 
 }
 

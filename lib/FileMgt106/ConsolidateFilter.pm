@@ -62,13 +62,8 @@ sub additionsProcessor {
     };
     my %consolidatedAdditions;
     sub {
-        unless (@_) {
-            binmode STDOUT;
-            print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-              ->encode( \%consolidatedAdditions )
-              if keys %consolidatedAdditions;
-            return;
-        }
+        return keys %consolidatedAdditions ? \%consolidatedAdditions : ()
+          unless @_;
         my ( $scalar, $path ) = @_;
         my ( $addh, $countNew, $countDup ) = $filter->($scalar);
         $path ||= 0;
@@ -110,13 +105,7 @@ sub duplicationsProcessor {
     };
     my %duplicatedFiles;
     sub {
-        unless (@_) {
-            binmode STDOUT;
-            print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-              ->encode( \%duplicatedFiles )
-              if keys %duplicatedFiles;
-            return;
-        }
+        return keys %duplicatedFiles ? \%duplicatedFiles : () unless @_;
         my ( $scalar, $path ) = @_;
         my ( $addh, $countNew, $countDup ) = $filter->($scalar);
         $path ||= 0;
@@ -125,6 +114,42 @@ sub duplicationsProcessor {
         $path .= '_' while exists $duplicatedFiles{$path};
         $duplicatedFiles{$path} = $addh if $countDup;
         return;
+    };
+}
+
+sub duplicationsByPairProcessor {
+    my %objectsToExamine;
+    sub {
+        if ( my ( $scalar, $path ) = @_ ) {
+            $path =~ s^.*/^^s;
+            $path =~ s/\.(?:txt|json|jbz)$//si;
+            $path .= '_' while exists $objectsToExamine{$path};
+            $objectsToExamine{$path} = $scalar;
+            return;
+        }
+        else {
+            my %results;
+            my %doNotBother;
+            foreach my $a ( keys %objectsToExamine ) {
+                foreach my $b ( keys %objectsToExamine ) {
+                    next if $a eq $b;
+                    next if exists $doNotBother{$a}{$b};
+                    my $consolidator = FileMgt106::ConsolidateFilter->new;
+                    $consolidator->baseProcessor->( $objectsToExamine{$a}, $a );
+                    my $processor = $consolidator->duplicationsProcessor;
+                    $processor->( $objectsToExamine{$b}, $b );
+                    if ( my $dups = $processor->() ) {
+                        while ( my ( $k, $v ) = each %$dups ) {
+                            $results{"Duplicated from $a"}{$k} = $v;
+                        }
+                    }
+                    else {
+                        undef $doNotBother{$b}{$a};
+                    }
+                }
+            }
+            \%results;
+        }
     };
 }
 
