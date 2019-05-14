@@ -23,14 +23,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-=head Sorry no documentation
-
-github.com/f20/folder-control is a set of Perl scripts for file
-cataloguing, file backup, synchronisation and file-level deduplication.
-Pre-requisites from CPAN: JSON or JSON:PP, DBD::SQLite.
-
-=cut
-
 use warnings;
 use strict;
 use Cwd qw(getcwd);
