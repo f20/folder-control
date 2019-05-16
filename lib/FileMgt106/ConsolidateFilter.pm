@@ -48,14 +48,15 @@ sub additionsProcessor {
                 $countDup += $cd;
             }
             elsif ( defined $w ) {
-                if ( exists $seen->{$w} ) {
+                my $wnormalised = lc $w;
+                if ( exists $seen->{$wnormalised} ) {
                     ++$countDup;
                 }
                 else {
                     $newHash{$_} = $w;
                     ++$countNew;
                 }
-                undef $seen->{$w};
+                undef $seen->{$wnormalised};
             }
         }
         \%newHash, $countNew, $countDup;
@@ -92,7 +93,7 @@ sub duplicationsProcessor {
                 $countDup += $cd;
             }
             elsif ( defined $w ) {
-                if ( exists $seen->{$w} ) {
+                if ( exists $seen->{ lc $w } ) {
                     $newHash{$_} = $w;
                     ++$countDup;
                 }
@@ -167,8 +168,9 @@ sub baseProcessor {
                 $countDup += $cd;
             }
             elsif ( defined $_ ) {
-                exists $seen->{$_} ? ++$countDup : ++$countNew;
-                undef $seen->{$_};
+                my $normalised = lc $_;
+                exists $seen->{$normalised} ? ++$countDup : ++$countNew;
+                undef $seen->{$normalised};
             }
         }
         $countNew, $countDup;
