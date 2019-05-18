@@ -47,16 +47,16 @@ sub additionsProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            elsif ( defined $w ) {
-                my $wnormalised = lc $w;
-                if ( exists $seen->{$wnormalised} ) {
+            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                if ( exists $seen->{$sha1} ) {
                     ++$countDup;
                 }
                 else {
                     $newHash{$_} = $w;
                     ++$countNew;
                 }
-                undef $seen->{$wnormalised};
+                undef $seen->{$sha1};
             }
         }
         \%newHash, $countNew, $countDup;
@@ -92,8 +92,9 @@ sub duplicationsProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            elsif ( defined $w ) {
-                if ( exists $seen->{ lc $w } ) {
+            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                if ( exists $seen->{$sha1} ) {
                     $newHash{$_} = $w;
                     ++$countDup;
                 }
@@ -167,10 +168,10 @@ sub baseProcessor {
                 $countNew += $cn;
                 $countDup += $cd;
             }
-            elsif ( defined $_ ) {
-                my $normalised = lc $_;
-                exists $seen->{$normalised} ? ++$countDup : ++$countNew;
-                undef $seen->{$normalised};
+            elsif ( defined $_ && /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                exists $seen->{$sha1} ? ++$countDup : ++$countNew;
+                undef $seen->{$sha1};
             }
         }
         $countNew, $countDup;
