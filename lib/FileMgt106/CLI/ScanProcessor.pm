@@ -373,12 +373,22 @@ sub makeProcessor {
                 };
                 next;
             }
-            elsif (/^-repo=?(.*)/) {
+            elsif (/^-+repo=?(.*)/) {
                 local $_ = $1;
                 my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 push @scanMasterCliConfigClosures,
                   sub { $_[0]->addJbzFolder($loc); };
                 next;
+            }
+            elsif (/^-+aperture/) {
+                push @scanMasterCliConfigClosures, sub {
+                    my ( $scanMaster, $path ) = @_;
+                    if ( $path =~ /\.aplibrary$/s ) {
+                        require FileMgt106::ScanMasterAperture;
+                        warn "Using Aperture scan master for $path";
+                        bless $scanMaster, 'FileMgt106::ScanMasterAperture';
+                    }
+                };
             }
             elsif (/^-+stash=(.+)/) {
                 local $_ = $1;
