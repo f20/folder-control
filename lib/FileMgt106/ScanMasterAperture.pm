@@ -84,13 +84,15 @@ sub repairPermissions {
     my @list = grep { !/^\.\.?|Masters$/s; } readdir DIR;
     closedir DIR;
     $repairer->(@list);
-    {
-        local $_ = $self->[SM_DIR];
-        s/\.aplibrary$/ (Masters)/;
-        unlink $_;
-        symlink "$self->[SM_DIR]/Masters", $_;
-    }
     $rgid;
+}
+
+sub symlinkMasters {
+    my ($self) = @_;
+    local $_ = $self->[SM_DIR];
+    s/\.aplibrary$/ (Masters)/;
+    unlink $_;
+    symlink "$self->[SM_DIR]/Masters", $_;
 }
 
 sub extractApertureMetadata {

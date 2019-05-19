@@ -61,7 +61,7 @@ sub deepClean {
             my $newPath;
             $newPath = "$folder/_$file" if $file =~ /^(\~\$|Z_|\.)/is;
             $newPath = "$folder/${file}_"
-              if $file =~ /\.(?:app|aplibrary|download|lrcat|lrdata|tmp)$/is;
+              if $file =~ /\.(?:app|download|lrcat|lrdata|tmp)$/is;
             if ($newPath) {
                 if ( -e $newPath ) {
                     my ( $base, $extension ) =

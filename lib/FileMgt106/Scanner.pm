@@ -75,7 +75,7 @@ sub new {
     my $regexCheckThisFile = qr/\.xls$/is;
 
     my $regexNeverWatchFolder =
-      qr/^Y_|^\@|\.aplibrary$| \(mirrored from .+\)$/is;
+      qr/^Y_|^\@| \(mirrored from .+\)$/is;
 
     my $regexAlwaysWatchFolder = qr/^[OWXZ]_/is;
 
