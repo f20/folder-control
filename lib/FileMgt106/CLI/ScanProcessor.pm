@@ -389,6 +389,7 @@ sub makeProcessor {
                         bless $scanMaster, 'FileMgt106::ScanMasterAperture';
                     }
                 };
+                next;
             }
             elsif (/^-+stash=(.+)/) {
                 local $_ = $1;
