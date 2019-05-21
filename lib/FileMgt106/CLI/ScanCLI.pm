@@ -135,9 +135,65 @@ sub autograb {
 
 }
 
+sub _prettifyField {
+    my ( $number, $spaces ) = @_;
+    do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
+    $spaces -= length $number;
+    ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
+}
+
+*volumes = \&volume;
+
+sub volume {
+
+    my ( $self, $command, $subcommand, @volumes ) = @_;
+    my ( $startFolder, $perl5dir ) = @$self;
+    my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
+    my $hints = FileMgt106::Database->new($hintsFile)
+      or die "Cannot create database $hintsFile";
+    my $dbHandle = $hints->{dbHandle};
+
+    if ($subcommand) {
+        my $newparid = $subcommand =~ /on|enab/i ? 0 : -1;
+        $hints->beginInteractive;
+        $dbHandle->do( 'update locations set parid=? where parid<1 and name=?',
+            undef, $newparid, $_ )
+          foreach @volumes;
+        $hints->commit;
+    }
+
+    my $reportInfo = sub {
+        print join( '',
+            $_[0],
+            ' ' x ( 8 - length $_[0] ),
+            ( map { _prettifyField( $_, 11 ); } @_[ 1 .. 3 ] ),
+            ' ', $_[4] || '/',
+        ) . "\n";
+    };
+    $reportInfo->( qw(Status Folders Files), 'Max MB', 'Volume' );
+    my $q = $dbHandle->prepare( 'select parid, locid, name from locations'
+          . ' where parid<1 order by parid desc' );
+    my $qc =
+      $dbHandle->prepare( 'select sum(size is null), sum(size is not null)'
+          . ', CAST((sum(size)+99999)/1e6 AS INT)'
+          . ' from locations where rootid=?' );
+    $q->execute;
+    while ( my ( $parid, $locid, $name ) = $q->fetchrow_array ) {
+        $qc->execute($locid);
+        $reportInfo->(
+            $parid ? 'Disabled' : 'Enabled',
+            $qc->fetchrow_array, $name
+        );
+        $qc->finish;
+    }
+
+}
+
 sub migrate {
+
     my ( $self, $command, $oldFileName ) = @_;
     my ( $startFolder, $perl5dir ) = @$self;
+
     $oldFileName = rel2abs( $oldFileName, $startFolder )
       if defined $oldFileName;
     chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
@@ -152,36 +208,31 @@ sub migrate {
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
     my $hints = FileMgt106::Database->new($hintsFile)
       or die "Cannot create database $hintsFile";
-    my $db = $hints->{dbHandle};
-    $db->{AutoCommit} = 1;
-    $db->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
+    my $dbHandle = $hints->{dbHandle};
+    $dbHandle->{AutoCommit} = 1;
+    $dbHandle->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
       if /wal/i;
-    $db->do("attach '$oldFileName' as old");
+    $dbHandle->do("attach '$oldFileName' as old");
 
-    my $prettifyField = sub {
-        my ( $number, $spaces ) = @_;
-        do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
-        $spaces -= length $number;
-        ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
-    };
-    my $reportProgress = sub {
-        warn join( '',
-            $prettifyField->( $_[0], 5 ),
-            map { $prettifyField->( $_, 15 ); } @_[ 1 .. $#_ ] )
-          . "\n";
-    };
-    if ( $db->do('begin exclusive transaction') ) {
+    if ( $dbHandle->do('begin exclusive transaction') ) {
+        my $reportProgress = sub {
+            warn join( '',
+                _prettifyField( $_[0], 5 ),
+                map { _prettifyField( $_, 15 ); } @_[ 1 .. $#_ ] )
+              . "\n";
+        };
         $reportProgress->(qw(Level Added Total));
-        $db->do('delete from main.locations');
+        $dbHandle->do('delete from main.locations');
         $hints->{deepCopy}->( 'old.locations', 0, 0, undef, $reportProgress );
         warn 'Committing changes';
-        sleep 2 while !$db->commit;
+        sleep 2 while !$dbHandle->commit;
         FileMgt106::Database->new($hintsFile)
           or die 'Cannot complete database initialisation';
     }
     else {
         warn 'New database is in use: no migration done';
     }
+
 }
 
 1;
