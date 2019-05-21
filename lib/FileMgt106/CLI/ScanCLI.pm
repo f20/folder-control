@@ -154,7 +154,7 @@ sub volume {
       or die "Cannot create database $hintsFile";
     my $dbHandle = $hints->{dbHandle};
 
-    if ($subcommand) {
+    if ( defined $subcommand && $subcommand =~ /on|off|enab|disab/i ) {
         my $newparid = $subcommand =~ /on|enab/i ? 0 : -1;
         $hints->beginInteractive;
         $dbHandle->do( 'update locations set parid=? where parid<1 and name=?',
