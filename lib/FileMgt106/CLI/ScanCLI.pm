@@ -137,6 +137,7 @@ sub autograb {
 
 sub _prettifyField {
     my ( $number, $spaces ) = @_;
+    $number = 'undef' unless defined $number;
     do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
     $spaces -= length $number;
     ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
@@ -172,7 +173,7 @@ sub volume {
     };
     $reportInfo->( qw(Status Folders Files), 'Max MB', 'Volume' );
     my $q = $dbHandle->prepare( 'select parid, locid, name from locations'
-          . ' where parid<1 order by parid desc' );
+          . ' where parid<1 order by parid desc, name' );
     my $qc =
       $dbHandle->prepare( 'select sum(size is null), sum(size is not null)'
           . ', CAST((sum(size)+99999)/1e6 AS INT)'
