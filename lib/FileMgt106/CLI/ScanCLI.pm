@@ -158,52 +158,24 @@ sub migrate {
       if /wal/i;
     $db->do("attach '$oldFileName' as old");
 
+    my $prettifyField = sub {
+        my ( $number, $spaces ) = @_;
+        do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
+        $spaces -= length $number;
+        ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
+    };
+    my $reportProgress = sub {
+        warn join( '',
+            $prettifyField->( $_[0], 5 ),
+            map { $prettifyField->( $_, 15 ); } @_[ 1 .. $#_ ] )
+          . "\n";
+    };
     if ( $db->do('begin exclusive transaction') ) {
+        $reportProgress->(qw(Level Added Total));
         $db->do('delete from main.locations');
-        $db->do('create temporary table t0'
-              . ' (nl integer primary key, ol integer, nr integer)' );
-        $db->do('create temporary table t1'
-              . ' (nl integer primary key, ol integer, nr integer)' );
-        $db->do('insert or replace into t0 (nl, ol) values (0, 0)');
-        my $total = 0;
-
-        my $prettifyWarning = sub {
-            my ( $number, $spaces ) = @_;
-            do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
-            $spaces -= length $number;
-            ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
-        };
-
-        warn $prettifyWarning->( 'Level', 5 ),
-          $prettifyWarning->( 'Added', 15 ),
-          $prettifyWarning->( 'Total', 15 ), "\n";
-        foreach ( 0 .. 999 ) {
-            last
-              if $db->do( 'insert into t1 (ol, nr) select locid, nr'
-                  . ' from old.locations as loc'
-                  . ' inner join t0 on (parid = ol)' ) < 1;
-            $db->do('update t1 set nr=nl where nr is null')
-              unless $_;
-            my $added =
-              $db->do( 'insert or ignore into main.locations'
-                  . ' (locid, parid, name, rootid, ino, size, mtime, sha1)'
-                  . ' select t1.nl, t0.nl, loc.name, t1.nr, loc.ino, loc.size, loc.mtime, loc.sha1'
-                  . ' from old.locations as loc, t0, t1 where locid=t1.ol and parid=t0.ol'
-              );
-            $total += $added;
-            warn $prettifyWarning->( $_, 5 ),
-              $prettifyWarning->( $added, 15 ),
-              $prettifyWarning->( $total, 15 ), "\n";
-            $db->do('delete from t0');
-            $db->do('insert into t0 select * from t1');
-            $db->do('delete from t1');
-            $db->do('insert into t1 (nl) select max(nl) from t0');
-        }
-        $db->do('drop table t0');
-        $db->do('drop table t1');
+        $hints->{deepCopy}->( 'old.locations', 0, 0, undef, $reportProgress );
         warn 'Committing changes';
-        my $status;
-        sleep 2 while !( $status = $db->commit );
+        sleep 2 while !$db->commit;
         FileMgt106::Database->new($hintsFile)
           or die 'Cannot complete database initialisation';
     }

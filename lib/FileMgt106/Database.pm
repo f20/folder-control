@@ -242,16 +242,44 @@ EOL
         return ( $locid, $sha1, 1 );
     };
 
-    my $clone;
-    $clone = sub {
-        my ( $locid, $parid, $rootid, $name ) = @_;
-        $qClone->execute( $parid, $rootid, $locid );
-        $qGetLocid->execute( $parid, $name );
-        my ($cloneLocid) = $qGetLocid->fetchrow_array;
-        $qGetLocid->finish;
-        $qGetChildren->execute($locid);
-        $clone->( $_->[0], $cloneLocid, $rootid, $_->[1] )
-          foreach @{ $qGetChildren->fetchall_arrayref };
+    my $deepCopy = $hints->{deepCopy} = sub {
+        my ( $srcTable, $srcLocid, $tgtLocid, $tgtRootid, $reportProgress, ) =
+          @_;
+        $dbHandle->do( 'create temporary table t0'
+              . ' (nl integer primary key, ol integer, nr integer)' );
+        $dbHandle->prepare(
+            'insert or replace into t0 (nl, ol, nr) values (?, ?, ?)')
+          ->execute( $tgtLocid, $srcLocid, $tgtRootid );
+        $dbHandle->do( 'create temporary table t1'
+              . ' (nl integer primary key, ol integer, nr integer)' );
+        $dbHandle->prepare('insert into t1 (nl) values (?)')->execute($tgtLocid)
+          if $tgtLocid;
+        my $total = 0;
+        my $level = $tgtRootid ? 1 : 0;
+        while (1) {
+            last
+              if $dbHandle->do( 'insert into t1 (ol, nr) select locid, nr'
+                  . ' from '
+                  . $srcTable
+                  . ' as loc'
+                  . ' inner join t0 on (parid = ol)' ) < 1;
+            $dbHandle->do('update t1 set nr=nl where nr is null')
+              unless $level;
+            my $added =
+              $dbHandle->do( 'insert or ignore into main.locations'
+                  . ' (locid, parid, name, rootid, ino, size, mtime, sha1)'
+                  . ' select t1.nl, t0.nl, loc.name, t1.nr, loc.ino, loc.size, loc.mtime, loc.sha1'
+                  . " from $srcTable as loc"
+                  . ', t0, t1 where locid=t1.ol and parid=t0.ol' );
+            $dbHandle->do('delete from t0');
+            $dbHandle->do('insert into t0 select * from t1');
+            $dbHandle->do('delete from t1');
+            $dbHandle->do('insert into t1 (nl) select max(nl) from t0');
+            $reportProgress->( $level++, $added, $total += $added )
+              if $reportProgress;
+        }
+        $dbHandle->do('drop table t0');
+        $dbHandle->do('drop table t1');
     };
 
     $hints->{checkFolder} = sub {
@@ -290,7 +318,20 @@ EOL
         $qGetLocidByNameRootidIno->execute( $name, $rootidFromDev, $ino );
         if ( my ($locidToClone) = $qGetLocidByNameRootidIno->fetchrow_array ) {
             $qGetLocidByNameRootidIno->finish;
-            $clone->( $locidToClone, $parid, $rootidFromDev, $name );
+            $qClone->execute( $parid, $rootidFromDev, $locidToClone );
+            $qGetLocid->execute( $parid, $name );
+            my ($cloneLocid) = $qGetLocid->fetchrow_array;
+            $qGetLocid->finish;
+            $deepCopy->(
+                'locations',
+                $locidToClone,
+                $cloneLocid,
+                $rootidFromDev,
+                sub {
+                    warn
+"$name deep copy: level $_[0], $_[1] items, $_[2] total\n";
+                }
+            );
             $qUproot->execute($locidToClone);
         }
         else {
@@ -301,12 +342,20 @@ EOL
         $qGetLocid->finish;
         unless ($parid) {
             $rootidFromDev{$dev} = $locid;
-            if ( $name =~ s#/\.zfs/snapshot/[^/]+$##s ) {
-                my $motherLocid =
-                  $folder->( 0, $name, ( stat $name )[ STAT_DEV, STAT_INO ] );
-                $qGetChildren->execute($motherLocid);
-                $clone->( $_->[0], $locid, $locid, $_->[1] )
-                  foreach @{ $qGetChildren->fetchall_arrayref };
+            if ( $name =~ m#^(.+)/\.zfs/snapshot/[^/]+$#s ) {
+                if ( my $motherLocid =
+                    $folder->( 0, $1, ( stat $1 )[ STAT_DEV, STAT_INO ] ) )
+                {
+                    $deepCopy->(
+                        'locations',
+                        $motherLocid,
+                        $locid, $locid,
+                        sub {
+                            warn "Deep copy $1 -> $name: "
+                              . "level $_[0], $_[1] items, $_[2] total\n";
+                        }
+                    );
+                }
             }
         }
         $locid;
