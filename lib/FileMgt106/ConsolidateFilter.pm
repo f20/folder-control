@@ -150,7 +150,7 @@ sub duplicationsByPairProcessor {
                     }
                 }
             }
-            \%results;
+            keys %results ? \%results : ();
         }
     };
 }
