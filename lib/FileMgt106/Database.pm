@@ -328,8 +328,7 @@ EOL
                 $cloneLocid,
                 $rootidFromDev,
                 sub {
-                    warn
-"$name deep copy: level $_[0], $_[1] items, $_[2] total\n";
+                    warn "$name: level $_[0], $_[1] items, $_[2] total\n";
                 }
             );
             $qUproot->execute($locidToClone);
