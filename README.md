@@ -4,10 +4,10 @@ github.com/f20/folder-control
 This repository contains an open source Perl 5 system for file
 cataloguing, file backup, synchronisation and file-level deduplication.
 
-CPAN modules required:
-* Needed for almost everything: DBD::SQLite; JSON (included in recent versions of Perl).
+CPAN modules used:
+* Needed by almost everything: DBD::SQLite, JSON (included in recent versions of Perl).
+* Needed by some features: BSD::Resource, Email::MIME, IO::KQueue, Linux::Inotify.
 * Recommended for performance: JSON::XS.
-* Needed for some features: BSD::Resource, Email::MIME, IO::KQueue, Linux::Inotify.
 
 UNIX group IDs determine some of the behaviours of these scripts.  The default assumptions about group IDs, which are in the source code of FileMgt106::FileSystem, are as follows:
 * 0 and 20 are exempted from some automatic tidying actions.

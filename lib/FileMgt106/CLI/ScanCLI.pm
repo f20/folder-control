@@ -143,8 +143,6 @@ sub _prettifyField {
     ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
 }
 
-*volumes = \&volume;
-
 sub volume {
 
     my ( $self, $command, $subcommand, @volumes ) = @_;
@@ -189,6 +187,8 @@ sub volume {
     }
 
 }
+
+*volumes = \&volume;
 
 sub migrate {
 
