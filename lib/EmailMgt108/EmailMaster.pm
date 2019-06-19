@@ -1,6 +1,6 @@
 package EmailMgt108::EmailMaster;
 
-# Copyright 2012-2015 Franck Latrémolière, Reckon LLP.
+# Copyright 2012-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -149,20 +149,21 @@ EOS
         }
         my $keep = $dbh->prepare('select sha1hex from map group by sha1hex');
         $keep->execute;
-        my %tos = %$folders;
+        my %toDelete = %$folders;
         while ( my ($sha1hex) = $keep->fetchrow_array ) {
-            delete $tos{$sha1hex};
+            delete $toDelete{$sha1hex};
         }
         my $status;
         sleep 2 while !( $status = $dbh->commit );
         $dbh->disconnect;
-        while ( my ( $sha1hex, $folder ) = each %tos ) {
+        while ( my ( $sha1hex, $folder ) = each %toDelete ) {
             if ( defined $folder ) {
                 my $folder2 = $folder;
-                $folder2 =~ s#^.*/##s;
+                $folder2 =~ s#^(.*)/##s;
                 $folder2 =~ s#^Y?_?#Z_#s;
                 rename $folder, $folder2 or next;
                 delete $folders->{$sha1hex};
+                rmdir $1 if defined $1;
             }
         }
         if ( keys %$toScan ) {
