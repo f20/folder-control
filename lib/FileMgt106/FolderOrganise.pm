@@ -220,7 +220,7 @@ sub categoriseByDay {
     my @list = map { decode_utf8 $_; } grep { !/^\./s } readdir $dh;
     foreach (@list) {
         my $p2    = "$path/$_";
-        my $mtime = ( lstat $p2 )[STAT_MTIME];
+        my $mtime = ( stat $p2 )[STAT_MTIME];
         next unless -f _;
         my $date = POSIX::strftime( '%Y-%m-%d', localtime($mtime) );
         mkdir "$path/$date";
