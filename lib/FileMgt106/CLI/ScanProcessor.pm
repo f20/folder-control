@@ -561,6 +561,7 @@ sub _saveMissingFilesCatalogues {
 
 sub _filterExclusions {
     my ( $src, $excl ) = @_;
+    return unless defined $src;
     return $src unless $excl;
     return wantarray ? ( undef, $src ) : undef if !ref $excl || $excl->{'.'};
     my %included = %$src;
