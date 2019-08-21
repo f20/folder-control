@@ -86,7 +86,7 @@ sub autograb {
     require FileMgt106::CLI::ScanProcessor;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
       $self->makeProcessor( @grabSources ? @grabSources : '' );
-    my $chooser = $chooserMaker->( grep { /^-initial/s; } @arguments );
+    my $chooser = $chooserMaker->( grep { /^-init/is; } @arguments );
     my $stashLoc;
     my @fileList = map {
         if (/^-+stash=(.+)/) {

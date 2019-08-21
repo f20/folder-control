@@ -171,12 +171,10 @@ sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
     my $stat = FileMgt106::FileSystem->statFromGid( $self->repairPermissions );
     FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
-      ->scan( time - 7 )    # don't copy files to repository -- wasteful
+      ->scan( time - 7 )
       if -d "$self->[SM_DIR]/Masters";
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
-      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )
-      ->scan
-      ; # don't watch "$self->[SM_DIR]/Database/apdb" -- far too many uninteresting changes
+      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )->scan;
     $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
       $self->extractApertureMetadata;
 }
