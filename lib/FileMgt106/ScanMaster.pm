@@ -335,7 +335,6 @@ sub takeScalar {
               foreach @{ $self->[SM_SCALARTAKER] };
         }
     }
-
 }
 
 sub schedule {

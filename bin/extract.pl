@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -33,10 +33,6 @@ binmode STDERR, ':utf8';
 my ( $startFolder, $perl5dir, @otherLibs );
 
 BEGIN {
-    $SIG{INT} = $SIG{USR1} = $SIG{USR2} = sub {
-        my ($sig) = @_;
-        die "Died on $sig signal\n";
-    };
     $startFolder = decode_utf8 getcwd();
     my $homedir = dirname( rel2abs( -l $0 ? ( readlink $0, dirname $0) : $0 ) );
     while (1) {
