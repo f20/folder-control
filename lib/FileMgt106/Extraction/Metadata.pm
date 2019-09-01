@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Metadata;
 
-# Copyright 2017-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2017-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -54,7 +54,8 @@ sub metadaExtractorMakerSimple {
 
 sub metadataExtractionWorker {
     my ( $sha1, $sha512224, $sha3, $shake128, $et );
-    sub {
+    my $preWorker = sub {
+
         # Digest::SHA and Digest::SHA3 are thread-safe
         # in FreeBSD 11 perl 5.2x but not in macOS perl 5.18
         require Digest::SHA;
@@ -65,7 +66,8 @@ sub metadataExtractionWorker {
         $sha3      = Digest::SHA3->new;
         $shake128  = Digest::SHA3->new(128000);
         $et        = Image::ExifTool->new;
-    }, sub {
+    };
+    my $worker = sub {
         my ( $path, $basics ) = @_;
         warn "$path\n";
         my $results =
@@ -83,6 +85,7 @@ sub metadataExtractionWorker {
         }
         $results;
     };
+    $preWorker, $worker;
 }
 
 sub metadataStorageWorker {
@@ -91,7 +94,7 @@ sub metadataStorageWorker {
     my $counter = -1;
     my %seen;
 
-    sub {
+    my $storagePreWorker = sub {
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
         do { sleep 1 while !$mdbh->do($_); }
@@ -131,9 +134,9 @@ EOSQL
             $qGetId->finish;
             return $ids{$description} = $id if $id;
         };
-      },
+    };
 
-      sub {
+    my $storageWorker = sub {
 
         my ($info) = @_;
         unless ($info) {
@@ -189,12 +192,18 @@ EOSQL
         $qGetSub->execute( $info->{sha1} );
         ($s) = $qGetSub->fetchrow_array;
         $qGetSub->finish;
+        delete $info->{name};
+        delete $info->{path};
+        delete $info->{FileName};
+
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
             $qAddRel->execute( $s, $getid->($k), ref $v ? $$v : $v );
         }
 
-      };
+    };
+
+    $storagePreWorker, $storageWorker;
 
 }
 
