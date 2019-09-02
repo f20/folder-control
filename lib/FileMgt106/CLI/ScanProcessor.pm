@@ -353,6 +353,12 @@ sub makeProcessor {
                 push @grabSources, $1 || '';
                 next;
             }
+            elsif (/^-+noaction/) {
+                push @scanMasterCliConfigClosures, sub {
+                    $_[0]->prohibitActions;
+                };
+                next;
+            }
             elsif (/^-+read-?only/) {
                 push @scanMasterCliConfigClosures, sub {
                     $_[0]->setFrotl(

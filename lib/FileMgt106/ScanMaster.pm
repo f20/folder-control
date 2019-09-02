@@ -56,6 +56,7 @@ use constant {
     SM_TTR          => 13,
     SM_WATCHERS     => 14,
     SM_WATCHING     => 15,
+    SM_RGID         => 16,
 };
 
 sub new {
@@ -221,6 +222,11 @@ sub setFrotl {
     $_[0];
 }
 
+sub prohibitActions {
+    $_[0][SM_RGID] = 0;
+    $_[0];
+}
+
 sub addScalarTaker {
     my $self = shift;
     push @{ $self->[SM_SCALARTAKER] }, @_;
@@ -261,7 +267,8 @@ sub dequeued {
     {
         $self->unwatchAll;
         chdir $self->[SM_DIR] or die "Cannot chdir to $self->[SM_DIR]: $!";
-        my $rgid = ( stat '.' )[STAT_GID];
+        my $rgid =
+          defined $self->[SM_RGID] ? $self->[SM_RGID] : ( stat '.' )[STAT_GID];
         my $frotl =
             defined $self->[SM_FROTL] ? $self->[SM_FROTL]
           : $rgid < 500               ? 0
