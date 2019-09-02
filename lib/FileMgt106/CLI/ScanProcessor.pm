@@ -414,6 +414,10 @@ sub makeProcessor {
                   !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
                 next;
             }
+            elsif (/^-+resolve/) {
+                $locs{resolve} = 1;
+                next;
+            }
 
             $hints ||=
               FileMgt106::Database->new(

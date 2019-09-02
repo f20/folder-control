@@ -67,8 +67,8 @@ sub new {
 sub setRepoloc {
 
     my ( $self, $repolocs, $options ) = @_;
-    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder ) =
-      @{$repolocs}{qw(repo git jbz stash)};
+    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder, $resolveFlag ) =
+      @{$repolocs}{qw(repo git jbz stash resolve)};
     undef $repoFolder if $options->{omitRepo};
 
     my $gid = ( stat( dirname( $self->[SM_DIR] ) ) )[STAT_GID];
@@ -90,6 +90,20 @@ sub setRepoloc {
             chown -1, $gid, $_;
             chmod 02770, $_;
         }
+    }
+
+    if ($resolveFlag) {
+        require FileMgt106::ResolveFilter;
+        $self->addScalarFilter(
+            sub {
+                my ( $runner, $scalar ) = @_;
+                FileMgt106::ResolveFilter::resolveAbsolutePaths(
+                    $scalar,
+                    $self->[SM_HINTS]{sha1FromStat},
+                    \&FileMgt106::Scanner::sha1File
+                );
+            }
+        );
     }
 
     if ( defined $repoFolder && -d $repoFolder ) {
