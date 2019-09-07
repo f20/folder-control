@@ -58,13 +58,14 @@ use constant {
 
 my %aclStyleDevMapSingleton;       # undef = POSIX, 1 = NFSv4, 2 = none
 my %macOSGroupFromGidSingleton;    # name from gid
-my $diffToolSingleton =
-    -e '/usr/bin/diff' ? '/usr/bin/diff'
-  : -e '/opt/bin/diff' ? '/opt/bin/diff'
-  :                      die 'No diff found';
+my @cmpToolSingleton =
+    -e '/usr/bin/cmp' ? ('/usr/bin/cmp')
+  : -e '/usr/bin/diff' ? ( '/usr/bin/diff', '--brief', '--' )
+  : -e '/opt/bin/diff' ? ( '/opt/bin/diff', '--brief', '--' )
+  :                      die 'No cmp found';
 
 sub filesDiffer($$) {
-    ( system $diffToolSingleton, '--brief', '--', @_ ) >> 8;
+    system( @cmpToolSingleton, @_ ) >> 8;
 }
 
 sub justLookingStat {
@@ -168,7 +169,8 @@ sub publishedStat {
             }
             if ( $rwx2 && $rwx2 != $rwx1 ) {
                 chmod $rwx2, $name or return @stat;
-                $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
+                $stat[STAT_MODE] +=
+                  ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
             }
         }
         @stat;
@@ -202,11 +204,13 @@ sub statFromGid {
     return unless $rgid;
     my $gidInfo = $self->gidInfo;
     my $myInfo = $gidInfo->{$rgid} || '';
-    return FileMgt106::FileSystem::managementStat($rgid) if $myInfo eq 'mgt';
+    return FileMgt106::FileSystem::managementStat($rgid)
+      if $myInfo eq 'mgt';
     return FileMgt106::FileSystem::justLookingStat($rgid)
       if $myInfo eq 'justlooking';
-    return FileMgt106::FileSystem::imapStat($rgid)      if $myInfo eq 'imap';
-    return FileMgt106::FileSystem::publishedStat($rgid) if $myInfo eq 'world';
+    return FileMgt106::FileSystem::imapStat($rgid) if $myInfo eq 'imap';
+    return FileMgt106::FileSystem::publishedStat($rgid)
+      if $myInfo eq 'world';
 
     # Categorisation system for gids:
     # 775 = files with this gid are world readable.
