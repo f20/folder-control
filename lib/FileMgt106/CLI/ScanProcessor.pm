@@ -25,7 +25,6 @@ package FileMgt106::CLI::ScanCLI;
 
 use warnings;
 use strict;
-use utf8;
 
 require POSIX;
 use Cwd qw(getcwd);
@@ -40,130 +39,54 @@ use FileMgt106::Scanner;
 
 sub makeProcessor {
 
-    my ( $self, @grabSources ) = @_;
-    my ( $startFolder, $perl5dir, $fs ) = @$self;
-    my ( $hints, $missing, %scanners, $cleaningFlag,
+    my ( $self, %options ) = @_;
+    my ( $hints, @grabSources, $missing, %scanners, $cleaningFlag,
         $syncDestination, @toRestamp );
+    push @grabSources, @{ $options{grabSources} } if $options{grabSources};
 
     my $scalarAcceptor = sub {
         my ( $scalar, $path, $fileExtension, $targetStatRef, $options ) = @_;
         push @toRestamp, $path if $options->{restamp};
-        $hints ||=
-          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
+        $hints ||= $self->hintsObj;
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
         my $dir = $path;
         my ($grabExclusions);
-        if ( $dir =~ m#(.+)/[⚠✘=+-][^/]*$#s ) {
-            $path = $1;
-            my $rgid = ( stat _ )[STAT_GID];
-            chdir $1 or die "chdir $1: $!";
-            $dir = decode_utf8 getcwd();
-            warn "Infilling $dir with rgid=$rgid and $fileExtension file";
-            $hints->beginInteractive;
-            eval {
-                $scalar = (
-                    $scanners{$dir} = FileMgt106::Scanner->new(
-                        $dir, $hints,
-                        $fs->statFromGid( ( stat $dir )[STAT_GID] )
-                    )
-                )->infill($scalar);
-            };
-            warn "infill $dir: $@" if $@;
-            $hints->commit;
-        }
-        else {
-            my $rgid = $targetStatRef->[STAT_GID];
-            mkdir $dir unless -e $dir;
-            chown 0, $rgid, $dir;
-            chmod 0770, $dir;
-            chdir $dir or die "chdir $dir: $!";
-            $dir = decode_utf8 getcwd();
-            my $message = $fileExtension ? " and $fileExtension file" : '';
-            if ( my ($buildExclusionsFile) = grep { -f $_; } '🚫.txt' ) {
-                $message .= ', with build exclusions';
-                $scalar->{$buildExclusionsFile} = [];
-                ( $scalar, my $excluded ) = _filterExclusions(
-                    $scalar,
-                    FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
-                        $buildExclusionsFile)
-                );
-                if ($excluded) {
-                    my $tmpFile = "✘$$.txt";
-                    open my $fh, '>', $tmpFile;
-                    binmode $fh;
-                    print {$fh}
-                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-                      ->encode($excluded);
-                    close $fh;
-                    rename $tmpFile, '✘📁.txt';
-                    $scalar->{'✘📁.txt'} = [];
-                }
-                else {
-                    unlink '✘📁.txt';
-                }
-            }
-            if ( my ($grabExclusionsFile) = grep { -f $_; } '⛔️.txt',
-                "\N{U+26A0}.txt" )
-            {
-                $scalar->{$grabExclusionsFile} = []
-                  unless $grabExclusionsFile eq "\N{U+26A0}.txt";
-                if (@grabSources) {
-                    $message .= ', with grab exclusions';
-                    $grabExclusions =
-                      FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
-                        $grabExclusionsFile);
-                }
-            }
-            warn "Rebuilding $dir with rgid=$rgid$message\n";
-            $hints->beginInteractive;
-            eval {
-                (
-                    $scanners{$dir} = FileMgt106::Scanner->new(
-                        $dir, $hints, $fs->statFromGid($rgid)
-                    )
-                  )->scan(
-                    0,
-                    $scalar,
-                    $options->{stash}
-                    ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
-                    : (),
-                  );
-            };
-            warn "scan $dir: $@" if $@;
-            $hints->commit;
-            utime time, $targetStatRef->[STAT_MTIME], $dir;
-        }
+        my $rgid = $targetStatRef->[STAT_GID];
+        mkdir $dir unless -e $dir;
+        chown 0, $rgid, $dir;
+        chmod 0770, $dir;
+        chdir $dir or die "chdir $dir: $!";
+        $dir = decode_utf8 getcwd();
+        my $message = $fileExtension ? " and $fileExtension file" : '';
+        warn "Rebuilding $dir with rgid=$rgid$message\n";
+        $hints->beginInteractive;
+        eval {
+            (
+                $scanners{$dir} = FileMgt106::Scanner->new(
+                    $dir, $hints, $self->fileSystemObj->statFromGid($rgid)
+                )
+              )->scan(
+                0,
+                $scalar,
+                $options->{stash}
+                ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
+                : (),
+              );
+        };
+        warn "scan $dir: $@" if $@;
+        $hints->commit;
+        utime time, $targetStatRef->[STAT_MTIME], $dir;
+
         if ( ref $scalar && keys %$scalar ) {
-            if (@grabSources) {
-                my ( $toGrab, $excluded ) =
-                  _filterExclusions( $scalar, $grabExclusions );
-                if ($excluded) {
-                    $toGrab->{'.caseid'} = delete $excluded->{'.caseid'}
-                      if defined $excluded->{'.caseid'};
-                    my $tmpFile = "✘$$.txt";
-                    open my $fh, '>', $tmpFile;
-                    binmode $fh;
-                    print {$fh}
-                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-                      ->encode($excluded);
-                    close $fh;
-                    rename $tmpFile, '✘⬇️.txt';
-                }
-                else {
-                    unlink '✘⬇️.txt';
-                }
-                $missing->{$dir} = $toGrab if $toGrab;
-            }
-            else {
-                _saveMissingFilesCatalogues( $path, $scalar );
-            }
+            my ( $toGrab, $excluded ) =
+              _filterExclusions( $scalar, $grabExclusions );
+            $missing->{$dir} = $toGrab if $toGrab;
         }
     };
 
     my $folderAcceptor = sub {
         my (@scanMasterCliConfigClosures) = @_;
-        $hints ||=
-          FileMgt106::Database->new( catfile( dirname($perl5dir), '~$hints' ) );
+        $hints ||= $self->hintsObj;
         my $dir = decode_utf8 getcwd();
         if ($syncDestination) {
             my $destination = catdir( $syncDestination, basename($dir) );
@@ -215,7 +138,8 @@ sub makeProcessor {
             }
             return if $cleaningFlag =~ /only/i;
         }
-        my $scanMaster = FileMgt106::ScanMaster->new( $hints, $dir, $fs );
+        my $scanMaster =
+          FileMgt106::ScanMaster->new( $hints, $dir, $self->fileSystemObj );
         $_->( $scanMaster, $dir ) foreach @scanMasterCliConfigClosures;
         $scanMaster->dequeued;
     };
@@ -223,17 +147,13 @@ sub makeProcessor {
     my $finisher = sub {
         if ($missing) {
             my @rmdirList;
+            $hints ||= $self->hintsObj;
           SOURCE: foreach (@grabSources) {
-                my $grabSource = $_;    # a true copy, not a loop alias variable
-                unless ($grabSource) {
-                    binmode STDOUT;
-                    print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-                      ->encode($missing);
-                    next;
-                }
+                my $grabSource = $_    # true copy, not loop alias variable
+                  or next;
                 my ( $cellarScanner, $cellarDir );
                 unless ( $grabSource eq 'done' ) {
-                    $cellarDir = dirname($perl5dir);
+                    $cellarDir = $self->homePath;
                     if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
                         $cellarDir = $d;
                     }
@@ -259,7 +179,7 @@ sub makeProcessor {
                         mkdir $cellarDir;
                         chdir $cellarDir;
                         open my $fh,
-                          qq^| ssh $host 'perl "$extract" -tar -'^
+                          qq^| ssh $host 'perl "$extract" -tar - 2>/dev/null'^
                           . ' | tar -x -f -';
                         binmode $fh;
                         print {$fh}
@@ -268,11 +188,12 @@ sub makeProcessor {
                     }
                     require FileMgt106::FolderClean;
                     $hints->beginInteractive(1);
-                    FileMgt106::FolderClean::deepClean('.');    #use Scanner
+                    FileMgt106::FolderClean::deepClean('.');
                     $hints->commit;
                     $cellarScanner =
                       FileMgt106::ScanMaster->new( $hints,
-                        decode_utf8( getcwd() ), $fs );
+                        decode_utf8( getcwd() ),
+                        $self->fileSystemObj );
                     $cellarScanner->dequeued;
                 }
                 while ( my ( $dir, $scalar ) = each %$missing ) {
@@ -281,7 +202,9 @@ sub makeProcessor {
                         $scalar = (
                             $scanners{$dir} || FileMgt106::Scanner->new(
                                 $dir, $hints,
-                                $fs->statFromGid( ( stat $dir )[STAT_GID] )
+                                $self->fileSystemObj->statFromGid(
+                                    ( stat $dir )[STAT_GID]
+                                )
                             )
                         )->infill($scalar);
                     };
@@ -306,7 +229,11 @@ sub makeProcessor {
             }
             $missing = _filterByFileName($missing)
               unless grep { /:\+$/s; } @grabSources;
-            _saveMissingFilesCatalogues(%$missing);
+            if (%$missing) {
+                binmode STDOUT;
+                print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                  ->encode($missing);
+            }
             rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
@@ -317,6 +244,7 @@ sub makeProcessor {
     my $legacyArgumentsAcceptor = sub {
 
         my ( %locs, $repolocOptions, @scanMasterCliConfigClosures );
+        my $startFolder = $self->startFolder;
 
         foreach (@_) {
 
@@ -419,9 +347,7 @@ sub makeProcessor {
                 next;
             }
 
-            $hints ||=
-              FileMgt106::Database->new(
-                catfile( dirname($perl5dir), '~$hints' ) );
+            $hints ||= $self->hintsObj;
 
             if (/^-+migrate(?:=(.+))?/) {
                 $self->migrate( undef, $1 );
@@ -479,63 +405,7 @@ sub makeProcessor {
 
     };
 
-    my $chooserMaker = sub {
-        my ($initialise) = @_;
-        sub {
-            my ( $catalogue, $canonical, $fileExtension, $devNo ) = @_;
-            my $target =
-              FileMgt106::LoadSaveNormalize::loadNormalisedScalar($catalogue);
-            unlink $canonical if -l $canonical;
-            unlink $canonical . $fileExtension
-              if -l $canonical . $fileExtension;
-            return $target, $canonical if -d $canonical;
-            if (
-                ( my $sha1hex = $target->{'.caseid'} )
-                && (
-                    $hints ||= FileMgt106::Database->new(
-                        catfile( dirname($perl5dir), '~$hints' )
-                    )
-                )
-              )
-            {
-                $hints->beginInteractive;
-                my $iterator =
-                  $hints->{searchSha1}->( pack( 'H*', $sha1hex ), $devNo );
-                my $destination;
-                while ( my ( $path, $statref, $locid ) = $iterator->() ) {
-                    next if defined $destination;
-                    next if $path =~ m#/Y_Cellar.*/#;
-                    next
-                      unless $path =~
-                      s#(/\@[^/]+| \(mirrored from [^/]+\))/.*\.caseid$#$1#s;
-                    $destination = $path;
-                }
-                $hints->commit;
-                if ( defined $destination ) {
-                    symlink $destination, $canonical;
-                    return $target, $destination;
-                }
-            }
-            if ( $initialise && mkdir $canonical ) {
-                {
-                    open my $fh, '>', catfile( $canonical, '🚫.txt' );
-                    print {$fh} '{}';
-                }
-                {
-                    open my $fh, '>', catfile( $canonical, '⛔️.txt' );
-                    print {$fh} '{".":"no"}';
-                }
-                return $target, $canonical;
-            }
-            else {
-                symlink rel2abs($catalogue), $canonical . $fileExtension;
-                return;
-            }
-        };
-    };
-
-    $scalarAcceptor, $folderAcceptor, $finisher, $legacyArgumentsAcceptor,
-      $chooserMaker;
+    $scalarAcceptor, $folderAcceptor, $finisher, $legacyArgumentsAcceptor;
 
 }
 
@@ -555,18 +425,6 @@ sub _filterByFileName {
         $filtered{$_} = $v;
     }
     \%filtered;
-}
-
-sub _saveMissingFilesCatalogues {
-    while ( my ( $path, $missing ) = splice @_, 0, 2 ) {
-        my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
-        open my $fh, '>', $tmpFile;
-        binmode $fh;
-        print {$fh}
-          FileMgt106::LoadSaveNormalize::jsonMachineMaker()->encode($missing);
-        close $fh;
-        rename $tmpFile, catfile( $path, "\N{U+26A0}.txt" );
-    }
 }
 
 sub _filterExclusions {

@@ -25,7 +25,6 @@ package FileMgt106::LoadSaveNormalize;
 
 use warnings;
 use strict;
-use utf8;
 use Encode qw(decode_utf8);
 use Unicode::Normalize;
 

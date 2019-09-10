@@ -25,18 +25,46 @@ package FileMgt106::CLI::ScanCLI;
 
 use warnings;
 use strict;
-use utf8;
 
-require POSIX;
 use File::Basename qw(dirname);
-use File::Spec::Functions qw(catfile rel2abs abs2rel);
+use File::Spec::Functions qw(catfile rel2abs);
 use FileMgt106::Database;
-use FileMgt106::FileSystem qw(STAT_DEV STAT_MTIME);
+use FileMgt106::FileSystem qw(STAT_MTIME);
+use FileMgt106::CLI::Autograb;
+
+use constant {
+    SCLI_START    => 0,
+    SCLI_PERL5DIR => 1,
+    SCLI_FSOBJ    => 2,
+    SCLI_HINTS    => 3,
+};
 
 sub new {
-    my ( $class, $startFolder, $perl5dir, $fs ) = @_;
-    $fs ||= FileMgt106::FileSystem->new;
-    bless [ $startFolder, $perl5dir, $fs ], $class;
+    my $class = shift;
+    bless [@_], $class;
+}
+
+sub startFolder {
+    my ($self) = @_;
+    $self->[SCLI_START];
+}
+
+sub homePath {
+    my ($self) = @_;
+    dirname( $self->[SCLI_PERL5DIR] );
+}
+
+sub fileSystemObj {
+    my ($self) = @_;
+    $self->[SCLI_FSOBJ] ||= FileMgt106::FileSystem->new;
+}
+
+sub hintsObj {
+    my ($self) = @_;
+    return $self->[SCLI_HINTS] if $self->[SCLI_HINTS];
+    my $hintsFile = catfile( $self->homePath, '~$hints' );
+    $self->[SCLI_HINTS] = FileMgt106::Database->new($hintsFile)
+      or die "Cannot create database $hintsFile";
 }
 
 sub process {
@@ -63,76 +91,18 @@ EOW
 }
 
 sub watchtest {
-    my ( $self,        @arguments ) = @_;
-    my ( $startFolder, $perl5dir )  = @$self;
+    my ( $self, @arguments ) = @_;
     my $module   = 'Daemon112::SimpleWatch';
     my $nickname = 'wtest';
     my ( $logging, $hintsFile, $top, $repoPath, $gitPath, $jbzPath, $parent ) =
       map { defined $_ ? rel2abs($_) : $_; }
       grep { !/^-+watch/i; } @arguments;
-    $parent ||= $startFolder;
+    $parent ||= $self->[SCLI_START];
     require Daemon112::Daemon;
     Daemon112::Daemon->run(
         $module,   $nickname, $logging, $hintsFile, $top,
         $repoPath, $gitPath,  $jbzPath, $parent
     );
-}
-
-sub autograb {
-
-    my ( $self,        @arguments ) = @_;
-    my ( $startFolder, $perl5dir )  = @$self;
-    my @grabSources = map { /^-+grab=(.+)/s ? $1 : (); } @arguments;
-    require FileMgt106::CLI::ScanProcessor;
-    my ( $scalarAcceptor, $folderAcceptor, $finisher, undef, $chooserMaker ) =
-      $self->makeProcessor( @grabSources ? @grabSources : '' );
-    my $chooser = $chooserMaker->( grep { /^-init/is; } @arguments );
-    my $stashLoc;
-    my @fileList = map {
-        if (/^-+stash=(.+)/) {
-            local $_ = $1;
-            $stashLoc = m#^/# ? $_ : "$startFolder/$_";
-            ();
-        }
-        elsif (/^-$/s) {
-            local $/ = "\n";
-            map { chomp; $_; } <STDIN>;
-        }
-        else {
-            $_;
-        }
-    } @arguments;
-
-    foreach (@fileList) {
-        $_ = abs2rel( $_, $startFolder ) if m#^/#s;
-        chdir $startFolder;
-        my @targetStat = stat;
-        -f _ or next;
-        my @components = split /\/+/;
-        my $canonical  = pop @components;
-        next
-          unless $canonical =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
-        my $extension = $1;
-        my $source    = $components[0];
-        $source =~ s/^[^a-z]+//i;
-        $canonical = "\@$source $canonical";
-
-        if ( my ( $scalar, $folder ) =
-            $chooser->( $_, $canonical, $extension, $targetStat[STAT_DEV] ) )
-        {
-            $scalarAcceptor->(
-                $scalar, $folder, $1,
-                \@targetStat,
-                {
-                    restamp => 1,
-                    stash   => $stashLoc,
-                }
-            );
-        }
-    }
-
-    $finisher->();
-
 }
 
 sub _prettifyField {
@@ -146,10 +116,7 @@ sub _prettifyField {
 sub volume {
 
     my ( $self, $command, $subcommand, @volumes ) = @_;
-    my ( $startFolder, $perl5dir ) = @$self;
-    my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
-    my $hints = FileMgt106::Database->new($hintsFile)
-      or die "Cannot create database $hintsFile";
+    my $hints    = $self->hintsObj;
     my $dbHandle = $hints->{dbHandle};
 
     if ( defined $subcommand && $subcommand =~ /on|off|enab|disab/i ) {
@@ -193,22 +160,21 @@ sub volume {
 sub migrate {
 
     my ( $self, $command, $oldFileName ) = @_;
-    my ( $startFolder, $perl5dir ) = @$self;
 
-    $oldFileName = rel2abs( $oldFileName, $startFolder )
+    $oldFileName = rel2abs( $oldFileName, $self->[SCLI_START] )
       if defined $oldFileName;
-    chdir dirname($perl5dir) or die "chdir dirname($perl5dir): $!";
+    chdir dirname( $self->[SCLI_PERL5DIR] )
+      or die "chdir dirname($self->[SCLI_PERL5DIR]): $!";
     unless ( $oldFileName && -f $oldFileName ) {
         my $mtime = ( stat '~$hints' )[STAT_MTIME]
           or die 'No existing hints file';
-        $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
+     require POSIX;
+   $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
         $oldFileName = '~$hints ' . $mtime;
         rename '~$hints', $oldFileName
           or die "Cannot move ~\$hints to $oldFileName: $!";
     }
-    my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
-    my $hints = FileMgt106::Database->new($hintsFile)
-      or die "Cannot create database $hintsFile";
+    my $hints    = $self->hintsObj;
     my $dbHandle = $hints->{dbHandle};
     $dbHandle->{AutoCommit} = 1;
     $dbHandle->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
@@ -227,7 +193,7 @@ sub migrate {
         $hints->{deepCopy}->( 'old.locations', 0, 0, undef, $reportProgress );
         warn 'Committing changes';
         sleep 2 while !$dbHandle->commit;
-        FileMgt106::Database->new($hintsFile)
+        __PACKAGE__->new(@$self)->hintsObj
           or die 'Cannot complete database initialisation';
     }
     else {
