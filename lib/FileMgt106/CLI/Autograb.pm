@@ -80,7 +80,8 @@ sub autograb {
         $folder = "\@$source $folder";
         my $target = FileMgt106::LoadSaveNormalize::loadNormalisedScalar($_);
 
-        if ( !-d $folder && ( my $caseidsha1hex = $target->{'.caseid'} ) ) {
+        my $caseidsha1hex = $target->{'.caseid'};
+        if ( !-d $folder && $caseidsha1hex ) {
             $hints->beginInteractive;
             my $iterator =
               $hints->{searchSha1}
@@ -116,6 +117,7 @@ sub autograb {
                         catfile( $folder, $buildExclusionsFile )
                     )
                 );
+                $target->{'.caseid'} = $caseidsha1hex if $caseidsha1hex;
                 $target->{$buildExclusionsFile} =
                   $target->{"📖$fileExtension"} = [];
             }
@@ -151,7 +153,7 @@ sub _filterExclusions {
     my ( $src, $excl ) = @_;
     return unless defined $src;
     return $src unless $excl;
-    return wantarray ? ( undef, $src ) : undef if !ref $excl || $excl->{'.'};
+    return ( undef, $src ) if !ref $excl || $excl->{'.'};
     my %included = %$src;
     my %excluded;
     ( $included{$_}, $excluded{$_} ) =
