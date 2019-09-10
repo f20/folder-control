@@ -49,8 +49,7 @@ sub makeProcessor {
         push @toRestamp, $path if $options->{restamp};
         $hints ||= $self->hintsObj;
         delete $scalar->{$_} foreach grep { /\//; } keys %$scalar;
-        my $dir = $path;
-        my ($grabExclusions);
+        my $dir  = $path;
         my $rgid = $targetStatRef->[STAT_GID];
         mkdir $dir unless -e $dir;
         chown 0, $rgid, $dir;
@@ -76,12 +75,7 @@ sub makeProcessor {
         warn "scan $dir: $@" if $@;
         $hints->commit;
         utime time, $targetStatRef->[STAT_MTIME], $dir;
-
-        if ( ref $scalar && keys %$scalar ) {
-            my ( $toGrab, $excluded ) =
-              _filterExclusions( $scalar, $grabExclusions );
-            $missing->{$dir} = $toGrab if $toGrab;
-        }
+        $missing->{$dir} = $scalar if ref $scalar && keys %$scalar;
     };
 
     my $folderAcceptor = sub {
@@ -425,25 +419,6 @@ sub _filterByFileName {
         $filtered{$_} = $v;
     }
     \%filtered;
-}
-
-sub _filterExclusions {
-    my ( $src, $excl ) = @_;
-    return unless defined $src;
-    return $src unless $excl;
-    return wantarray ? ( undef, $src ) : undef if !ref $excl || $excl->{'.'};
-    my %included = %$src;
-    my %excluded;
-    ( $included{$_}, $excluded{$_} ) =
-      _filterExclusions( $included{$_}, $excl->{$_} )
-      foreach keys %$excl;
-    delete $included{$_}
-      foreach grep { !defined $included{$_}; } keys %included;
-    my $included = %included ? \%included : undef;
-    return $included unless wantarray;
-    delete $excluded{$_}
-      foreach grep { !defined $excluded{$_}; } keys %excluded;
-    $included, %excluded ? \%excluded : undef;
 }
 
 1;

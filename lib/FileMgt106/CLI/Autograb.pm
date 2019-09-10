@@ -104,7 +104,7 @@ sub autograb {
         if ( -d $folder ) {
             if (
                 my ($buildExclusionsFile) =
-                grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt'
+                grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt', '⚠️.txt'
               )
             {
                 unlink catfile( $folder, "📖$fileExtension" );
@@ -127,6 +127,16 @@ sub autograb {
                     stash   => $stashLoc,
                 }
             );
+            if ( ref $target && keys %$target ) {
+                unlink catfile( $folder, "📖$fileExtension" );
+                symlink rel2abs( $_, $self->startFolder ),
+                  catfile( $folder, "📖$fileExtension" );
+                open my $fh, '>', catfile( $folder, '⚠️.txt' );
+                binmode $fh;
+                print {$fh}
+                  FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                  ->encode($target);
+            }
         }
         elsif ( $options{symlinkCats} ) {
             symlink $_, "$folder$fileExtension";
@@ -135,6 +145,25 @@ sub autograb {
 
     $finisher->();
 
+}
+
+sub _filterExclusions {
+    my ( $src, $excl ) = @_;
+    return unless defined $src;
+    return $src unless $excl;
+    return wantarray ? ( undef, $src ) : undef if !ref $excl || $excl->{'.'};
+    my %included = %$src;
+    my %excluded;
+    ( $included{$_}, $excluded{$_} ) =
+      _filterExclusions( $included{$_}, $excl->{$_} )
+      foreach keys %$excl;
+    delete $included{$_}
+      foreach grep { !defined $included{$_}; } keys %included;
+    my $included = %included ? \%included : undef;
+    return $included unless wantarray;
+    delete $excluded{$_}
+      foreach grep { !defined $excluded{$_}; } keys %excluded;
+    $included, %excluded ? \%excluded : undef;
 }
 
 1;
