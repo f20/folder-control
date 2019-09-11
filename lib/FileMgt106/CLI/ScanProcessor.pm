@@ -25,6 +25,7 @@ package FileMgt106::CLI::ScanCLI;
 
 use warnings;
 use strict;
+use utf8;
 
 require POSIX;
 use Cwd qw(getcwd);
@@ -140,99 +141,112 @@ sub makeProcessor {
 
     my $finisher = sub {
         if ($missing) {
-            my @rmdirList;
-            $hints ||= $self->hintsObj;
-          SOURCE: foreach (@grabSources) {
-                my $grabSource = $_    # true copy, not loop alias variable
-                  or next;
-                my ( $cellarScanner, $cellarDir );
-                unless ( $grabSource eq 'done' ) {
-                    $cellarDir = $self->homePath;
-                    if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
-                        $cellarDir = $d;
+            if (@grabSources) {
+                my @rmdirList;
+                $hints ||= $self->hintsObj;
+              SOURCE: foreach (@grabSources) {
+                    my $grabSource = $_;    # true copy, not loop alias variable
+                    my ( $cellarScanner, $cellarDir );
+                    unless ( $grabSource eq 'done' ) {
+                        $cellarDir = $self->homePath;
+                        if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
+                            $cellarDir = $d;
+                        }
+                        {
+                            my $toGrab =
+                                $grabSource =~ s/:\+$//s
+                              ? $missing
+                              : _filterByFileName($missing);
+                            next SOURCE unless %$toGrab;
+                            warn "Grabbing from $grabSource\n";
+                            my ( $host, $extract ) =
+                              $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
+                              ? ( $1, 'extract.pl' )
+                              : $grabSource =~
+                              m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
+                              ? ( $1, $2 )
+                              : die $grabSource;
+                            $cellarDir .= '/Y_Cellar '
+                              . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z',
+                                localtime )
+                              . ' '
+                              . $host;
+                            mkdir $cellarDir;
+                            chdir $cellarDir;
+                            open my $fh,
+                              qq^| ssh $host 'perl "$extract" -tar -^
+                              . q^ 2>/dev/null' | tar -x -f -^;
+                            binmode $fh;
+                            print {$fh}
+                              FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                              ->encode($toGrab);
+                        }
+                        require FileMgt106::FolderClean;
+                        $hints->beginInteractive(1);
+                        FileMgt106::FolderClean::deepClean('.');
+                        $hints->commit;
+                        $cellarScanner =
+                          FileMgt106::ScanMaster->new( $hints,
+                            decode_utf8( getcwd() ),
+                            $self->fileSystemObj );
+                        $cellarScanner->dequeued;
                     }
-                    {
-                        my $toGrab =
-                            $grabSource =~ s/:\+$//s
-                          ? $missing
-                          : _filterByFileName($missing);
-                        next SOURCE unless %$toGrab;
-                        warn "Grabbing from $grabSource\n";
-                        my ( $host, $extract ) =
-                          $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
-                          ? ( $1, 'extract.pl' )
-                          : $grabSource =~
-                          m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
-                          ? ( $1, $2 )
-                          : die $grabSource;
-                        $cellarDir .=
-                            '/Y_Cellar '
-                          . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime )
-                          . ' '
-                          . $host;
-                        mkdir $cellarDir;
-                        chdir $cellarDir;
-                        open my $fh,
-                          qq^| ssh $host 'perl "$extract" -tar - 2>/dev/null'^
-                          . ' | tar -x -f -';
-                        binmode $fh;
-                        print {$fh}
-                          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-                          ->encode($toGrab);
-                    }
-                    require FileMgt106::FolderClean;
-                    $hints->beginInteractive(1);
-                    FileMgt106::FolderClean::deepClean('.');
-                    $hints->commit;
-                    $cellarScanner =
-                      FileMgt106::ScanMaster->new( $hints,
-                        decode_utf8( getcwd() ),
-                        $self->fileSystemObj );
-                    $cellarScanner->dequeued;
-                }
-                while ( my ( $dir, $scalar ) = each %$missing ) {
-                    $hints->beginInteractive;
-                    eval {
-                        $scalar = (
-                            $scanners{$dir} || FileMgt106::Scanner->new(
-                                $dir, $hints,
-                                $self->fileSystemObj->statFromGid(
-                                    ( stat $dir )[STAT_GID]
+                    while ( my ( $dir, $scalar ) = each %$missing ) {
+                        $hints->beginInteractive;
+                        eval {
+                            $scalar = (
+                                $scanners{$dir} || FileMgt106::Scanner->new(
+                                    $dir, $hints,
+                                    $self->fileSystemObj->statFromGid(
+                                        ( stat $dir )[STAT_GID]
+                                    )
                                 )
-                            )
-                        )->infill($scalar);
-                    };
-                    warn "infill $dir: $@" if $@;
-                    $hints->commit;
-                    if ($scalar) {
-                        $missing->{$dir} = $scalar;
+                            )->infill($scalar);
+                        };
+                        warn "infill $dir: $@" if $@;
+                        $hints->commit;
+                        if ($scalar) {
+                            $missing->{$dir} = $scalar;
+                        }
+                        else {
+                            delete $missing->{$dir};
+                        }
                     }
-                    else {
-                        delete $missing->{$dir};
+                    if ( defined $cellarDir ) {
+                        require FileMgt106::FolderClean;
+                        $hints->beginInteractive(1);
+                        FileMgt106::FolderClean::deepClean($cellarDir);
+                        $hints->commit;
+                        $cellarScanner->dequeued;
+                        push @rmdirList, $cellarDir;
                     }
+                    last unless %$missing;
                 }
-                if ( defined $cellarDir ) {
-                    require FileMgt106::FolderClean;
-                    $hints->beginInteractive(1);
-                    FileMgt106::FolderClean::deepClean($cellarDir);
-                    $hints->commit;
-                    $cellarScanner->dequeued;
-                    push @rmdirList, $cellarDir;
+                $missing = _filterByFileName($missing)
+                  unless grep { /:\+$/s; } @grabSources;
+                while ( my ( $path, $missing ) = each %$missing ) {
+                    my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
+                    open my $fh, '>', $tmpFile;
+                    binmode $fh;
+                    print {$fh}
+                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                      ->encode($missing);
+                    close $fh;
+                    rename $tmpFile, catfile( $path, '⚠️.txt' );
                 }
-                last unless %$missing;
+                rmdir $_ foreach @rmdirList;
             }
-            $missing = _filterByFileName($missing)
-              unless grep { /:\+$/s; } @grabSources;
-            if (%$missing) {
+            else {    # no grab sources
                 binmode STDOUT;
                 print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
                   ->encode($missing);
             }
-            rmdir $_ foreach @rmdirList;
         }
         $hints->disconnect if $hints;
-        require FileMgt106::FolderOrganise;
-        FileMgt106::FolderOrganise::restampFolder($_) foreach @toRestamp;
+        if (@toRestamp) {
+            require FileMgt106::FolderOrganise;
+            FileMgt106::FolderOrganise::restampFolder($_) foreach @toRestamp;
+        }
     };
 
     my $legacyArgumentsAcceptor = sub {
@@ -271,8 +285,8 @@ sub makeProcessor {
             elsif (/^-+(filter|split|explode).*$/) {
                 die "scan.pl does not support -$1 any more; use extract.pl";
             }
-            elsif (/^-+grab=?(.*)/) {
-                push @grabSources, $1 || '';
+            elsif (/^-+grab=?(.+)/) {
+                push @grabSources, $1;
                 next;
             }
             elsif (/^-+noaction/) {

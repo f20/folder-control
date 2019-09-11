@@ -129,16 +129,6 @@ sub autograb {
                     stash   => $stashLoc,
                 }
             );
-            if ( ref $target && keys %$target ) {
-                unlink catfile( $folder, "📖$fileExtension" );
-                symlink rel2abs( $_, $self->startFolder ),
-                  catfile( $folder, "📖$fileExtension" );
-                open my $fh, '>', catfile( $folder, '⚠️.txt' );
-                binmode $fh;
-                print {$fh}
-                  FileMgt106::LoadSaveNormalize::jsonMachineMaker()
-                  ->encode($target);
-            }
         }
         elsif ( $options{symlinkCats} ) {
             symlink $_, "$folder$fileExtension";
