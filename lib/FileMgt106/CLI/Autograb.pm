@@ -108,6 +108,10 @@ sub autograb {
                 grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt', '⚠️.txt'
               )
             {
+                rename(
+                    catfile( $folder, $buildExclusionsFile ),
+                    catfile( $folder, $buildExclusionsFile = '⛔️.txt' )
+                ) if $buildExclusionsFile eq '⚠️.txt';
                 unlink catfile( $folder, "📖$fileExtension" );
                 symlink rel2abs( $_, $self->startFolder ),
                   catfile( $folder, "📖$fileExtension" );
@@ -118,8 +122,8 @@ sub autograb {
                     )
                 );
                 $target->{'.caseid'} = $caseidsha1hex if $caseidsha1hex;
-                $target->{$buildExclusionsFile} =
-                  $target->{"📖$fileExtension"} = [];
+                $target->{"📖$fileExtension"} = [];
+                $target->{$buildExclusionsFile} = [];
             }
             $scalarAcceptor->(
                 $target, $folder, $1,
