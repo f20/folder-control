@@ -1,6 +1,6 @@
 package FileMgt106::ResolveFilter;
 
-# Copyright 2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2018-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -28,26 +28,26 @@ use strict;
 
 sub resolveAbsolutePaths {
     my ( $inputValue, $sha1FromStat, $sha1calc ) = @_;
-    my $consolidated;
+    my %consolidated;
     while ( my ( $k, $v ) = each %$inputValue ) {
         if ( substr( $k, 0, 1 ) eq '/' ) {
-            $consolidated->{$k} = $v;
+            $consolidated{$k} = $v;
         }
         elsif ( ref $v eq 'HASH' ) {
-            $consolidated->{$k} =
+            $consolidated{$k} =
               resolveAbsolutePaths( $v, $sha1FromStat, $sha1calc );
         }
         elsif ( $v =~ m#^/.*?([^/]+)$#s && -f $v && -r _ ) {
             my $sha1 =
               $sha1FromStat->( $1, ( stat _ )[ 0, 1, 7, 9 ] );
             $sha1 = $sha1calc->($v) unless defined $sha1;
-            $consolidated->{$k} = defined $sha1 ? unpack( 'H*', $sha1 ) : $v;
+            $consolidated{$k} = defined $sha1 ? unpack( 'H*', $sha1 ) : $v;
         }
         else {
-            $consolidated->{$k} = $v;
+            $consolidated{$k} = $v;
         }
     }
-    $consolidated;
+    \%consolidated;
 }
 
 1;
