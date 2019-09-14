@@ -81,6 +81,7 @@ sub autograb {
         my $target = FileMgt106::LoadSaveNormalize::loadNormalisedScalar($_);
 
         my $caseidsha1hex = $target->{'.caseid'};
+        undef $caseidsha1hex if ref $caseidsha1hex;
         if ( !-d $folder && $caseidsha1hex ) {
             $hints->beginInteractive;
             my $iterator =
