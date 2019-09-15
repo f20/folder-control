@@ -51,13 +51,13 @@ sub makeHintsBuilder {
 
         # Scalar representing missing objects (or false if none).
         my $returnValue;
+
         my $stashFolder;
         my $dh;
         opendir $dh, $whereYouWantIt;
         my %toDelete =
           map { ( decode_utf8($_) => undef ); }
-          grep { !/^(?:\.\.?|Icon\r|\.git|\@.*|.* \(mirrored from .*\))$/s; }
-          readdir $dh;
+          grep { !/^(?:\.\.?|Icon\r)$/s; } readdir $dh;
         closedir $dh;
 
       ENTRY: while ( my ( $name, $what ) = each %$whatYouWant ) {
