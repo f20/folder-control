@@ -165,7 +165,7 @@ sub makeProcessor {
                               : $grabSource =~
                               m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
                               ? ( $1, $2 )
-                              : die $grabSource;
+                              : die "Cannot grab from $grabSource";
                             $cellarDir .= '/Y_Cellar '
                               . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z',
                                 localtime )
@@ -285,7 +285,7 @@ sub makeProcessor {
             elsif (/^-+(filter|split|explode).*$/) {
                 die "scan.pl does not support -$1 any more; use extract.pl";
             }
-            elsif (/^-+grab=?(.+)/) {
+            elsif (/^-+grab=?(.*)/) {
                 push @grabSources, $1;
                 next;
             }
