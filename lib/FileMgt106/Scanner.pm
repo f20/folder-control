@@ -337,8 +337,8 @@ sub new {
 
             if ($mustBeTargeted) {
                 if ( !$target->{$_} ) {
-                    $stasher->( $_, $locid ) > 0
-                      or warn "Stashing $_ from $dir/$path";
+                    warn "No hints update when stashing $_ from $dir/$path"
+                      unless $stasher->( $_, $locid ) > 0;
                     delete $oldChildrenHashref->{$_};
                     next;
                 }
