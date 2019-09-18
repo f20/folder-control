@@ -145,16 +145,17 @@ sub automaticNumbering {
     my @statusByNumber;
     my $forceNumbering;
     my @toBeNumbered = grep {
-        if (/^([@ ]?)([ 0-9]+)\. /s) {
-            if ( length $1 ) {
-                my $l = length($2);
-                ++$l if $1 eq ' ' ;
-                $numberPadding = $l if $l > $numberPadding;
+        if ( my ( $prefix, $number ) = /^([@# ]?)([ 0-9]+)\. /s ) {
+            if ( length $prefix ) {
+                my $len = length($number);
+                ++$len if $prefix eq ' ';
+                $numberPadding = $len if $len > $numberPadding;
             }
-            $highestNumber = $2 if $2 > $highestNumber;
-            ++$statusByNumber[$2];
-            $forceNumbering ||= [ $2, $1 ? length($2) : 0, $_ ]
-              if /^([@ ]?)([ 0-9]+)\. +Force renumber/si;
+            $highestNumber = $number if $number > $highestNumber;
+            ++$statusByNumber[$number];
+            $forceNumbering ||=
+              [ $number, length($prefix) ? length($2) : 0, $_ ]
+              if /force renumber/i && !/\(done\)/i;
             0;
         }
         else {
@@ -162,27 +163,30 @@ sub automaticNumbering {
         }
     } keys %$contents;
     if ($forceNumbering) {
-        $highestNumber  = $forceNumbering->[0];
-        $numberPadding  = $forceNumbering->[1];
+        $highestNumber = $forceNumbering->[0];
+        $numberPadding = $forceNumbering->[1];
         @toBeNumbered =
           grep { $_ ne $forceNumbering->[2]; } keys %$contents;
         @statusByNumber = ();
         $statusByNumber[ $forceNumbering->[0] ] = 1;
+        my $newName = $forceNumbering->[2];
+        $newName =~ s/^[@# ]?[ 0-9]+//s;
+
         rename catdir( $path, $forceNumbering->[2] ),
           catdir(
             $path,
             (
                 $numberPadding
-                ? '@'
+                ? '#'
                   . '0' x ( $numberPadding - length( $forceNumbering->[0] ) )
                 : ''
               )
               . $forceNumbering->[0]
-              . '. Used for forced renumbering'
+              . "$newName (done)"
           );
     }
     else {
-        @toBeNumbered = grep { !/^\@[0-9]{$numberPadding}\. /s; }
+        @toBeNumbered = grep { !/^#[0-9]{$numberPadding}\. /s; }
           keys %$contents
           if $numberPadding;
         foreach my $number (
@@ -190,7 +194,7 @@ sub automaticNumbering {
             1 .. $highestNumber )
         {
             $number =
-              '@' . ( '0' x ( $numberPadding - length($number) ) ) . $number
+              '#' . ( '0' x ( $numberPadding - length($number) ) ) . $number
               if $numberPadding;
             push @toBeNumbered, grep { /^$number\. /s; } keys %$contents;
         }
@@ -205,12 +209,12 @@ sub automaticNumbering {
     foreach ( sort { $a->[1] <=> $b->[1]; } @toBeNumbered ) {
         my $name = $_->[0];
         my $number;
-        if ( $name =~ s/^[@ ]*([0-9]+)\. +//s && $statusByNumber[$1] ) {
+        if ( $name =~ s/^[@# ]*([0-9]+)\. +//s && $statusByNumber[$1] ) {
             $number = $1;
             undef $statusByNumber[$1];
         }
         $number ||= ++$highestNumber;
-        $number = '@' . ( '0' x ( $numberPadding - length($number) ) ) . $number
+        $number = '#' . ( '0' x ( $numberPadding - length($number) ) ) . $number
           if $numberPadding;
         $name = "$number. $name";
         if ( $_->[3] ) {
