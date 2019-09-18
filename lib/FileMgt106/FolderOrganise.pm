@@ -154,7 +154,7 @@ sub automaticNumbering {
             $highestNumber = $number if $number > $highestNumber;
             ++$statusByNumber[$number];
             $forceNumbering ||=
-              [ $number, length($prefix) ? length($2) : 0, $_ ]
+              [ $number, length($prefix) ? length($number) : 0, $_ ]
               if /force renumber/i && !/\(done\)/i;
             0;
         }
