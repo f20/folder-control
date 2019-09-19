@@ -147,7 +147,7 @@ sub makeProcessor {
               SOURCE: foreach (@grabSources) {
                     my $grabSource = $_;    # true copy, not loop alias variable
                     my ( $cellarScanner, $cellarDir );
-                    unless ( $grabSource eq 'done' ) {
+                    if ( $grabSource && $grabSource ne 'done' ) {
                         $cellarDir = $self->homePath;
                         if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
                             $cellarDir = $d;
