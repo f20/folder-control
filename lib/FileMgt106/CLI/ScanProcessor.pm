@@ -141,7 +141,7 @@ sub makeProcessor {
 
     my $finisher = sub {
         if ($missing) {
-            if (@grabSources) {
+            if ( grep { $_; } @grabSources ) {
                 my @rmdirList;
                 $hints ||= $self->hintsObj;
               SOURCE: foreach (@grabSources) {
@@ -285,7 +285,7 @@ sub makeProcessor {
             elsif (/^-+(filter|split|explode).*$/) {
                 die "scan.pl does not support -$1 any more; use extract.pl";
             }
-            elsif (/^-+grab=?(.+)/) {
+            elsif (/^-+grab=?(.*)/) {
                 push @grabSources, $1;
                 next;
             }
