@@ -490,6 +490,7 @@ EOL
         my ( $parid, $path ) = $qGetParidName->fetchrow_array;
         $qGetParidName->finish;
         return unless defined $path;
+        $path = decode_utf8 $path;
         while ($parid) {
             $qGetParidName->execute($parid);
             my ( $grandid, $parname ) = $qGetParidName->fetchrow_array;
