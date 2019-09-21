@@ -1,6 +1,6 @@
 package Daemon112::Daemon;
 
-# Copyright 2008-2016 Franck Latrémolière and Reckon LLP.
+# Copyright 2008-2019 Franck Latrémolière and Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -41,6 +41,7 @@ For KQueue events, the kevent structure (array reference) is an extra parameter.
 use strict;
 use warnings;
 use Daemon112::ArrayQueue;
+use Encode qw(decode_utf8);
 
 sub reloadMyModules {
     my $myInc = $INC{'Daemon112/Daemon.pm'};
@@ -140,7 +141,7 @@ sub run {
             if ( $signalQueue{USR2} ) {
                 warn 'Dumping ' . __PACKAGE__ . ' state with ' . $module;
                 delete $signalQueue{USR2};
-                warn '`pwd` = ' . `pwd`;
+                warn 'Working directory: ' . decode_utf8(`pwd`);
                 if ($pq) {
                     warn 'Priority queue: ' . ( 0 + @$pq ) . ' entries';
                 }

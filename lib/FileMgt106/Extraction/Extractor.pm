@@ -25,7 +25,6 @@ package FileMgt106::Extraction::Extractor;
 
 use strict;
 use warnings;
-use Encode qw(decode_utf8);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem

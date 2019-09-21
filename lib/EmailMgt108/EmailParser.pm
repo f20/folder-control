@@ -1,6 +1,6 @@
 package EmailMgt108::EmailParser;
 
-# Copyright 2012-2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2012-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -41,10 +41,10 @@ use constant STAT_MTIME => 9;
 sub getRawBody {
     my ($item) = @_;
     my $body = eval { $item->body_raw };
-    warn "$@ in " . `pwd` . " for $item body_raw" if $@;
+    warn "$@ for $item body_raw" if $@;
     my $how = eval { $item->header("Content-Transfer-Encoding"); }
       || '';
-    warn "$@ in " . `pwd` . " for $item transfer encoding" if $@;
+    warn "$@ for $item transfer encoding" if $@;
     $how =~ s/\A\s+//;
     $how =~ s/\s+\z//;
     $how =~ s/;.+//;    # For S/MIME, etc
@@ -60,7 +60,7 @@ sub getRawBody {
             $body =~ s/\n\n$/\n/s
               if $how eq 'qp';
         };
-        warn "$@ in " . `pwd` . " for decode_$how" if $@;
+        warn "$@ for decode_$how" if $@;
     }
 
     $body;

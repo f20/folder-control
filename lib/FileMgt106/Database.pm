@@ -176,7 +176,7 @@ EOL
     my $nap = sub {
         $hints->commit;
         undef $needsNap;
-        warn 'Commit done in ' . `pwd`;
+        warn 'Commit done in ' . decode_utf8(`pwd`);
         sleep 4;
         $hints->beginInteractive;
     };

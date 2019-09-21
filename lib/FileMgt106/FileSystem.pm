@@ -25,6 +25,7 @@ package FileMgt106::FileSystem;
 
 use strict;
 use warnings;
+use Encode qw(decode_utf8);
 
 use base 'Exporter';
 our @EXPORT_OK = qw(
@@ -250,7 +251,7 @@ sub statFromGid {
             if ( system( @aclargsnfsv4, $filename ) ) {
                 ++$aclStyleDevMapSingleton{$devno};
                 warn "No ACL support on $devno, tested on $filename in "
-                  . `pwd`;
+                  . decode_utf8(`pwd`);
                 undef;
             }
             else {

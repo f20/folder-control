@@ -26,7 +26,6 @@ package FileMgt106::ScanMasterAperture;
 use strict;
 use warnings;
 use Cwd;
-use Encode qw(decode_utf8 encode_utf8);
 use FileMgt106::FileSystem qw(STAT_MODE STAT_NLINK STAT_GID);
 use FileMgt106::ScanMaster;
 use FileMgt106::Scanner;

@@ -1,6 +1,6 @@
 package Daemon112::SimpleWatch;
 
-# Copyright 2013-2016 Franck Latrémolière.
+# Copyright 2013-2019 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -33,6 +33,7 @@ use Cwd;
 use FileMgt106::Database;
 use Daemon112::TopMaster;
 require Daemon112::Watcher;    # used but not loaded by TopMaster
+use Encode qw(decode_utf8);
 
 sub new {
     my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent, )
@@ -82,7 +83,10 @@ sub new {
         $pq->enqueue( time + 10, $makeRandoms );
     }
     my $heartbeat;
-    $heartbeat = sub { warn `pwd`; $qu->enqueue( time + 600, $heartbeat ); };
+    $heartbeat = sub {
+        warn decode_utf8(`pwd`);
+        $qu->enqueue( time + 600, $heartbeat );
+    };
     $heartbeat->();
     bless {
         # These fields are used by TopMaster and others

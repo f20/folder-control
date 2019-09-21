@@ -1,6 +1,6 @@
 package Daemon112::KQueue;
 
-# Copyright 2008-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2008-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -108,7 +108,7 @@ sub startWatching {
     my $sh;
     sysopen $sh, $path, O_EVTONLY
       or do {
-        warn "sysopen '$path': $! in " . `pwd`;
+        warn "sysopen '$path': $!";
         return;
       };
     my $no = fileno $sh;

@@ -80,8 +80,7 @@ sub dequeued {
             '', '', { sqlite_unicode => 1, } );
         $dbh->sqlite_busy_timeout(5_000);
         unless ( $dbh->do('begin immediate transaction') ) {
-            warn "EmailMaster cannot begin immediate transaction for $_ in "
-              . `pwd`;
+            warn "EmailMaster cannot begin immediate transaction for $_";
             next;
         }
         eval { $dbh->do($_) } foreach grep { $_ } split /;\s*/, <<EOS;

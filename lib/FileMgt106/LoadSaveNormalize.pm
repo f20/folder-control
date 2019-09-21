@@ -55,7 +55,7 @@ sub setNormalisation {
 
 sub renameFilesToNormalisedScannable {
     my ($dir) = @_;
-    opendir DIR, $dir or die "opendir: $! in " . `pwd`;
+    opendir DIR, $dir or die "opendir: $! in " . decode_utf8(`pwd`);
     my @list = map { decode_utf8 $_; } readdir DIR;
     closedir DIR;
     foreach (@list) {
@@ -79,18 +79,20 @@ sub renameFilesToNormalisedScannable {
                         $path = $d3;
                     }
                     else {
-                        warn "Rename $base~$c$ext -> $d3: $! in " . `pwd`;
+                        warn "Rename $base~$c$ext -> $d3: $! in "
+                          . decode_utf8(`pwd`);
                     }
                 }
                 else {
-                    warn "Rename $path -> $base~$c$ext: $! in " . `pwd`;
+                    warn "Rename $path -> $base~$c$ext: $! in "
+                      . decode_utf8(`pwd`);
                 }
             }
             elsif ( rename $path, $d3 ) {
                 $path = $d3;
             }
             else {
-                warn "Rename $path -> $d3: $! in " . `pwd`;
+                warn "Rename $path -> $d3: $! in " . decode_utf8(`pwd`);
             }
         }
         lstat $path;

@@ -166,7 +166,7 @@ sub _copyFile {
     warn join ' ', qw(system cp -p --), @_, 'returned',
       unpack( 'H*', pack( 'n', $status ) ), 'Caller:', caller,
       'Cwd:',
-      `pwd`;
+      decode_utf8(`pwd`);
     return;
 }
 

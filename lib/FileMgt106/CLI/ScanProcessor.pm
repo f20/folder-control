@@ -65,13 +65,13 @@ sub makeProcessor {
                 $scanners{$dir} = FileMgt106::Scanner->new(
                     $dir, $hints, $self->fileSystemObj->statFromGid($rgid)
                 )
-              )->scan(
+            )->scan(
                 0,
                 $scalar,
                 $options->{stash}
                 ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                 : (),
-              );
+            );
         };
         warn "scan $dir: $@" if $@;
         $hints->commit;

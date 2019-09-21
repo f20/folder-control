@@ -25,7 +25,7 @@ package FileMgt106::Scanner;
 
 use strict;
 use warnings;
-use Encode qw/decode_utf8/;
+use Encode qw(decode_utf8);
 use POSIX       ();
 use Digest::SHA ();
 use FileMgt106::FileSystem qw(
@@ -169,7 +169,7 @@ sub new {
                 my $newsha1 = sha1File($fileName);
                 unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
                     warn 'SHA1 mismatch after trying to copy '
-                      . "$source to $fileName in " . `pwd`;
+                      . "$source to $fileName";
                     @stat = ();
                     unlink $fileName;
                 }
