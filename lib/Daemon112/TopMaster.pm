@@ -116,10 +116,7 @@ sub attach {
                 '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
               . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
             if (@list) {
-                my @components =
-                  splitdir(
-                    $hints->{canonicalPath}->( catdir( $root, 'pad' ) ) );
-                pop @components;
+                my @components = splitdir( $hints->{canonicalPath}->($root) );
                 map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
                 my $category =
                   join( '.', map { length $_ ? $_ : '_' } @components )
