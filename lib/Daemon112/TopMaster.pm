@@ -122,7 +122,7 @@ sub attach {
                   join( '.', map { length $_ ? $_ : '_' } @components )
                   || 'No category';
                 if ( chdir $category ) {
-                    foreach ( split /\n/, `git ls-files` ) {
+                    foreach ( split /\n/, decode_utf8(`git ls-files`) ) {
                         s/\.txt$//s;
                         s/^_/./s;
                         next if exists $list{$_};
