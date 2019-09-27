@@ -1,6 +1,6 @@
 package Daemon112::TopMaster;
 
-# Copyright 2012-2019 Franck Latrémolière and Reckon LLP.
+# Copyright 2012-2019 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -139,6 +139,9 @@ sub attach {
                           "Removing $root/$_";
                     }
                 }
+                else {
+                    warn "Could not find folder $category";
+                }
                 if ( !$runner->{locs}{gitLastGarbageCollection}
                     || time - $runner->{locs}{gitLastGarbageCollection} >
                     86_100 )
@@ -178,7 +181,7 @@ sub dequeued {
 
 sub _listDirectory {
     my ( $topMaster, $dir ) = @_;
-    defined $dir and chdir($dir) || return;
+    return unless defined $dir && chdir $dir;
     my $handle;
     opendir $handle, '.' or return;
     my @list =
