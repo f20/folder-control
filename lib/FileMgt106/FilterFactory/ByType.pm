@@ -26,6 +26,37 @@ package FileMgt106::FilterFactory::ByType;
 use warnings;
 use strict;
 
+sub explodeByExtension {
+    my ( $what, $path ) = @_;
+    my %newHash;
+    while ( my ( $key, $val ) = each %$what ) {
+        if ( ref $val eq 'HASH' ) {
+            my ($exploded) = explodeByExtension($val);
+            while ( my ( $ext, $con ) = each %$exploded ) {
+                if ( $key eq $ext && ref $con eq 'HASH' ) {
+                    foreach ( keys %$con ) {
+                        my $new = $_;
+                        $new .= '_' while exists $newHash{$key}{$new};
+                        $newHash{$key}{$new} = $con->{$_};
+                    }
+                }
+                else {
+                    $newHash{$ext}{$key} = $con;
+                }
+            }
+        }
+        else {
+            my ( $base, $ext ) = ( $key =~ m#(.*)(\.\S+)$#s );
+            ( $base, $ext ) = ( $key, '' )
+              unless defined $ext;
+            $ext = lc $ext;
+            $ext =~ s/^\.+//s;
+            $newHash{$ext}{$key} = $val;
+        }
+    }
+    \%newHash, $path;
+}
+
 sub explodeByType {
     my ( $what, $path ) = @_;
     my %newHash;

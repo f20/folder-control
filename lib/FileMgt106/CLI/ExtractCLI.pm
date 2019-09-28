@@ -127,6 +127,7 @@ sub process {
         }
 
         if (/^-+explode/) {
+            my $byExtensionFlag = /ext/;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 my ($module) =
@@ -137,8 +138,10 @@ sub process {
                 }
                 require FileMgt106::FilterFactory::ByType unless $module;
                 my ( $exploded, $newPath ) =
-                    $module
-                  ? $module->new($scalar)->explode($path)
+                    $module ? $module->new($scalar)->explode($path)
+                  : $byExtensionFlag
+                  ? FileMgt106::FilterFactory::ByType::explodeByExtension(
+                    $scalar, $path )
                   : FileMgt106::FilterFactory::ByType::explodeByType( $scalar,
                     $path );
                 while ( my ( $k, $v ) = each %$exploded ) {
@@ -291,7 +294,7 @@ sub process {
                             tr#/#|#;
                             my $missing = $catalogueProcessor->(
                                 FileMgt106::LoadSaveNormalize::jsonMachineMaker(
-                                  )->decode(<$fh>),
+                                )->decode(<$fh>),
                                 $1
                             );
                             $outputScalar->{$1} = $missing
