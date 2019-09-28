@@ -198,7 +198,8 @@ EOSQL
 
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
-            $qAddRel->execute( $s, $getid->($k), ref $v ? $$v : $v );
+            $qAddRel->execute( $s, $getid->($k),
+                'SCALAR' eq ref $v ? $$v : $v );
         }
 
     };
