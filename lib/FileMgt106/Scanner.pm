@@ -787,35 +787,48 @@ sub new {
 
         my $rootBackuper;
         if ($repoPair) {
-            my @stat = stat $repoPair->[0] and -d _ and -w _
-              or die "$dir: don't like $repoPair->[0]";
-            my $repoRootLocid =
-              $hints->{topFolder}
-              ->( $repoPair->[0], @stat[ STAT_DEV, STAT_INO ] )
-              or die "$dir: no root locid for repository folder $repoPair->[0]";
-            $repoDev = $stat[STAT_DEV];
-            my $doBackup = sub {
-                my ( $repoLocid, $repoPath, $name, $locid, $sha1 ) = @_;
-                return 1 if $alreadyThere->( $repoLocid, $name, $sha1 );
-                my $repoName = $findName->( $repoLocid, $name, $repoPath );
-                $create->( $repoName, $repoLocid, $sha1, $repoDev, $repoPath );
-            };
-            $makeChildBackuper = sub {
-                my @makeClosureArg = @_;
-                my $path;
-                my $main               = $resolveLocidClosure;
-                my $doBackupForClosure = $doBackup;
-                sub {
-                    ( $main, $path ) = $main->(@makeClosureArg) if ref $main;
-                    @_
-                      ? $doBackupForClosure->( $main, $path, @_ )
-                      : ( $main, $path );
+            my @stat = stat $repoPair->[0];
+            unless ( -e _ ) {
+                system qw(mkdir -p), $repoPair->[0];
+                @stat = stat $repoPair->[0];
+            }
+            unless ( -d _ && -w _ ) {
+                warn "$dir: cannot use $repoPair->[0]";
+                undef $repoPair;
+            }
+            if ($repoPair) {
+                my $repoRootLocid =
+                  $hints->{topFolder}
+                  ->( $repoPair->[0], @stat[ STAT_DEV, STAT_INO ] )
+                  or die
+                  "$dir: no root locid for repository folder $repoPair->[0]";
+                $repoDev = $stat[STAT_DEV];
+                my $doBackup = sub {
+                    my ( $repoLocid, $repoPath, $name, $locid, $sha1 ) = @_;
+                    return 1 if $alreadyThere->( $repoLocid, $name, $sha1 );
+                    my $repoName = $findName->( $repoLocid, $name, $repoPath );
+                    $create->(
+                        $repoName, $repoLocid, $sha1, $repoDev, $repoPath
+                    );
                 };
-            };
-            $rootBackuper = $makeChildBackuper->(
-                sub { ( $repoRootLocid, $repoPair->[0] ); },
-                $repoPair->[1]
-            );
+                $makeChildBackuper = sub {
+                    my @makeClosureArg = @_;
+                    my $path;
+                    my $main               = $resolveLocidClosure;
+                    my $doBackupForClosure = $doBackup;
+                    sub {
+                        ( $main, $path ) = $main->(@makeClosureArg)
+                          if ref $main;
+                        @_
+                          ? $doBackupForClosure->( $main, $path, @_ )
+                          : ( $main, $path );
+                    };
+                };
+                $rootBackuper = $makeChildBackuper->(
+                    sub { ( $repoRootLocid, $repoPair->[0] ); },
+                    $repoPair->[1]
+                );
+            }
         }
 
         my $scalar = $scanDir->(
