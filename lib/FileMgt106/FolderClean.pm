@@ -40,7 +40,7 @@ sub deepClean {
                 : $b =~ /\.tmp$/si        ? "T $b"
                 : $b =~ /^Y_.* folder$/s  ? "B $b"
                 :                           "E $b"
-              ) cmp(
+            ) cmp(
                 $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
                 : $a =~ /\.tmp$/si       ? "T $a"
                 : $a =~ /^Y_.* folder$/s ? "B $a"
@@ -59,9 +59,8 @@ sub deepClean {
                 next;
             }
             my $newPath;
-            $newPath = "$folder/_$file" if $file =~ /^(\~\$|Z_|\.)/is;
-            $newPath = "$folder/${file}_"
-              if $file =~ /\.(?:app|download|lrcat|lrdata|tmp)$/is;
+            $newPath = "$folder/_$file"   if $file =~ /^(\~\$|Z_|\.)/is;
+            $newPath = "$folder/${file}_" if $file =~ /\.(?:download|tmp)$/is;
             if ($newPath) {
                 if ( -e $newPath ) {
                     my ( $base, $extension ) =

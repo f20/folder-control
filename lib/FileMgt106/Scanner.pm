@@ -65,7 +65,7 @@ sub new {
         \.pyc$
       )/sx;
 
-    my $regexIgnoreFolderContents = qr/\.(?:app|download|lrcat|lrdata|tmp)$/is;
+    my $regexIgnoreFolderContents = qr/\.(?:app|download|lrdata|tmp)$/is;
 
     my $regexWatchThisFile =
       -e '/System/Library'

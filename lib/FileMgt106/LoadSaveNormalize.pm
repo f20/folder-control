@@ -62,7 +62,7 @@ sub renameFilesToNormalisedScannable {
         next if /^\.(?:\.?$|_)/ || $_ eq '.DS_Store' || $_ eq '.git';
         my $norm = $normaliser->($_);
         $norm =~ s/^(\~\$|Z_|\.)/_$1/is;
-        $norm =~ s/\.(app|download|lrcat|lrdata|tmp)$/.${1}_/is;
+        $norm =~ s/\.(download|tmp)$/.${1}_/is;
         my $path = "$dir/$_";
         if ( $norm ne $_ ) {
             my $d3 = "$dir/$norm";
