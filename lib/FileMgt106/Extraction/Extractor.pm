@@ -121,31 +121,30 @@ sub makeHintsExtractor {
             }
             return keys %h2 ? \%h2 : undef;
         }
-        my $key = lc $what;
-        if ( exists $done{$key} ) {
-            return $done{$key} ? () : $what;
-        }
-
-        my $found;
-        my $sha1 = pack( 'H*', $what );
-        my $iterator = $searchSha1->( $sha1, $devNo );
-        my @candidates;
-        while ( my ( $path, $statref, $locid ) = $iterator->() ) {
-            next unless -f _ && -r _;
-            return $acceptor->( $done{$key} = $path )
-              if $locid
-              && !( $statref->[STAT_MODE] & 022 )
-              && !( $statref->[STAT_UID] && ( $statref->[STAT_MODE] & 0200 ) );
-            push @candidates, $path;
-        }
-        foreach (@candidates) {
-            return $acceptor->( $done{$key} = $_ )
-              if $sha1 eq eval {
-                open my $f, '<', $_;
-                $sha1Machine->addfile($f)->digest;
-              };
-        }
-        unless ( ref $what ) {
+        if ( $what =~ /([0-9a-fA-F]{40})/ ) {
+            my $key = lc $1;
+            if ( exists $done{$key} ) {
+                return $done{$key} ? () : $what;
+            }
+            my $sha1 = pack( 'H*', $key );
+            my $iterator = $searchSha1->( $sha1, $devNo );
+            my @candidates;
+            while ( my ( $path, $statref, $locid ) = $iterator->() ) {
+                next unless -f _ && -r _;
+                return $acceptor->( $done{$key} = $path )
+                  if $locid
+                  && !( $statref->[STAT_MODE] & 022 )
+                  && !( $statref->[STAT_UID]
+                    && ( $statref->[STAT_MODE] & 0200 ) );
+                push @candidates, $path;
+            }
+            foreach (@candidates) {
+                return $acceptor->( $done{$key} = $_ )
+                  if $sha1 eq eval {
+                    open my $f, '<', $_;
+                    $sha1Machine->addfile($f)->digest;
+                  };
+            }
             undef $done{$key};
             return $what;
         }
