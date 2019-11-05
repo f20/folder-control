@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -289,6 +289,89 @@ sub makeInfoExtractor {
 
     $processScal, $processQuery;
 
+}
+
+sub _prettify {
+    my ( $after, $before, $spaces ) = @_;
+    $after ||= 0;
+    $after -= $before if $before;
+    do { } while $after =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
+    $spaces -= length $after;
+    ( $spaces > 0 ? ' ' x $spaces : '' ) . $after;
+}
+
+sub makeStatisticsExtractor {
+    my ($hintsFile) = @_;
+    binmode STDOUT, ':utf8';
+    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    my $query =
+      $hints->{dbHandle}->prepare('select size from locations where sha1=?');
+    my (
+        %seen,  $found,   $missing, $dups, $bytes,
+        %found, %missing, %dups,    %bytes
+    );
+    my $processor;
+    $processor = sub {
+        my ($cat) = @_;
+        while ( my ( $k, $v ) = each %$cat ) {
+            if ( 'HASH' eq ref $v ) {
+                $processor->($v);
+                next;
+            }
+            if ( $v =~ /([a-fA-F0-9]{40})/ ) {
+                my $sha1hex = lc $1;
+                my ($ext) = $k =~ /\.([a-zA-Z0-9_]+)$/s;
+                if ( exists $seen{$sha1hex} ) {
+                    ++$dups;
+                    ++$dups{$ext} if defined $ext;
+                }
+                else {
+                    undef $seen{$sha1hex};
+                    $query->execute( pack( 'H*', $sha1hex ) );
+                    my ($b) = $query->fetchrow_array;
+                    $query->finish;
+                    if ( defined $b ) {
+                        ++$found;
+                        ++$found{$ext} if defined $ext;
+                        $bytes += $b;
+                        $bytes{$ext} += $b if defined $ext;
+                    }
+                    else {
+                        ++$missing;
+                        ++$missing{$ext} if defined $ext;
+                    }
+                }
+            }
+        }
+    };
+    sub {
+        my ( $scalar, $name ) = @_;
+        unless ( defined $name ) {
+            print _prettify( $found, undef, 7 )
+              . ' found, '
+              . _prettify( $bytes, undef, 11 )
+              . ' bytes, '
+              . _prettify( $missing, undef, 6 )
+              . ' missing, '
+              . _prettify( $dups, undef, 6 )
+              . " duplicated.\n";
+            return;
+        }
+        my $startFound   = $found;
+        my $startMissing = $missing;
+        my $startDups    = $dups;
+        my $startBytes   = $bytes;
+        $processor->($scalar);
+        print _prettify( $found, $startFound, 7 )
+          . ' found, '
+          . _prettify( $bytes, $startBytes, 11 )
+          . ' bytes, '
+          . _prettify( $missing, $startMissing, 6 )
+          . ' missing, '
+          . _prettify( $dups, $startDups, 6 )
+          . " duplicated, in $name\n";
+        return;
+    };
 }
 
 1;

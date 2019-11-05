@@ -216,6 +216,14 @@ sub process {
             next;
         }
 
+        if (/^-+stat/i) {
+            require FileMgt106::Extraction::Extractor;
+            $catalogueProcessor =
+              FileMgt106::Extraction::Extractor::makeStatisticsExtractor(
+                $hintsFile);
+            next;
+        }
+
         if (/^-+filter=?(.*)/i) {
             my ( $devNo, $devOnly );
             if ($1) {
