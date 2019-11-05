@@ -307,8 +307,8 @@ sub makeStatisticsExtractor {
     my $query =
       $hints->{dbHandle}->prepare('select size from locations where sha1=?');
     my (
-        %seen,  $found,   $missing, $dups, $bytes,
-        %found, %missing, %dups,    %bytes
+        %seen,   $found, $missing, $dups, $bytes,
+        $bytes2, %found, %missing, %dups, %bytes
     );
     my $processor;
     $processor = sub {
@@ -324,16 +324,18 @@ sub makeStatisticsExtractor {
                 if ( exists $seen{$sha1hex} ) {
                     ++$dups;
                     ++$dups{$ext} if defined $ext;
+                    $bytes2 += $seen{$sha1hex} if defined $seen{$sha1hex};
                 }
                 else {
-                    undef $seen{$sha1hex};
                     $query->execute( pack( 'H*', $sha1hex ) );
                     my ($b) = $query->fetchrow_array;
                     $query->finish;
+                    $seen{$sha1hex} = $b;
                     if ( defined $b ) {
                         ++$found;
                         ++$found{$ext} if defined $ext;
-                        $bytes += $b;
+                        $bytes  += $b;
+                        $bytes2 += $b;
                         $bytes{$ext} += $b if defined $ext;
                     }
                     else {
@@ -347,14 +349,16 @@ sub makeStatisticsExtractor {
     sub {
         my ( $scalar, $name ) = @_;
         unless ( defined $name ) {
-            print _prettify( $found, undef, 7 )
+            print _prettify( $found, undef, 10 )
               . ' found, '
-              . _prettify( $bytes, undef, 11 )
+              . _prettify( $bytes, undef, 15 )
               . ' bytes, '
-              . _prettify( $missing, undef, 6 )
+              . _prettify( $missing, undef, 7 )
               . ' missing, '
-              . _prettify( $dups, undef, 6 )
-              . " duplicated.\n";
+              . _prettify( $dups, undef, 7 )
+              . ' duplicated, '
+              . _prettify( $bytes2, undef, 11 )
+              . " bytes including duplication.\n";
             return;
         }
         my $startFound   = $found;
@@ -362,14 +366,15 @@ sub makeStatisticsExtractor {
         my $startDups    = $dups;
         my $startBytes   = $bytes;
         $processor->($scalar);
-        print _prettify( $found, $startFound, 7 )
+        print _prettify( $found, $startFound, 10 )
           . ' found, '
-          . _prettify( $bytes, $startBytes, 11 )
+          . _prettify( $bytes, $startBytes, 15 )
           . ' bytes, '
-          . _prettify( $missing, $startMissing, 6 )
+          . _prettify( $missing, $startMissing, 7 )
           . ' missing, '
-          . _prettify( $dups, $startDups, 6 )
-          . " duplicated, in $name\n";
+          . _prettify( $dups, $startDups, 7 )
+          . ' duplicated, '
+          . "$name\n";
         return;
     };
 }
