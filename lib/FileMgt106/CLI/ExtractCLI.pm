@@ -332,6 +332,7 @@ sub process {
               qq^git --git-dir="$gitRepo" ls-tree -z -r $gitBranch |^;
             while (<$gh>) {
                 my ( $sha1, $name ) = /^\S+ blob (\S+)\t(.*)\000$/s or next;
+                $name = decode_utf8 $name;
                 open my $h, qq^git --git-dir="$gitRepo" show $sha1 |^;
                 binmode $h;
                 my $missing =
