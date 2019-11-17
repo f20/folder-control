@@ -305,8 +305,7 @@ sub process {
                                 )->decode(<$fh>),
                                 $1
                             );
-                            $outputScalar->{$1} = $missing
-                              if $missing;
+                            $outputScalar->{$1} = $missing if $missing;
                         }
                         else {
                             my $scalar =
@@ -314,14 +313,30 @@ sub process {
                                 $_);
                             tr#/#|#;
                             my $missing = $catalogueProcessor->( $scalar, $1 );
-                            $outputScalar->{$1} = $missing
-                              if $missing;
+                            $outputScalar->{$1} = $missing if $missing;
                         }
                     }
                     else {
                         warn "Not processed: $_";
                     }
                 }
+            }
+        }
+
+        elsif (/git:(.+):(\S+)/) {
+            my $gitRepo     = $1;
+            my $gitBranch   = $2;
+            my $jsonMachine = FileMgt106::LoadSaveNormalize::jsonMachineMaker();
+            local $/ = "\000";
+            open my $gh,
+              qq^git --git-dir="$gitRepo" ls-tree -z -r $gitBranch |^;
+            while (<$gh>) {
+                my ( $sha1, $name ) = /^\S+ blob (\S+)\t(.*)\000$/s or next;
+                open my $h, qq^git --git-dir="$gitRepo" show $sha1 |^;
+                binmode $h;
+                my $missing =
+                  $catalogueProcessor->( $jsonMachine->decode(<$h>), $name );
+                $outputScalar->{$name} = $missing if $missing;
             }
         }
 
