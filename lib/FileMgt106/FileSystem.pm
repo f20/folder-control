@@ -60,7 +60,7 @@ use constant {
 my %aclStyleDevMapSingleton;       # undef = POSIX, 1 = NFSv4, 2 = none
 my %macOSGroupFromGidSingleton;    # name from gid
 my @cmpToolSingleton =
-    -e '/usr/bin/cmp' ? ('/usr/bin/cmp')
+    -e '/usr/bin/cmp' ? ( '/usr/bin/cmp', '--' )
   : -e '/usr/bin/diff' ? ( '/usr/bin/diff', '--brief', '--' )
   : -e '/opt/bin/diff' ? ( '/opt/bin/diff', '--brief', '--' )
   :                      die 'No cmp found';
