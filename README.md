@@ -5,9 +5,9 @@ This repository contains an open source Perl 5 system for file
 cataloguing, file backup, synchronisation and file-level deduplication.
 
 CPAN modules used:
-* Needed by almost everything: DBD::SQLite, JSON (included in recent versions of Perl).
-* Needed by some features: BSD::Resource, Email::MIME, IO::KQueue, Linux::Inotify.
+* Needed by almost everything: DBD::SQLite.
 * Recommended for performance: JSON::XS.
+* Needed by some features: BSD::Resource, Email::MIME, IO::KQueue, Linux::Inotify, Spreadsheet::WriteExcel, Excel::Writer::XLSX.
 
 UNIX group IDs determine some of the behaviours of these scripts.  The default assumptions about group IDs, which are in the source code of FileMgt106::FileSystem, are as follows:
 * 0 and 20 are exempted from some automatic tidying actions.
