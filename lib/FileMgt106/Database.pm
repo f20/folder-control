@@ -461,22 +461,17 @@ EOL
         $qUpdateSha1if->execute( @_[ 0, 0, 1 ] );
     };
 
-    my $paridNameFromLocid = $hints->{paridNameFromLocid} = sub {
-        my ($locid) = @_;
-        $qGetParidName->execute($locid);
-        my @paridName = $qGetParidName->fetchrow_array;
-        $qGetParidName->finish;
-        @paridName;
-    };
-
     $hints->{pathFinderFactory} = sub {
         my $pathFinder;
         my %paths;
         $pathFinder = sub {
             my ($locid) = @_;
             return $paths{$locid} if exists $paths{$locid};
-            my ( $parid, $name ) = $paridNameFromLocid->($locid);
+            $qGetParidName->execute($locid);
+            my ( $parid, $name ) = $qGetParidName->fetchrow_array;
+            $qGetParidName->finish;
             return $paths{$locid} = undef unless defined $parid;
+            $name = decode_utf8 $name;
             return $paths{$locid} = $name unless $parid;
             my $p = $pathFinder->($parid);
             return $paths{$locid} = undef unless defined $p;
