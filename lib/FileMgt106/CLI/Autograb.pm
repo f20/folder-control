@@ -104,9 +104,11 @@ sub autograb {
             }
         }
         if ( -d $folder ) {
+
             if (
                 my ($buildExclusionsFile) =
-                grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt', '⚠️.txt'
+                grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt',
+                '⚠️.txt', '🔺.json'
               )
             {
                 rename(
@@ -116,16 +118,25 @@ sub autograb {
                 unlink catfile( $folder, "📖$fileExtension" );
                 symlink rel2abs( $_, $self->startFolder ),
                   catfile( $folder, "📖$fileExtension" );
-                ( $target, my $excluded ) = _filterExclusions(
-                    $target,
-                    FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
-                        catfile( $folder, $buildExclusionsFile )
-                    )
-                );
+                my $exclusions =
+                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                    catfile( $folder, $buildExclusionsFile ) );
+                if ( $buildExclusionsFile eq '🔺.json' ) {
+                    require FileMgt106::ConsolidateFilter;
+                    my $consolidator = FileMgt106::ConsolidateFilter->new;
+                    $consolidator->baseProcessor->($exclusions);
+                    my $processor = $consolidator->additionsProcessor;
+                    $processor->( $target, 'Z' );
+                    $target = $processor->()->{Z};
+                }
+                else {
+                    ($target) = _filterExclusions( $target, $exclusions );
+                }
                 $target->{'.caseid'} = $caseidsha1hex if $caseidsha1hex;
                 $target->{"📖$fileExtension"} = [];
                 $target->{$buildExclusionsFile} = [];
             }
+
             $scalarAcceptor->(
                 $target, $folder, $1,
                 \@catStat,
@@ -134,10 +145,12 @@ sub autograb {
                     stash   => $stashLoc,
                 }
             );
+
         }
         elsif ( $options{symlinkCats} ) {
             symlink $_, "$folder$fileExtension";
         }
+
     }
 
     $finisher->();
