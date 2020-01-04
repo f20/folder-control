@@ -40,7 +40,7 @@ sub deepClean {
                 : $b =~ /\.tmp$/si        ? "T $b"
                 : $b =~ /^Y_.* folder$/s  ? "B $b"
                 :                           "E $b"
-            ) cmp(
+              ) cmp(
                 $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
                 : $a =~ /\.tmp$/si       ? "T $a"
                 : $a =~ /^Y_.* folder$/s ? "B $a"
@@ -74,11 +74,9 @@ sub deepClean {
             }
             my $nlinks = ( lstat $fullPath )[STAT_NLINK];
             ++$count
-              unless -d _ and !deepClean($fullPath) and rmdir $fullPath
-              or -l _ || -z _ and unlink $fullPath
-              or -f _
-              and $nlinks > 1
-              and unlink $fullPath;
+              unless -d _ && !deepClean($fullPath) && rmdir $fullPath
+              or -f _     && $nlinks > 1           && unlink $fullPath
+              or -l _     && unlink $fullPath;
         }
     }
     $count;

@@ -153,6 +153,7 @@ sub setRepoloc {
                         print {$f} $$blobref;
                         close $f;
                         rename "$name.txt.$$", "$name.txt";
+                        # implement keepCatalogueSymlink?
                         system qw(git commit -q --untracked-files=no -m),
                           $self->[SM_DIR]
                           if !system qw(git add), "$name.txt"
