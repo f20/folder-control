@@ -149,7 +149,8 @@ EOSQL
             return;
         }
 
-        if ( !defined $info->{path} && exists $seen{ $info->{sha1} } ) {
+        if ( undef && !defined $info->{path} && exists $seen{ $info->{sha1} } )
+        {
             $fileWriter->(
                 $info->{sha1}, [ $info->{mtime} ],
                 [ $info->{size} ], $info->{ext},
