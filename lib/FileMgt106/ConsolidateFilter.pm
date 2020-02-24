@@ -111,7 +111,7 @@ sub duplicationsProcessor {
         my ( $scalar, $path ) = @_;
         my ( $addh, $countNew, $countDup ) = $filter->($scalar);
         $path ||= 0;
-        warn "$path: $countNew new, $countDup duplicates.\n";
+        warn "$path: $countNew new, $countDup duplicated.\n";
         $path =~ s^.*/^^s;
         $path .= '_' while exists $duplicatedFiles{$path};
         $duplicatedFiles{$path} = $addh if $countDup;
@@ -179,7 +179,7 @@ sub baseProcessor {
     sub {
         my ( $scalar, $path ) = @_ or return;
         my ( $countNew, $countDup ) = $preloader->($scalar);
-        warn "$path: $countNew new, $countDup duplicates.\n";
+        warn "$path: $countNew new, $countDup duplicated.\n";
         return;
     };
 }
