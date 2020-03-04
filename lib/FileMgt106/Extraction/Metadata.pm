@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use File::Spec::Functions qw(catfile);
 use DBD::SQLite;
+use Digest::SHA;
 use Digest::SHA3;
 use Image::ExifTool;
 
@@ -58,11 +59,8 @@ sub metadataExtractionWorker {
     my ( $sha1, $sha512224, $sha3, $shake128, $et );
     my $preWorker = sub {
 
-        # Digest::SHA and Digest::SHA3 are thread-safe
-        # in FreeBSD 11 perl 5.2x but not in macOS perl 5.18
-        require Digest::SHA;
-        require Image::ExifTool;
-        require Digest::SHA3;
+        # Digest::SHA and Digest::SHA3 are thread-safe in FreeBSD 11 perl 5.2x
+        # but not in macOS perl 5.18
         $sha1      = Digest::SHA->new;
         $sha512224 = Digest::SHA->new(512224);
         $sha3      = Digest::SHA3->new;

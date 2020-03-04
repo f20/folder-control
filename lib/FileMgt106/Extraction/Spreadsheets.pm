@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Spreadsheets;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -139,8 +139,13 @@ sub makeSpreadsheetWriter {
                 ++$row;
                 unless ( defined $lastCol ) {
                     $lastCol = $#_;
-                    my @colWidth = qw(8 24 12 8 48 48),
-                      map { /date|time/i ? 48 : 12; } @_[ 6 .. $lastCol ];
+                    my @colWidth = (
+                        qw(8 24 12 8 48 48),
+                        map {
+                            local $_ = ref $_ ? ${$_}[0] : $_;
+                            /date|time/i ? 24 : 12;
+                        } @_[ 6 .. $lastCol ]
+                    );
                     $ws->set_column( $_, $_, $colWidth[$_] )
                       foreach 0 .. $lastCol;
                 }
