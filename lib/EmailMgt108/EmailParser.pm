@@ -23,8 +23,8 @@ package EmailMgt108::EmailParser;
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# To test:
-# perl -I/path/to/perl5/folder -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage($_) foreach "1."'
+# To test from the command line on an email file called 1.:
+# perl -I/path/to/lib -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage($_) foreach "1."'
 
 use strict;
 use warnings;

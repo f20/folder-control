@@ -7,6 +7,9 @@ cataloguing, file backup, synchronisation and file-level deduplication.
 * CPAN module needed by almost everything:
     DBD::SQLite
 
+* CPAN module recommended for performance:
+    JSON::XS
+
 * CPAN modules needed by some features:
     BSD::Resource
     Digest::SHA3
@@ -17,9 +20,6 @@ cataloguing, file backup, synchronisation and file-level deduplication.
     Linux::Inotify
     Thread::Pool
 
-* CPAN module recommended for performance:
-    JSON::XS
-
 UNIX group IDs determine some of the behaviours of these scripts.  The default assumptions about group IDs, which are in the source code of FileMgt106::FileSystem, are as follows:
 * 0 and 20 are exempted from some automatic tidying actions.
 * 6 is a Cyrus IMAP group.
@@ -29,3 +29,6 @@ UNIX group IDs determine some of the behaviours of these scripts.  The default a
 * Any member of 1028 is a member of 1025, 1026, 1066 and 1069.
 * Any member of 1029, 1032 or 1034 is a member of 1025 and 1026.
 * Any member of 1066 is a member of 1069.
+
+Franck Latrémolière
+4 March 2020

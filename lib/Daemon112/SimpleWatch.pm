@@ -1,6 +1,6 @@
 package Daemon112::SimpleWatch;
 
-# Copyright 2013-2019 Franck Latrémolière.
+# Copyright 2013-2020 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -23,6 +23,9 @@ package Daemon112::SimpleWatch;
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# To test from the command line:
+# perl -I$(pwd)/lib -MDaemon112::Daemon -e "binmode STDERR, ':utf8'; Daemon112::Daemon->run(qw(Daemon112::SimpleWatch watchtest), undef, undef, undef, undef, undef, undef, '$(pwd)')"
+
 use warnings;
 use strict;
 use utf8;
@@ -38,26 +41,13 @@ use Encode qw(decode_utf8);
 sub new {
     my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent, )
       = @_;
-    warn 'Daemon112::SimpleWatch started with'
-      . '$hintsFile'
-      . ( defined $hintsFile ? " = $hintsFile" : ' undefined' )
-      . '; $top'
-      . ( defined $top ? " = $top" : ' undefined' )
-      . '; $repo'
-      . ( defined $repo ? " = $repo" : ' undefined' )
-      . '; $git'
-      . ( defined $git ? " = $git" : ' undefined' )
-      . '; $jbz'
-      . ( defined $jbz ? " = $jbz" : ' undefined' )
-      . '; $parent'
-      . ( defined $parent ? " = $parent" : ' undefined' );
     my @extras;
     if ( !$hintsFile && $parent ) {
         mkdir my $home = catdir( $parent, 'testarea.tmp' );
         $hintsFile = catfile( $home, '~$hints' );
         mkdir $git = catdir( $home, 'git' );
         chdir $git && `git init`;
-        mkdir $jbz  = catdir( $home, 'jbz' );
+        0 and mkdir $jbz = catdir( $home, 'jbz' );
         mkdir $repo = catdir( $home, 'repo' );
         mkdir $top  = catdir( $home, 'top' );
         mkdir catdir( $top, 'mid' );
@@ -75,13 +65,26 @@ sub new {
                 $test1 = $newtest1;
             }
             chdir $test1;
-            `dd if=/dev/urandom of=test1-$counter count=1`;
+            `dd if=/dev/urandom of=test1-$counter count=1 2>/dev/null`;
             chdir $test2;
-            `dd if=/dev/urandom of=test2-$counter count=1`;
+            `dd if=/dev/urandom of=test2-$counter count=1 2>/dev/null`;
             $qu->enqueue( time + 8, $makeRandoms );
         };
         $pq->enqueue( time + 10, $makeRandoms );
     }
+    warn 'Daemon112::SimpleWatch started with'
+      . '$hintsFile'
+      . ( defined $hintsFile ? " = $hintsFile" : ' undefined' )
+      . '; $top'
+      . ( defined $top ? " = $top" : ' undefined' )
+      . '; $repo'
+      . ( defined $repo ? " = $repo" : ' undefined' )
+      . '; $git'
+      . ( defined $git ? " = $git" : ' undefined' )
+      . '; $jbz'
+      . ( defined $jbz ? " = $jbz" : ' undefined' )
+      . '; $parent'
+      . ( defined $parent ? " = $parent" : ' undefined' );
     my $heartbeat;
     $heartbeat = sub {
         warn decode_utf8(`pwd`);
@@ -107,7 +110,7 @@ sub new {
 
 sub dumpState {
     my ($self) = @_;
-    warn $self . "->{$_} = $self->{$_}\n" foreach sort keys %$self;
+    0 and warn $self . "->{$_} = $self->{$_}\n" foreach sort keys %$self;
     $self->{topMaster}->dumpState
       if UNIVERSAL::can( $self->{topMaster}, 'dumpState' );
 }

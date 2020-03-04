@@ -85,24 +85,8 @@ Usage:
     scan.pl -autograb [options] <catalogue-files>
     scan.pl -help
     scan.pl -migrate[=<old-hints-file>]
-    scan.pl -watchtest
     scan.pl <legacy-arguments>
 EOW
-}
-
-sub watchtest {
-    my ( $self, @arguments ) = @_;
-    my $module   = 'Daemon112::SimpleWatch';
-    my $nickname = 'wtest';
-    my ( $logging, $hintsFile, $top, $repoPath, $gitPath, $jbzPath, $parent ) =
-      map { defined $_ ? rel2abs($_) : $_; }
-      grep { !/^-+watch/i; } @arguments;
-    $parent ||= $self->[SCLI_START];
-    require Daemon112::Daemon;
-    Daemon112::Daemon->run(
-        $module,   $nickname, $logging, $hintsFile, $top,
-        $repoPath, $gitPath,  $jbzPath, $parent
-    );
 }
 
 sub _prettifyField {
