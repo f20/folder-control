@@ -1,4 +1,4 @@
-package FileMgt106::ScanMasterAperture;
+package FileMgt106::Scanning::ScanMasterAperture;
 
 # Copyright 2011-2019 Franck Latrémolière.
 #
@@ -27,16 +27,16 @@ use strict;
 use warnings;
 use Cwd;
 use FileMgt106::FileSystem qw(STAT_MODE STAT_NLINK STAT_GID);
-use FileMgt106::ScanMaster;
-use FileMgt106::Scanner;
+use FileMgt106::Scanning::ScanMaster;
+use FileMgt106::Scanning::Scanner;
 
-our @ISA = 'FileMgt106::ScanMaster';
+our @ISA = 'FileMgt106::Scanning::ScanMaster';
 
 use constant {
-    SM_DIR       => FileMgt106::ScanMaster::SM_DIR,
-    SM_ROOTLOCID => FileMgt106::ScanMaster::SM_ROOTLOCID,
-    SM_SCALAR    => FileMgt106::ScanMaster::SM_SCALAR,
-    SM_WATCHING  => FileMgt106::ScanMaster::SM_WATCHING,
+    SM_DIR       => FileMgt106::Scanning::ScanMaster::SM_DIR,
+    SM_ROOTLOCID => FileMgt106::Scanning::ScanMaster::SM_ROOTLOCID,
+    SM_SCALAR    => FileMgt106::Scanning::ScanMaster::SM_SCALAR,
+    SM_WATCHING  => FileMgt106::Scanning::ScanMaster::SM_WATCHING,
 };
 
 sub repairPermissions {
@@ -169,11 +169,11 @@ sub extractApertureMetadata {
 sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
     my $stat = FileMgt106::FileSystem->statFromGid( $self->repairPermissions );
-    FileMgt106::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
+    FileMgt106::Scanning::Scanner->new( "$self->[SM_DIR]/Masters", $hints, $stat )
       ->scan( time - 7 )
       if -d "$self->[SM_DIR]/Masters";
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
-      FileMgt106::Scanner->new( $self->[SM_DIR], $hints, $stat )->scan;
+      FileMgt106::Scanning::Scanner->new( $self->[SM_DIR], $hints, $stat )->scan;
     $self->[SM_SCALAR]{'/FilterFactory::Aperture'} =
       $self->extractApertureMetadata;
 }

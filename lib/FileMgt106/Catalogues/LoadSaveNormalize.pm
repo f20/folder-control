@@ -1,4 +1,4 @@
-package FileMgt106::LoadSaveNormalize;
+package FileMgt106::Catalogues::LoadSaveNormalize;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #

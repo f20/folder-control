@@ -1,4 +1,4 @@
-package FileMgt106::Builder;
+package FileMgt106::Folders::Builder;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #

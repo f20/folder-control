@@ -23,13 +23,12 @@ package FileMgt106::Extraction::Metadata;
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# This code may fails silently unless required modules (including
-# Digest::SHA3 and Image::ExifTool) are present.
-
 use strict;
 use warnings;
 use File::Spec::Functions qw(catfile);
 use DBD::SQLite;
+use Digest::SHA3;
+use Image::ExifTool;
 
 sub metadaExtractorMakerSimple {
     require Image::ExifTool;
@@ -74,7 +73,8 @@ sub metadataExtractionWorker {
         my ( $path, $basics ) = @_;
         warn "$path\n";
         my $results =
-          $path =~ /\.(?:jpg|jpeg|tif|tiff|psd|png|nef|arw|raw|m4a|mp3|mp4)$/is
+          $path =~
+          /\.(?:jpg|jpeg|tif|tiff|psd|png|nef|arw|raw|m4a|mp3|mp4|heic|heif)$/is
           ? $et->ImageInfo($path)
           : {};
         $results->{'SHA-1'}       = $sha1->addfile($path)->hexdigest;

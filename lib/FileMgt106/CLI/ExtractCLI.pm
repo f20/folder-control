@@ -29,7 +29,7 @@ use strict;
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catfile);
-use FileMgt106::LoadSaveNormalize;
+use FileMgt106::Catalogues::LoadSaveNormalize;
 
 use constant {
     STAT_DEV => 0,
@@ -51,9 +51,9 @@ sub process {
         local $_ = decode_utf8 $_;
 
         if (/^-+(?:make|build|cwd)(symlink)?(infill)?/i) {
-            require FileMgt106::Builder;
+            require FileMgt106::Folders::Builder;
             $catalogueProcessor =
-              FileMgt106::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
+              FileMgt106::Folders::Builder::makeHintsBuilder( $hintsFile, $1, $2 );
             $outputStream = \*STDOUT;
             next;
         }
@@ -61,17 +61,17 @@ sub process {
         if (/^-+resolve/) {
             require FileMgt106::Database;
             my $hints = FileMgt106::Database->new( $hintsFile, 1 );
-            require FileMgt106::ResolveFilter;
-            require FileMgt106::Scanner;
+            require FileMgt106::Scanning::ResolveFilter;
+            require FileMgt106::Scanning::Scanner;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
                 rename "$path.jbz", "$path+symlinks.jbz";
-                FileMgt106::LoadSaveNormalize::saveJbz(
+                FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
                     "$path.jbz",
-                    FileMgt106::ResolveFilter::resolveAbsolutePaths(
+                    FileMgt106::Scanning::ResolveFilter::resolveAbsolutePaths(
                         $scalar,
                         $hints->{sha1FromStat},
-                        \&FileMgt106::Scanner::sha1File
+                        \&FileMgt106::Scanning::Scanner::sha1File
                     )
                 );
                 return;
@@ -105,7 +105,7 @@ sub process {
                     }
                     \%d;
                 };
-                FileMgt106::LoadSaveNormalize::saveJbz( "$path+denested.jbz",
+                FileMgt106::Catalogues::LoadSaveNormalize::saveJbz( "$path+denested.jbz",
                     $denest->($scalar) );
                 return;
             };
@@ -118,7 +118,7 @@ sub process {
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
                     s#/#..#g;
-                    FileMgt106::LoadSaveNormalize::saveJbz( "$path \$$_.jbz",
+                    FileMgt106::Catalogues::LoadSaveNormalize::saveJbz( "$path \$$_.jbz",
                         ref $v ? $v : { $k => $v } );
                 }
                 return;
@@ -145,7 +145,7 @@ sub process {
                   : FileMgt106::FilterFactory::ByType::explodeByType( $scalar,
                     $path );
                 while ( my ( $k, $v ) = each %$exploded ) {
-                    FileMgt106::LoadSaveNormalize::saveJbz( "$newPath \$$k.jbz",
+                    FileMgt106::Catalogues::LoadSaveNormalize::saveJbz( "$newPath \$$k.jbz",
                         $v )
                       if ref $v;
                 }
@@ -236,37 +236,37 @@ sub process {
                 $devNo = $stat[STAT_DEV];
             }
             die 'Cannot find any file system for filtering' unless $devNo;
-            require FileMgt106::HintsFilter;
+            require FileMgt106::Catalogues::HintsFilter;
             $catalogueProcessor =
-              FileMgt106::HintsFilter::makeHintsFilter( $hintsFile,
+              FileMgt106::Catalogues::HintsFilter::makeHintsFilter( $hintsFile,
                 $devNo, $devOnly );
             $outputStream = \*STDOUT;
             next;
         }
 
         if (/^-+base/i) {
-            require FileMgt106::ConsolidateFilter;
-            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
             $catalogueProcessor = $consolidator->baseProcessor;
             next;
         }
         if (/^-+(add|new)/i) {
-            require FileMgt106::ConsolidateFilter;
-            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
             $catalogueProcessor = $consolidator->additionsProcessor;
             $outputStream       = \*STDOUT;
             next;
         }
         if (/^-+dups/i) {
-            require FileMgt106::ConsolidateFilter;
+            require FileMgt106::Catalogues::ConsolidateFilter;
             $catalogueProcessor =
-              FileMgt106::ConsolidateFilter->duplicationsByPairProcessor;
+              FileMgt106::Catalogues::ConsolidateFilter->duplicationsByPairProcessor;
             $outputStream = \*STDOUT;
             next;
         }
         if (/^-+dup/i) {
-            require FileMgt106::ConsolidateFilter;
-            $consolidator ||= FileMgt106::ConsolidateFilter->new;
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
             $catalogueProcessor = $consolidator->duplicationsProcessor;
             $outputStream       = \*STDOUT;
             next;
@@ -285,7 +285,7 @@ sub process {
             my $stdinblob = <STDIN>;
             if (
                 my $stdinscalar = eval {
-                    FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                    FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                       ->decode($stdinblob);
                 }
               )
@@ -301,7 +301,7 @@ sub process {
                             local undef $/;
                             tr#/#|#;
                             my $missing = $catalogueProcessor->(
-                                FileMgt106::LoadSaveNormalize::jsonMachineMaker(
+                                FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
                                 )->decode(<$fh>),
                                 $1
                             );
@@ -309,7 +309,7 @@ sub process {
                         }
                         else {
                             my $scalar =
-                              FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                              FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
                                 $_);
                             tr#/#|#;
                             my $missing = $catalogueProcessor->( $scalar, $1 );
@@ -326,7 +326,7 @@ sub process {
         elsif (/git:(.+):(\S+)/) {
             my $gitRepo     = $1;
             my $gitBranch   = $2;
-            my $jsonMachine = FileMgt106::LoadSaveNormalize::jsonMachineMaker();
+            my $jsonMachine = FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker();
             local $/ = "\000";
             open my $gh,
               qq^git --git-dir="$gitRepo" ls-tree -z -r $gitBranch |^;
@@ -349,14 +349,14 @@ sub process {
                 local undef $/;
                 tr#/#|#;
                 $missing = $catalogueProcessor->(
-                    FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                    FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                       ->decode(<$fh>),
                     $1
                 );
             }
             else {
                 my $scalar =
-                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar($_);
+                  FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
                 tr#/#|#;
                 $missing = $catalogueProcessor->( $scalar, $1 );
             }
@@ -385,7 +385,7 @@ sub process {
     if ($outputScalar) {
         binmode $outputStream;
         print {$outputStream}
-          FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+          FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
           ->encode($outputScalar);
     }
 

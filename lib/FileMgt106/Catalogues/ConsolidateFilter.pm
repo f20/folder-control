@@ -1,4 +1,4 @@
-package FileMgt106::ConsolidateFilter;
+package FileMgt106::Catalogues::ConsolidateFilter;
 
 # Copyright 2018-2019 Franck Latrémolière.
 #
@@ -136,7 +136,7 @@ sub duplicationsByPairProcessor {
                 foreach my $b ( keys %objectsToExamine ) {
                     next if $a eq $b;
                     next if exists $doNotBother{$a}{$b};
-                    my $consolidator = FileMgt106::ConsolidateFilter->new;
+                    my $consolidator = FileMgt106::Catalogues::ConsolidateFilter->new;
                     $consolidator->baseProcessor->( $objectsToExamine{$a}, $a );
                     my $processor = $consolidator->duplicationsProcessor;
                     $processor->( $objectsToExamine{$b}, $b );

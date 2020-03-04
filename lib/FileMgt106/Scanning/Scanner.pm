@@ -1,4 +1,4 @@
-package FileMgt106::Scanner;
+package FileMgt106::Scanning::Scanner;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
@@ -531,8 +531,8 @@ sub new {
                         chdir "$stash/$binName"
                           or die "chdir $stash/$binName: $!";
                         unless (/^Z_(?:Infill|Rubbish)/is) {
-                            require FileMgt106::LoadSaveNormalize;
-                            FileMgt106::LoadSaveNormalize::renameFilesToNormalisedScannable(
+                            require FileMgt106::Catalogues::LoadSaveNormalize;
+                            FileMgt106::Catalogues::LoadSaveNormalize::renameFilesToNormalisedScannable(
                                 '.');
                         }
                         my $frotl = /^Z_(?:Archive|Cellar)/is
@@ -548,7 +548,7 @@ sub new {
                             substr( $stash, length($dir) + 1 ) . "/$binName/",
                             $frotl
                           )
-                          : FileMgt106::Scanner->new( "$stash/$binName",
+                          : FileMgt106::Scanning::Scanner->new( "$stash/$binName",
                             $hints, $rstat )->scan($frotl);
                         $binned{"$binName"} = [ $cat, $crashIndicatorSymlink ];
                     }
@@ -659,8 +659,8 @@ sub new {
                         $repoDev, $backuper->()
                     );
                     if ($missing) {
-                        require FileMgt106::LoadSaveNormalize;
-                        FileMgt106::LoadSaveNormalize::saveJbz(
+                        require FileMgt106::Catalogues::LoadSaveNormalize;
+                        FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
                             "$dir/$path$binName-failed.jbz", $missing );
                     }
                 }

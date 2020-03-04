@@ -28,7 +28,7 @@ use strict;
 use Cwd;
 use File::Spec::Functions qw(catdir splitdir);
 use Encode qw(decode_utf8);
-use FileMgt106::ScanMaster;
+use FileMgt106::Scanning::ScanMaster;
 
 use constant {
     STAT_DEV => 0,
@@ -58,7 +58,7 @@ sub attach {
             grep {
                 !exists $list{$_}
                   && UNIVERSAL::isa( $topMaster->{$_},
-                    'FileMgt106::ScanMaster' );
+                    'FileMgt106::Scanning::ScanMaster' );
             } keys %$topMaster
           )
         {
@@ -92,7 +92,7 @@ sub attach {
             my $scanMaster = $topMaster->{$_};
             if ( !$scanMaster ) {
                 $scanMaster = $topMaster->{$_} =
-                  FileMgt106::ScanMaster->new( $hints, $dir )
+                  FileMgt106::Scanning::ScanMaster->new( $hints, $dir )
                   ->setRepoloc( $runner->{locs},
                     $topMaster->{'/repolocOptions'} );
                 $scanMaster->setWatch( 'Daemon112::Watcher',

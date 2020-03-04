@@ -1,4 +1,4 @@
-package FileMgt106::ScanMaster;
+package FileMgt106::Scanning::ScanMaster;
 
 # Copyright 2012-2019 Franck Latrémolière, Reckon LLP.
 #
@@ -36,7 +36,7 @@ use Digest::SHA qw(sha1 sha1_base64);
 require POSIX;
 use File::Basename qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile splitdir);
-use FileMgt106::Scanner;
+use FileMgt106::Scanning::Scanner;
 use FileMgt106::FileSystem qw(STAT_GID STAT_MTIME);
 
 use constant {
@@ -93,14 +93,14 @@ sub setRepoloc {
     }
 
     if ($resolveFlag) {
-        require FileMgt106::ResolveFilter;
+        require FileMgt106::Scanning::ResolveFilter;
         $self->addScalarFilter(
             sub {
                 my ( $runner, $scalar ) = @_;
-                FileMgt106::ResolveFilter::resolveAbsolutePaths(
+                FileMgt106::Scanning::ResolveFilter::resolveAbsolutePaths(
                     $scalar,
                     $self->[SM_HINTS]{sha1FromStat},
-                    \&FileMgt106::Scanner::sha1File
+                    \&FileMgt106::Scanning::Scanner::sha1File
                 );
             }
         );
@@ -198,8 +198,8 @@ sub addJbzName {
     my ( $self, $jbzName ) = @_;
     $self->addScalarTaker(
         sub {
-            require FileMgt106::LoadSaveNormalize;
-            FileMgt106::LoadSaveNormalize::saveBzOctets( $jbzName . $$,
+            require FileMgt106::Catalogues::LoadSaveNormalize;
+            FileMgt106::Catalogues::LoadSaveNormalize::saveBzOctets( $jbzName . $$,
                 ${ $_[1] } );
             if ( my $mtime = ( lstat $jbzName )[STAT_MTIME] ) {
                 $mtime =
@@ -263,7 +263,7 @@ sub setToRescan {
 sub scan {
     my ( $self, $hints, $rgid, $frotl ) = @_;
     @{$self}[ SM_SCALAR, SM_ROOTLOCID ] =
-      FileMgt106::Scanner->new( $self->[SM_DIR], $hints,
+      FileMgt106::Scanning::Scanner->new( $self->[SM_DIR], $hints,
         $self->[SM_FS]->statFromGid($rgid) )
       ->scan( $frotl, undef, $self->[SM_STASHPAIR], $self->[SM_REPOPAIR],
         $self->[SM_WATCHING] ? $self : undef );
@@ -343,8 +343,8 @@ sub takeScalar {
     if ( $self->[SM_SCALARTAKER] ) {
         my ( $blob, $newSha1 );
         if ($scalar) {
-            require FileMgt106::LoadSaveNormalize;
-            $blob = FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+            require FileMgt106::Catalogues::LoadSaveNormalize;
+            $blob = FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
               ->encode($scalar);
             $newSha1 = sha1($blob);
         }

@@ -78,7 +78,7 @@ sub autograb {
         my $source        = $components[0];
         $source =~ s/^[^a-z]+//i;
         $folder = "\@$source $folder";
-        my $target = FileMgt106::LoadSaveNormalize::loadNormalisedScalar($_);
+        my $target = FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
 
         my $caseidsha1hex = $target->{'.caseid'};
         undef $caseidsha1hex if ref $caseidsha1hex;
@@ -119,11 +119,11 @@ sub autograb {
                 symlink rel2abs( $_, $self->startFolder ),
                   catfile( $folder, "📖$fileExtension" );
                 my $exclusions =
-                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                  FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
                     catfile( $folder, $buildExclusionsFile ) );
                 if ( $buildExclusionsFile eq '🔺.json' ) {
-                    require FileMgt106::ConsolidateFilter;
-                    my $consolidator = FileMgt106::ConsolidateFilter->new;
+                    require FileMgt106::Catalogues::ConsolidateFilter;
+                    my $consolidator = FileMgt106::Catalogues::ConsolidateFilter->new;
                     $consolidator->baseProcessor->($exclusions);
                     my $processor = $consolidator->additionsProcessor;
                     $processor->( $target, 'Z' );

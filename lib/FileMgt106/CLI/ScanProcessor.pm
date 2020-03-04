@@ -34,9 +34,9 @@ use File::Basename qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs);
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_GID STAT_MTIME);
-use FileMgt106::LoadSaveNormalize;
-use FileMgt106::ScanMaster;
-use FileMgt106::Scanner;
+use FileMgt106::Catalogues::LoadSaveNormalize;
+use FileMgt106::Scanning::ScanMaster;
+use FileMgt106::Scanning::Scanner;
 
 sub makeProcessor {
 
@@ -62,7 +62,7 @@ sub makeProcessor {
         $hints->beginInteractive;
         eval {
             (
-                $scanners{$dir} = FileMgt106::Scanner->new(
+                $scanners{$dir} = FileMgt106::Scanning::Scanner->new(
                     $dir, $hints, $self->fileSystemObj->statFromGid($rgid)
                 )
             )->scan(
@@ -88,8 +88,8 @@ sub makeProcessor {
             mkdir $destination;
             my ( @extrasSource, @extrasDestination );
             my ($s) =
-              FileMgt106::Scanner->new( $dir, $hints, @extrasSource )->scan;
-            FileMgt106::Scanner->new( $destination, $hints, @extrasDestination )
+              FileMgt106::Scanning::Scanner->new( $dir, $hints, @extrasSource )->scan;
+            FileMgt106::Scanning::Scanner->new( $destination, $hints, @extrasDestination )
               ->scan( 0, $s );
             $hints->commit;
             return;
@@ -97,44 +97,44 @@ sub makeProcessor {
         if ($cleaningFlag) {
             if ( $cleaningFlag =~ /dayfolder/i ) {
                 warn "One folder per day for files in $dir";
-                require FileMgt106::FolderOrganise;
-                FileMgt106::FolderOrganise::categoriseByDay($dir);
+                require FileMgt106::Folders::FolderOrganise;
+                FileMgt106::Folders::FolderOrganise::categoriseByDay($dir);
             }
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
-                require FileMgt106::FolderOrganise;
-                FileMgt106::FolderOrganise::datemarkFolder($dir);
+                require FileMgt106::Folders::FolderOrganise;
+                FileMgt106::Folders::FolderOrganise::datemarkFolder($dir);
             }
             if ( $cleaningFlag =~ /restamp/i ) {
                 warn "Re-timestamping $dir";
-                require FileMgt106::FolderOrganise;
-                FileMgt106::FolderOrganise::restampFolder($dir);
+                require FileMgt106::Folders::FolderOrganise;
+                FileMgt106::Folders::FolderOrganise::restampFolder($dir);
             }
             if ( $cleaningFlag =~ /flat/i ) {
                 warn "Flattening $dir";
-                require FileMgt106::FolderOrganise;
+                require FileMgt106::Folders::FolderOrganise;
                 $hints->beginInteractive(1);
-                FileMgt106::FolderOrganise::flattenCwd();
+                FileMgt106::Folders::FolderOrganise::flattenCwd();
                 $hints->commit;
             }
             if ( $cleaningFlag =~ /rename/i ) {
                 warn "Renaming in $dir";
                 $hints->beginInteractive(1);
-                FileMgt106::LoadSaveNormalize::renameFilesToNormalisedScannable(
+                FileMgt106::Catalogues::LoadSaveNormalize::renameFilesToNormalisedScannable(
                     '.');
                 $hints->commit;
             }
             elsif ( $cleaningFlag =~ /clean/i ) {
                 warn "Deep cleaning $dir";
-                require FileMgt106::FolderClean;
+                require FileMgt106::Folders::FolderClean;
                 $hints->beginInteractive(1);
-                FileMgt106::FolderClean::deepClean('.');
+                FileMgt106::Folders::FolderClean::deepClean('.');
                 $hints->commit;
             }
             return if $cleaningFlag =~ /only/i;
         }
         my $scanMaster =
-          FileMgt106::ScanMaster->new( $hints, $dir, $self->fileSystemObj );
+          FileMgt106::Scanning::ScanMaster->new( $hints, $dir, $self->fileSystemObj );
         $_->( $scanMaster, $dir ) foreach @scanMasterCliConfigClosures;
         $scanMaster->dequeued;
     };
@@ -178,15 +178,15 @@ sub makeProcessor {
                               . q^ 2>/dev/null' | tar -x -f -^;
                             binmode $fh;
                             print {$fh}
-                              FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                               ->encode($toGrab);
                         }
-                        require FileMgt106::FolderClean;
+                        require FileMgt106::Folders::FolderClean;
                         $hints->beginInteractive(1);
-                        FileMgt106::FolderClean::deepClean('.');
+                        FileMgt106::Folders::FolderClean::deepClean('.');
                         $hints->commit;
                         $cellarScanner =
-                          FileMgt106::ScanMaster->new( $hints,
+                          FileMgt106::Scanning::ScanMaster->new( $hints,
                             decode_utf8( getcwd() ),
                             $self->fileSystemObj );
                         $cellarScanner->dequeued;
@@ -195,7 +195,7 @@ sub makeProcessor {
                         $hints->beginInteractive;
                         eval {
                             $scalar = (
-                                $scanners{$dir} || FileMgt106::Scanner->new(
+                                $scanners{$dir} || FileMgt106::Scanning::Scanner->new(
                                     $dir, $hints,
                                     $self->fileSystemObj->statFromGid(
                                         ( stat $dir )[STAT_GID]
@@ -213,9 +213,9 @@ sub makeProcessor {
                         }
                     }
                     if ( defined $cellarDir ) {
-                        require FileMgt106::FolderClean;
+                        require FileMgt106::Folders::FolderClean;
                         $hints->beginInteractive(1);
-                        FileMgt106::FolderClean::deepClean($cellarDir);
+                        FileMgt106::Folders::FolderClean::deepClean($cellarDir);
                         $hints->commit;
                         $cellarScanner->dequeued;
                         push @rmdirList, $cellarDir;
@@ -229,7 +229,7 @@ sub makeProcessor {
                     open my $fh, '>', $tmpFile;
                     binmode $fh;
                     print {$fh}
-                      FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                      FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                       ->encode($missing);
                     close $fh;
                     rename $tmpFile, catfile( $path, '⚠️.txt' );
@@ -238,14 +238,14 @@ sub makeProcessor {
             }
             else {    # no grab sources
                 binmode STDOUT;
-                print FileMgt106::LoadSaveNormalize::jsonMachineMaker()
+                print FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                   ->encode($missing);
             }
         }
         $hints->disconnect if $hints;
         if (@toRestamp) {
-            require FileMgt106::FolderOrganise;
-            FileMgt106::FolderOrganise::restampFolder($_) foreach @toRestamp;
+            require FileMgt106::Folders::FolderOrganise;
+            FileMgt106::Folders::FolderOrganise::restampFolder($_) foreach @toRestamp;
         }
     };
 
@@ -269,13 +269,13 @@ sub makeProcessor {
                 next;
             }
             elsif (/^-+autonumber/) {
-                require FileMgt106::FolderOrganise;
+                require FileMgt106::Folders::FolderOrganise;
                 push @scanMasterCliConfigClosures, sub {
                     my ( $scanMaster, $path ) = @_;
                     $scanMaster->addScalarTaker(
                         sub {
                             my ( $scalar, $blobref, $runner ) = @_;
-                            FileMgt106::FolderOrganise::automaticNumbering(
+                            FileMgt106::Folders::FolderOrganise::automaticNumbering(
                                 $path, $scalar );
                         }
                     );
@@ -326,9 +326,9 @@ sub makeProcessor {
                 push @scanMasterCliConfigClosures, sub {
                     my ( $scanMaster, $path ) = @_;
                     if ( $path =~ /\.aplibrary$/s ) {
-                        require FileMgt106::ScanMasterAperture;
+                        require FileMgt106::Scanning::ScanMasterAperture;
                         warn "Using Aperture scan master for $path";
-                        bless $scanMaster, 'FileMgt106::ScanMasterAperture';
+                        bless $scanMaster, 'FileMgt106::Scanning::ScanMasterAperture';
                     }
                 };
                 next;
@@ -378,17 +378,17 @@ sub makeProcessor {
                 /(.*)(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$/si )
             {
                 $target =
-                  FileMgt106::LoadSaveNormalize::loadNormalisedScalar(
+                  FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
                     $root . $ext );
                 $target =
-                  FileMgt106::LoadSaveNormalize::parseText( $root . $ext )
+                  FileMgt106::Catalogues::LoadSaveNormalize::parseText( $root . $ext )
                   if !$target && $ext =~ /txt|yml/i;
             }
             elsif ( -d _ && @grabSources && chdir $_ ) {
                 $root = decode_utf8 getcwd();
                 $ext  = '';
                 $hints->beginInteractive;
-                $target = FileMgt106::Scanner->new( $root, $hints )->scan;
+                $target = FileMgt106::Scanning::Scanner->new( $root, $hints )->scan;
                 $hints->commit;
             }
 

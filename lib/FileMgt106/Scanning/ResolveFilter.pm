@@ -1,4 +1,4 @@
-package FileMgt106::ResolveFilter;
+package FileMgt106::Scanning::ResolveFilter;
 
 # Copyright 2018-2019 Franck Latrémolière, Reckon LLP.
 #

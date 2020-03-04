@@ -1,4 +1,4 @@
-package FileMgt106::HintsFilter;
+package FileMgt106::Catalogues::HintsFilter;
 
 # Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
 #

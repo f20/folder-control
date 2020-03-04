@@ -1,4 +1,4 @@
-package FileMgt106::FolderOrganise;
+package FileMgt106::Folders::FolderOrganise;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #

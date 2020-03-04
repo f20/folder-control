@@ -1,4 +1,4 @@
-package FileMgt106::FolderClean;
+package FileMgt106::Folders::FolderClean;
 
 # Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
 #
