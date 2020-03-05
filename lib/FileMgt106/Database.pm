@@ -405,6 +405,7 @@ EOL
         };
         while (1) {
             my ( $sqlitePath, $mountPointPath, $mountPointId ) = $oldDbPath->();
+            $sqlitePath = decode_utf8 $sqlitePath;
             if ( $sqlitePath eq $sqliteFile ) {
                 my $dev = ( stat( $mountPointPath ||= '/' ) )[STAT_DEV];
                 $hints->{canonicalPath} = sub {
