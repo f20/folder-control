@@ -98,7 +98,7 @@ sub makeHintsExtractor {
     require Digest::SHA;
     my $sha1Machine = new Digest::SHA;
 
-    my %done;
+    my %done = ( 'da39a3ee5e6b4b0d3255bfef95601890afd80709' => 1 );
     my $processScal;
     $processScal = sub {
         my ($what) = @_;
