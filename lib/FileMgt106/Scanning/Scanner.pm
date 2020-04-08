@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::Scanner;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -74,11 +74,13 @@ sub new {
 
     my $regexCheckThisFile = qr/\.xls$/is;
 
-    my $regexNeverWatchFolder = qr/^Y_|^\@|^#/is;
+    my $regexNeverWatchFolder = qr/^Y_|^\@|^#|\.sparsebundle$/is;
 
     my $regexAlwaysWatchFolder = qr/^[OWXZ]_/is;
 
-    my $regexMakeReadOnly = qr/^[XY]_/is;
+    my $regexQuicklyMakeReadOnly = qr/^[XY]_/is;
+
+    my $regexNeverMakeReadOnly = qr/\.sparsebundle$/is;
 
     my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
@@ -548,8 +550,8 @@ sub new {
                             substr( $stash, length($dir) + 1 ) . "/$binName/",
                             $frotl
                           )
-                          : FileMgt106::Scanning::Scanner->new( "$stash/$binName",
-                            $hints, $rstat )->scan($frotl);
+                          : FileMgt106::Scanning::Scanner->new(
+                            "$stash/$binName", $hints, $rstat )->scan($frotl);
                         $binned{"$binName"} = [ $cat, $crashIndicatorSymlink ];
                     }
                 }
@@ -590,11 +592,14 @@ sub new {
 
                     my $forceReadOnlyTimeLimitForChild =
                       $forceReadOnlyTimeLimit;
-                    if ( $allowActions && /$regexMakeReadOnly/is ) {
+                    if ( $allowActions && /$regexQuicklyMakeReadOnly/is ) {
                         my $now = time;
                         $forceReadOnlyTimeLimitForChild = $now - 13
                           unless $forceReadOnlyTimeLimit
                           && $forceReadOnlyTimeLimit > $now;
+                    }
+                    elsif (/$regexNeverMakeReadOnly/) {
+                        $forceReadOnlyTimeLimitForChild = 0;
                     }
 
                     my ( $targetForChild, $stasherForChild, $backuperForChild );
