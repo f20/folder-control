@@ -155,8 +155,7 @@ sub setRepoloc {
                             "$name.json"
                           )
                         {
-                            system qw(git rm --cached), "$name.txt"
-                              if -e "$name.txt";
+                            system qw(git rm), "$name.txt" if -e "$name.txt";
                             system qw(git commit -q --untracked-files=no -m),
                               $self->[SM_DIR];
                         }
