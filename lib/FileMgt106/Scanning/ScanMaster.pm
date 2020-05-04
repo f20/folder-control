@@ -137,39 +137,40 @@ sub setRepoloc {
                     $hints->commit;
                     return if defined $result && $result == 0;
                 }
-
-                # my $pid = fork;
-                # return if $pid;
-                # POSIX::setsid() if defined $pid;
-
                 if ( chdir $gitFolder ) {
                     $ENV{PATH} =
                         '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                       . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
                     if ($scalar) {
                         warn "Catalogue update for $self";
-                        open my $f, '>', "$name.txt.$$";
+                        open my $f, '>', "$name.json.$$";
                         binmode $f;
                         print {$f} $$blobref;
                         close $f;
-                        rename "$name.txt.$$", "$name.txt";
-                        # implement keepCatalogueSymlink?
-                        system qw(git commit -q --untracked-files=no -m),
-                          $self->[SM_DIR]
-                          if !system qw(git add), "$name.txt"
-                          or !system qw(git init)
-                          and !system qw(git add), "$name.txt";
+                        rename "$name.json.$$", "$name.json";
+                        if (
+                            !system qw(git add),
+                            "$name.json"
+                            or !system qw(git init) and !system qw(git add),
+                            "$name.json"
+                          )
+                        {
+                            system qw(git rm --cached), "$name.txt"
+                              if -e "$name.txt";
+                            system qw(git commit -q --untracked-files=no -m),
+                              $self->[SM_DIR];
+                        }
                         if ( defined $jbzFolder && -d $jbzFolder ) {
-                            system qw(bzip2), "$name.txt";
-                            rename "$name.txt.bz2", "$jbzFolder/$name.jbz";
+                            system qw(bzip2), "$name.json";
+                            rename "$name.json.bz2", "$jbzFolder/$name.jbz";
                         }
                     }
                     else {
                         warn "Removing catalogue for $self";
-                        unlink "$name.txt";
+                        unlink "$name.json";
                         unlink "$jbzFolder/$name.jbz"
                           if defined $jbzFolder && -d $jbzFolder;
-                        system qw(git rm --cached), "$name.txt";
+                        system qw(git rm --cached), "$name.json";
                         system qw(git commit -q --untracked-files=no -m),
                           "Removing $self->[SM_DIR]";
                     }
@@ -177,10 +178,6 @@ sub setRepoloc {
                 else {
                     warn "Cannot chdir to $gitFolder: $!";
                 }
-
-                # require POSIX and POSIX::_exit(0);
-                # die 'This should not happen';
-
             };
             if ($runner) {
                 delete $self->[SM_SCALAR] unless $self->[SM_WATCHING];
@@ -199,7 +196,8 @@ sub addJbzName {
     $self->addScalarTaker(
         sub {
             require FileMgt106::Catalogues::LoadSaveNormalize;
-            FileMgt106::Catalogues::LoadSaveNormalize::saveBzOctets( $jbzName . $$,
+            FileMgt106::Catalogues::LoadSaveNormalize::saveBzOctets(
+                $jbzName . $$,
                 ${ $_[1] } );
             if ( my $mtime = ( lstat $jbzName )[STAT_MTIME] ) {
                 $mtime =
@@ -344,7 +342,8 @@ sub takeScalar {
         my ( $blob, $newSha1 );
         if ($scalar) {
             require FileMgt106::Catalogues::LoadSaveNormalize;
-            $blob = FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
+            $blob =
+              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
               ->encode($scalar);
             $newSha1 = sha1($blob);
         }
