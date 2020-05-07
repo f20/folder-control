@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2019-2020 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -40,6 +40,9 @@ sub autograb {
         if (/^-+grab=(.+)/s) {
             push @grabSources, $1;
         }
+        elsif (/^-+all/s) {
+            $options{initFlag} = 2;
+        }
         elsif (/^-+init/s) {
             $options{initFlag} = 1;
         }
@@ -78,7 +81,8 @@ sub autograb {
         my $source        = $components[0];
         $source =~ s/^[^a-z]+//i;
         $folder = "\@$source $folder";
-        my $target = FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
+        my $target =
+          FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
 
         my $caseidsha1hex = $target->{'.caseid'};
         undef $caseidsha1hex if ref $caseidsha1hex;
@@ -99,8 +103,10 @@ sub autograb {
             $hints->commit;
             if ( !-d $folder && $options{initFlag} ) {
                 mkdir $folder;
-                open my $fh, '>', catfile( $folder, '🚫.txt' );
-                print {$fh} '{".":"no"}';
+                if ( $options{initFlag} < 2 ) {
+                    open my $fh, '>', catfile( $folder, '🚫.txt' );
+                    print {$fh} '{".":"no"}';
+                }
             }
         }
         if ( -d $folder ) {
@@ -123,7 +129,8 @@ sub autograb {
                     catfile( $folder, $buildExclusionsFile ) );
                 if ( $buildExclusionsFile eq '🔺.json' ) {
                     require FileMgt106::Catalogues::ConsolidateFilter;
-                    my $consolidator = FileMgt106::Catalogues::ConsolidateFilter->new;
+                    my $consolidator =
+                      FileMgt106::Catalogues::ConsolidateFilter->new;
                     $consolidator->baseProcessor->($exclusions);
                     my $processor = $consolidator->additionsProcessor;
                     $processor->( $target, 'Z' );
