@@ -1,6 +1,6 @@
 package FileMgt106::Database;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -556,7 +556,7 @@ EOL
 
     $hints->{alreadyThere} = sub {
         my ( $parid, $name, $sha1 ) = @_;
-        my ( $base, $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S*)$#s );
+        my ( $base, $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]?\S*)$#s );
         ( $base, $extension ) = ( $name, '' ) unless defined $extension;
         $qAlreadyThere->execute( $parid, $sha1, $name,
             $base . '~___' . $extension );
@@ -567,7 +567,7 @@ EOL
 
     my $nextVersion = sub {
         my ( $parid, $name )      = @_;
-        my ( $base,  $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]\S*)$#s );
+        my ( $base,  $extension ) = ( $name =~ m#^(.*?)(\.[a-zA-Z]?\S*)$#s );
         ( $base, $extension ) = ( $name, '' ) unless defined $extension;
         $name = '~001' . $extension unless length $base;
         $qGetLocid->execute( $parid, $name );

@@ -39,67 +39,72 @@ sub makeMailboxConsolidator {
       FileMgt106::Folders::Builder::makeHintsBuilder($hintsFile);
 
     sub {
+
         my ( $whatYouWant, $whereYouWantIt, $devNo ) = @_;
         return unless ref $whatYouWant eq 'HASH';
-        my %sortKey;
+
+        my %hashSet;
         my $scanner;
         $scanner = sub {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
-                if ( ref $v eq 'HASH' ) { $scanner->($v); }
-                elsif ( $k =~ s/\.$//s ) {
-                    $k = -1 unless $k =~ /^[0-9]+$/s;
-                    $sortKey{$v} = $k
-                      unless defined $sortKey{$v} && $sortKey{$v} <= $k;
-                }
+                if    ( ref $v eq 'HASH' ) { $scanner->($v); }
+                elsif ( $k =~ s/\.$//s )   { undef $hashSet{v}; }
             }
         };
         $scanner->($whatYouWant);
-        my $digits = length( keys(%sortKey) - 1 );
-        my $id1    = 1 * 10**$digits;
-        my %cat1   = map { $id1++ . '.' => $_; }
-          sort { $sortKey{$a} <=> $sortKey{$b}; } keys %sortKey;
-        $hintsBuilder->( \%cat1, $whereYouWantIt, $devNo );sleep 5;
+        my $numFiles    = keys %hashSet;
+        my $digits      = length( $numFiles - 1 );
+        my $id1         = 1 * 10**$digits;
+        my %cat1        = map { $id1++ . '.' => $_; } keys %hashSet;
+        my $returnValue = $hintsBuilder->( \%cat1, $whereYouWantIt, $devNo );
 
-        while ( my ( $file, $hash ) = each %cat1 ) {
-            $file = catfile( $whereYouWantIt, $file )
-              if defined $whereYouWantIt;
-            my @stat = stat $file or next;
-            my %stamp;
-            open my $fh, '<', $file;
-            local $/ = "\n";
-            while (<$fh>) {
-                last if /^\s*$/s;
-                $stamp{ lc $1 } =
-                  Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
-                  ->epoch
-                  if
+        require EmailMgt108::EmailParser if $archiveFlag;
+        {
+            my %sortKey;
+            foreach my $file ( keys %cat1 ) {
+                $file = catfile( $whereYouWantIt, $file )
+                  if defined $whereYouWantIt;
+                my @stat = stat $file or next;
+                my %stamp;
+                open my $fh, '<', $file;
+                local $/ = "\n";
+                while (<$fh>) {
+                    last if /^\s*$/s;
+                    $stamp{ lc $1 } =
+                      Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
+                      ->epoch
+                      if
 /^(\S*date\S*):\s+(\S+,\s+[0-9]+\s+\S+\s+[0-9]{4}\s+[0-9]{2}:[0-9]{2}:[0-9]{2}\s+[+-][0-9]{4})/i;
+                }
+                my $contentStamp = $stamp{'delivered-date'};
+                ($contentStamp) = sort { $b <=> $a; } values %stamp
+                  unless defined $contentStamp;
+                if ( defined $contentStamp && $stat[9] != $contentStamp ) {
+                    utime time, $contentStamp, $file;
+                    $sortKey{$file} = $contentStamp;
+                }
+                else {
+                    $sortKey{$file} = $stat[9];
+                }
             }
-            my $contentStamp = $stamp{'delivered-date'};
-            ($contentStamp) = sort { $b <=> $a; } values %stamp
-              unless defined $contentStamp;
-            if ( defined $contentStamp && $stat[9] != $contentStamp ) {
-                utime time, $contentStamp, $file;
-                $sortKey{$hash} = $contentStamp;
-            }
-            else {
-                $sortKey{$hash} = $stat[9];
+            my $id2 = 2 * 10**$digits;
+            foreach (
+                sort { $sortKey{$a} <=> $sortKey{$b}; }
+                keys %sortKey
+              )
+            {
+                my $target = $id2++ . '.';
+                $target = catfile( $whereYouWantIt, $target )
+                  if defined $whereYouWantIt;
+                rename $_, $target;
+                EmailMgt108::EmailParser::parseMessage($target)
+                  if $archiveFlag;
             }
         }
-        my $id = 2 * 10**$digits;
-        my %cat = map { $id++ . '.' => $_; }
-          sort { $sortKey{$a} <=> $sortKey{$b}; } keys %sortKey;
-        my $returnValue = $hintsBuilder->( \%cat, $whereYouWantIt, $devNo );
 
-        if ($archiveFlag) {
-            use EmailMgt108::EmailParser;
-            EmailMgt108::EmailParser::parseMessage($_)
-              foreach defined $whereYouWantIt
-              ? map { catfile( $whereYouWantIt, $_ ); } keys %cat
-              : keys %cat;
-        }
         $returnValue;
+
     };
 
 }
