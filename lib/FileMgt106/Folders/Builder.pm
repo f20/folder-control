@@ -1,6 +1,6 @@
 package FileMgt106::Folders::Builder;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -29,6 +29,17 @@ use Encode qw(decode_utf8);
 use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
+
+sub _makeStash {
+    my ($where) = @_;
+    while (1) {
+        my $stashFolder = catdir( $where, 'Z_Stashed' . rand() );
+        if ( !-e $stashFolder ) {
+            mkdir $stashFolder;
+            return $stashFolder;
+        }
+    }
+}
 
 sub makeHintsBuilder {
 
@@ -73,10 +84,8 @@ sub makeHintsBuilder {
                 if ( ref $what eq 'HASH' ) {
                     if ( !-d _ ) {
                         if (@existingStat) {
-                            unless ( defined $stashFolder ) {
-                                mkdir $stashFolder =
-                                  catdir( $whereYouWantIt, "Z_Stashed-$$" );
-                            }
+                            $stashFolder = _makeStash($whereYouWantIt)
+                              unless defined $stashFolder;
                             die "Cannot move $fileName to $stashFolder "
                               . catfile( $stashFolder, $name )
                               unless rename $fileName,
@@ -120,10 +129,8 @@ sub makeHintsBuilder {
                     next ENTRY
                       if $existingStat[STAT_DEV] == $statref->[STAT_DEV]
                       && $existingStat[STAT_INO] == $statref->[STAT_INO];
-                    unless ( defined $stashFolder ) {
-                        mkdir $stashFolder =
-                          catdir( $whereYouWantIt, "Z_Stashed-$$" );
-                    }
+                    $stashFolder = _makeStash($whereYouWantIt)
+                      unless defined $stashFolder;
                     die "Cannot move $fileName to $stashFolder"
                       unless rename $fileName,
                       catfile( $stashFolder, $name );
@@ -132,8 +139,7 @@ sub makeHintsBuilder {
             }
             foreach ( @candidates, @reservelist ) {
                 next ENTRY
-                  if $useSymlinksNotCopies
-                  && ( $fileName !~ m^\.aplibrary/^
+                  if $useSymlinksNotCopies && ( $fileName !~ m^\.aplibrary/^
                     || $fileName =~ m^\.aplibrary/Masters/^ )
                   ? symlink( $_, $fileName )
                   : _copyFile( $_, $fileName );
@@ -144,9 +150,8 @@ sub makeHintsBuilder {
         }
 
         if ( !$infillFlag && %toDelete ) {
-            unless ( defined $stashFolder ) {
-                mkdir $stashFolder = catdir( $whereYouWantIt, "Z_Stashed-$$" );
-            }
+            $stashFolder = _makeStash($whereYouWantIt)
+              unless defined $stashFolder;
             foreach ( keys %toDelete ) {
                 rename catfile( $whereYouWantIt, $_ ),
                   catfile( $stashFolder, $_ )
