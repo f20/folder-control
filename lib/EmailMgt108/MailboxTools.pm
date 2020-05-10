@@ -49,7 +49,7 @@ sub makeMailboxConsolidator {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
                 if    ( ref $v eq 'HASH' ) { $scanner->($v); }
-                elsif ( $k =~ s/\.$//s )   { undef $hashSet{v}; }
+                elsif ( $k =~ s/\.$//s )   { undef $hashSet{$v}; }
             }
         };
         $scanner->($whatYouWant);
