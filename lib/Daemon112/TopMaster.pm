@@ -1,6 +1,6 @@
 package Daemon112::TopMaster;
 
-# Copyright 2012-2019 Franck Latrémolière and others.
+# Copyright 2012-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -122,16 +122,19 @@ sub attach {
                   join( '.', map { length $_ ? $_ : '_' } @components )
                   || 'No category';
                 if ( chdir $category ) {
-                    foreach ( split /\n/, decode_utf8(`git ls-files`) ) {
-                        s/\.txt$//s;
+                    foreach my $catalogueFile ( split /\n/,
+                        decode_utf8(`git ls-files`) )
+                    {
+                        local $_ = $catalogueFile;
+                        s/\.(?:txt|json)$//s;
                         s/^_/./s;
                         next if exists $list{$_};
                         warn "Removing catalogue for $root/$_";
-                        unlink "$_.txt";
+                        unlink $catalogueFile;
                         unlink "$runner->{locs}{jbz}/$category/$_.jbz"
                           if defined $runner->{locs}{jbz}
                           && -d $runner->{locs}{jbz};
-                        system qw(git rm --cached), "$_.txt";
+                        system qw(git rm --cached), $catalogueFile;
                         system qw(git commit -q --untracked-files=no -m),
                           "Removing $root/$_";
                     }
