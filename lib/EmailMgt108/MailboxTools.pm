@@ -1,6 +1,6 @@
 package EmailMgt108::MailboxTools;
 
-# Copyright 2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -34,7 +34,7 @@ use Time::Piece;
 
 sub makeMailboxConsolidator {
 
-    my ( $hintsFile, $archiveFlag ) = @_;
+    my ( $hintsFile, $parseAndArchiveFlag ) = @_;
     my $hintsBuilder =
       FileMgt106::Folders::Builder::makeHintsBuilder($hintsFile);
 
@@ -59,7 +59,7 @@ sub makeMailboxConsolidator {
         my %cat1        = map { $id1++ . '.' => $_; } keys %hashSet;
         my $returnValue = $hintsBuilder->( \%cat1, $whereYouWantIt, $devNo );
 
-        require EmailMgt108::EmailParser if $archiveFlag;
+        require EmailMgt108::EmailParser if $parseAndArchiveFlag;
         {
             my %sortKey;
             foreach my $file ( keys %cat1 ) {
@@ -99,7 +99,7 @@ sub makeMailboxConsolidator {
                   if defined $whereYouWantIt;
                 rename $_, $target;
                 EmailMgt108::EmailParser::parseMessage($target)
-                  if $archiveFlag;
+                  if $parseAndArchiveFlag;
             }
         }
 
@@ -107,6 +107,21 @@ sub makeMailboxConsolidator {
 
     };
 
+}
+
+sub find_dup_uids_from_catalogue_scalar {
+    my $scalar = from_json(shift);
+    my %seen;
+    my @dups;
+    while ( my ( $k, $v ) = each %$scalar ) {
+        if ( exists $seen{$v} ) {
+            push @dups, $1 if $k =~ /^([0-9]+)\.$/s;
+        }
+        else {
+            undef $seen{$v};
+        }
+    }
+    @dups;
 }
 
 1;

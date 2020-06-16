@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright 2014-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2014-2019 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

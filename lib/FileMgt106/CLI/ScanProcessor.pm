@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -65,13 +65,13 @@ sub makeProcessor {
                 $scanners{$dir} = FileMgt106::Scanning::Scanner->new(
                     $dir, $hints, $self->fileSystemObj->statFromGid($rgid)
                 )
-            )->scan(
+              )->scan(
                 0,
                 $scalar,
                 $options->{stash}
                 ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
                 : (),
-            );
+              );
         };
         warn "scan $dir: $@" if $@;
         $hints->commit;
@@ -88,9 +88,10 @@ sub makeProcessor {
             mkdir $destination;
             my ( @extrasSource, @extrasDestination );
             my ($s) =
-              FileMgt106::Scanning::Scanner->new( $dir, $hints, @extrasSource )->scan;
-            FileMgt106::Scanning::Scanner->new( $destination, $hints, @extrasDestination )
-              ->scan( 0, $s );
+              FileMgt106::Scanning::Scanner->new( $dir, $hints, @extrasSource )
+              ->scan;
+            FileMgt106::Scanning::Scanner->new( $destination, $hints,
+                @extrasDestination )->scan( 0, $s );
             $hints->commit;
             return;
         }
@@ -134,7 +135,8 @@ sub makeProcessor {
             return if $cleaningFlag =~ /only/i;
         }
         my $scanMaster =
-          FileMgt106::Scanning::ScanMaster->new( $hints, $dir, $self->fileSystemObj );
+          FileMgt106::Scanning::ScanMaster->new( $hints, $dir,
+            $self->fileSystemObj );
         $_->( $scanMaster, $dir ) foreach @scanMasterCliConfigClosures;
         $scanMaster->dequeued;
     };
@@ -178,8 +180,8 @@ sub makeProcessor {
                               . q^ 2>/dev/null' | tar -x -f -^;
                             binmode $fh;
                             print {$fh}
-                              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
-                              ->encode($toGrab);
+                              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
+                              )->encode($toGrab);
                         }
                         require FileMgt106::Folders::FolderClean;
                         $hints->beginInteractive(1);
@@ -195,12 +197,13 @@ sub makeProcessor {
                         $hints->beginInteractive;
                         eval {
                             $scalar = (
-                                $scanners{$dir} || FileMgt106::Scanning::Scanner->new(
+                                $scanners{$dir}
+                                  || FileMgt106::Scanning::Scanner->new(
                                     $dir, $hints,
                                     $self->fileSystemObj->statFromGid(
                                         ( stat $dir )[STAT_GID]
                                     )
-                                )
+                                  )
                             )->infill($scalar);
                         };
                         warn "infill $dir: $@" if $@;
@@ -229,8 +232,8 @@ sub makeProcessor {
                     open my $fh, '>', $tmpFile;
                     binmode $fh;
                     print {$fh}
-                      FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
-                      ->encode($missing);
+                      FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
+                      )->encode($missing);
                     close $fh;
                     rename $tmpFile, catfile( $path, '⚠️.txt' );
                 }
@@ -238,14 +241,16 @@ sub makeProcessor {
             }
             else {    # no grab sources
                 binmode STDOUT;
-                print FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
+                print
+                  FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
                   ->encode($missing);
             }
         }
         $hints->disconnect if $hints;
         if (@toRestamp) {
             require FileMgt106::Folders::FolderOrganise;
-            FileMgt106::Folders::FolderOrganise::restampFolder($_) foreach @toRestamp;
+            FileMgt106::Folders::FolderOrganise::restampFolder($_)
+              foreach @toRestamp;
         }
     };
 
@@ -297,9 +302,7 @@ sub makeProcessor {
             }
             elsif (/^-+read-?only/) {
                 push @scanMasterCliConfigClosures, sub {
-                    $_[0]->setFrotl(
-                        2_000_000_000    # This will go wrong in 2033
-                    );
+                    $_[0]->setFrotl(604_800);
                 };
                 next;
             }
@@ -317,7 +320,8 @@ sub makeProcessor {
             }
             elsif (/^-+repo=?(.*)/) {
                 local $_ = $1;
-                my $loc = !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+                my $loc =
+                  !$_ ? $startFolder : m#^/#s ? $_ : catdir( $startFolder, $_ );
                 push @scanMasterCliConfigClosures,
                   sub { $_[0]->addJbzFolder($loc); };
                 next;
@@ -328,26 +332,27 @@ sub makeProcessor {
                     if ( $path =~ /\.aplibrary$/s ) {
                         require FileMgt106::Scanning::ScanMasterAperture;
                         warn "Using Aperture scan master for $path";
-                        bless $scanMaster, 'FileMgt106::Scanning::ScanMasterAperture';
+                        bless $scanMaster,
+                          'FileMgt106::Scanning::ScanMasterAperture';
                     }
                 };
                 next;
             }
             elsif (/^-+stash=(.+)/) {
                 local $_ = $1;
-                $locs{stash} = m#^/#s ? $_ : "$startFolder/$_";
+                $locs{stash} = m#^/#s ? $_ : catdir( $startFolder, $_ );
                 next;
             }
             elsif (/^-+backup=?(.*)/) {
                 local $_ = $1;
                 $locs{repo} =
-                  !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+                  !$_ ? $startFolder : m#^/#s ? $_ : catdir( $startFolder, $_ );
                 next;
             }
             elsif (/^-+git=?(.*)/) {
                 local $_ = $1;
                 $locs{git} =
-                  !$_ ? $startFolder : m#^/#s ? $_ : "$startFolder/$_";
+                  !$_ ? $startFolder : m#^/#s ? $_ : catdir( $startFolder, $_ );
                 next;
             }
             elsif (/^-+resolve/) {
@@ -362,7 +367,7 @@ sub makeProcessor {
                 next;
             }
 
-            $_ = "$startFolder/$_" unless m#^/#s;
+            $_ = catdir( $startFolder, $_ ) unless m#^/#s;
             my @argumentStat = lstat;
             if ( -l _ ) {
                 if ( readlink =~ /([0-9a-zA-Z]{40})/ ) {
@@ -381,14 +386,16 @@ sub makeProcessor {
                   FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
                     $root . $ext );
                 $target =
-                  FileMgt106::Catalogues::LoadSaveNormalize::parseText( $root . $ext )
+                  FileMgt106::Catalogues::LoadSaveNormalize::parseText(
+                    $root . $ext )
                   if !$target && $ext =~ /txt|yml/i;
             }
             elsif ( -d _ && @grabSources && chdir $_ ) {
                 $root = decode_utf8 getcwd();
                 $ext  = '';
                 $hints->beginInteractive;
-                $target = FileMgt106::Scanning::Scanner->new( $root, $hints )->scan;
+                $target =
+                  FileMgt106::Scanning::Scanner->new( $root, $hints )->scan;
                 $hints->commit;
             }
 

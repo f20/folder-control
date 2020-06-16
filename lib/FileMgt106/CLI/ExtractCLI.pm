@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ExtractCLI;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -243,10 +243,6 @@ sub process {
                     $devOnly = 1;
                 }
             }
-            elsif ( my @stat = stat $hintsFile ) {
-                $devNo = $stat[STAT_DEV];
-            }
-            die 'Cannot find any file system for filtering' unless $devNo;
             require FileMgt106::Catalogues::HintsFilter;
             $catalogueProcessor =
               FileMgt106::Catalogues::HintsFilter::makeHintsFilter( $hintsFile,

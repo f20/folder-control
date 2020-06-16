@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::ScanMaster;
 
-# Copyright 2012-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2012-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -271,7 +271,7 @@ sub dequeued {
     my ( $self, $runner ) = @_;
     delete $self->[SM_QID];
     my $time         = time;
-    my @refLocaltime = localtime( $time - 17_000 );
+    my @refLocaltime = localtime( $time - 17_084 );
 
     unless ( $self->[SM_SCALAR]
         && $self->[SM_FULLRESCAN]
@@ -282,13 +282,11 @@ sub dequeued {
         my $rgid =
           defined $self->[SM_RGID] ? $self->[SM_RGID] : ( stat '.' )[STAT_GID];
         my $frotl =
-            defined $self->[SM_FROTL] ? $self->[SM_FROTL]
-          : $rgid < 500               ? 0
-          : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i
-          ? 2_000_000_000    # This will go wrong in 2033
-          : $self->[SM_DIR] =~ m#/X_#i ? -13            # 13 seconds
-          :                              -4_233_600;    # Seven weeks
-        $frotl += $time if $frotl < 0;
+            defined $self->[SM_FROTL]         ? $time + $self->[SM_FROTL]
+          : $rgid < 500                       ? 0
+          : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i ? $time + 604_800
+          : $self->[SM_DIR] =~ m#/X_#i        ? $time - 13
+          :                                     $time - 4_233_600;
         $self->[SM_REPOPAIR][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
           if $self->[SM_REPOPAIR];
         warn join ' ', "rgid=$rgid", "timelimit=$frotl", $self->[SM_DIR], "\n";

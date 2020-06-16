@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2019-2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2019-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -91,9 +91,7 @@ sub autograb {
             my $iterator =
               $hints->{searchSha1}
               ->( pack( 'H*', $caseidsha1hex ), $catStat[STAT_DEV] );
-            my $destination;
             while ( my ($path) = $iterator->() ) {
-                next if defined $destination;
                 next if $path =~ m#/Y_Cellar.*/#;
                 my $newFolder = dirname($path);
                 symlink $newFolder, $folder if $options{symlinkFolders};
@@ -109,6 +107,7 @@ sub autograb {
                 }
             }
         }
+
         if ( -d $folder ) {
 
             if (

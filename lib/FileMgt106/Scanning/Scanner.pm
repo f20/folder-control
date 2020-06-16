@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::Scanner;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -165,9 +165,7 @@ sub new {
             while ( !@stat && @wouldNeedToCopy ) {
                 my $source = pop @wouldNeedToCopy;
                 system qw(cp -p --), $source, $fileName;
-                @stat = $rstat->(
-                    $fileName, 2_000_000_000    # This will go wrong in 2033
-                );
+                @stat = $rstat->( $fileName, 604_800 );
                 my $newsha1 = sha1File($fileName);
                 unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
                     warn 'SHA1 mismatch after trying to copy '
@@ -537,8 +535,9 @@ sub new {
                             FileMgt106::Catalogues::LoadSaveNormalize::renameFilesToNormalisedScannable(
                                 '.');
                         }
-                        my $frotl = /^Z_(?:Archive|Cellar)/is
-                          ? 2_000_000_000    # This will go wrong in 2033
+                        my $frotl =
+                          /^Z_(?:Archive|Cellar)/is
+                          ? 604_800
                           : $forceReadOnlyTimeLimit;
                         my $cat =
                           substr( $stash, 0, length($dir) + 1 ) eq "$dir/"

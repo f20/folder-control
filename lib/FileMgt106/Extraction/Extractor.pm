@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -92,7 +92,7 @@ sub makeSimpleExtractor {
 sub makeHintsExtractor {
 
     my ( $hintsFile, $acceptor ) = @_;
-    my ( $hints, $searchSha1, $needsNap );
+    my ( $hints, $searchSha1 );
 
     my $devNo = ( stat $hintsFile )[STAT_DEV];
     require Digest::SHA;
@@ -102,8 +102,7 @@ sub makeHintsExtractor {
     my $processScal;
     $processScal = sub {
         my ($what) = @_;
-        if ( $needsNap || !defined $what ) {
-            undef $needsNap;
+        if ( !defined $what ) {
             undef $searchSha1;
             $hints->disconnect if $hints;
             undef $hints;

@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Spreadsheets;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

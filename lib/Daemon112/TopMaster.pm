@@ -171,7 +171,7 @@ sub dequeued {
     my ( $topMaster, $runner ) = @_;
     $topMaster->{'/RESCANNER'}->($runner);
     my $time         = time;
-    my @refLocaltime = localtime( $time - 17_000 );
+    my @refLocaltime = localtime( $time - 17_084 );
     my $nextRun =
       $time -
       int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) +

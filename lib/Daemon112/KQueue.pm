@@ -1,6 +1,6 @@
 package Daemon112::KQueue;
 
-# Copyright 2008-2019 Franck Latrémolière, Reckon LLP.
+# Copyright 2008-2019 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

@@ -1,6 +1,6 @@
 package FileMgt106::Database;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -46,9 +46,9 @@ my ( $locid, $sha1, $looksChanged ) = $hints->{file}->( $parid, $name, $dev, $in
 $hints->{updateSha1}->( $sha1, $locid );
 $hints->{updateLocation}->( $dev, $ino, $size, $mtime, $locid );
 
-my $iterator = $hints->{searchSha1}->( $sha1, $dev, $inoAvoid, $inoMaxFlag );
+my $iterator = $hints->{searchSha1}->( $sha1, $devNo, $inoAvoid, $inoMaxFlag );
 while ( my ( $path, $statref ) = $iterator->() ) { }
-# $dev argument is required; if no $inoAvoid then $dev is only a preference; otherwise it is a requirement.
+# if $inoAvoid then matching $devNo is a requirement, otherwise a preference
 
 my ($newName, $newFullPath) = $hints->{findName}->( $parid, $name, $path );
 
@@ -508,18 +508,21 @@ EOL
     };
 
     $hints->{searchSha1} = sub {
-        my ( $sha1, $dev, $inoAvoid, $inoMaxFlag ) = @_;
-        my $rootid = $rootidFromDev{$dev};
+        my ( $sha1, $devNo, $inoAvoid, $inoMaxFlag ) = @_;
+        my $rootidFromDev;
+        $rootidFromDev = $rootidFromDev{$devNo} if defined $devNo;
         my $q;
         if ($inoMaxFlag) {
-            ( $q = $qGetBySha1InoMax )->execute( $sha1, $rootid, $inoAvoid );
+            ( $q = $qGetBySha1InoMax )
+              ->execute( $sha1, $rootidFromDev, $inoAvoid );
         }
         elsif ($inoAvoid) {
-            ( $q = $qGetBySha1InoAvoid )->execute( $sha1, $rootid, $inoAvoid );
+            ( $q = $qGetBySha1InoAvoid )
+              ->execute( $sha1, $rootidFromDev, $inoAvoid );
         }
         else {
             ( $q = defined $inoAvoid ? $qGetBySha1Rootid : $qGetBySha1 )
-              ->execute( $sha1, $rootid );
+              ->execute( $sha1, $rootidFromDev );
         }
         my $a = $q->fetchall_arrayref;
         undef $q;

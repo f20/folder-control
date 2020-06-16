@@ -2,7 +2,7 @@ package Daemon112::Inotify;
 
 # Basic partial implementation of the same public interface as Daemon112::KQueue.
 
-# Copyright 2016 Franck Latrémolière, Reckon LLP.
+# Copyright 2016 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

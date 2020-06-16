@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::HintsFilter;
 
-# Copyright 2011-2018 Franck Latrémolière, Reckon LLP.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -36,10 +36,8 @@ sub makeHintsFilter {
     my $searchSha1 = $hints->{searchSha1};
     my %seen;
     my $sha1Machine;
-    if ($devNo) {
-        require Digest::SHA;
-        $sha1Machine = new Digest::SHA;
-    }
+    require Digest::SHA;
+    $sha1Machine = new Digest::SHA;
 
     my $filterTree;
     $filterTree = sub {
@@ -60,33 +58,30 @@ sub makeHintsFilter {
             next unless $what =~ /([0-9a-fA-F]{40})/;
             my $sha1 = pack( 'H*', $1 );
             my $iterator = $searchSha1->( $sha1, $devNo );
-            if ($devNo) {
-                my ( @stat, @candidates, @reservelist );
-                while ( !@stat
-                    && ( my ( $path, $statref, $locid ) = $iterator->() ) )
+            my ( @stat, @candidates, @reservelist );
+            while ( !@stat
+                && ( my ( $path, $statref, $locid ) = $iterator->() ) )
+            {
+                next unless -f _;
+                last if $devOnly && $statref->[STAT_DEV] != $devNo;
+                if (
+                    !$locid
+                    || ( $statref->[STAT_UID]
+                        && ( $statref->[STAT_MODE] & 0200 ) )
+                    || ( $statref->[STAT_MODE] & 022 )
+                  )
                 {
-                    next unless -f _;
-                    last if $devOnly && $statref->[STAT_DEV] != $devNo;
-                    if (
-                        !$locid
-                        || ( $statref->[STAT_UID]
-                            && ( $statref->[STAT_MODE] & 0200 ) )
-                        || ( $statref->[STAT_MODE] & 022 )
-                      )
-                    {
-                        push @reservelist, $path;
-                        next;
-                    }
-                    next ENTRY;
+                    push @reservelist, $path;
+                    next;
                 }
-                if ( @candidates || @reservelist ) {
-                    foreach ( @candidates, @reservelist ) {
-                        next ENTRY
-                          if $sha1 eq $sha1Machine->addfile($_)->digest;
-                    }
+                next ENTRY;
+            }
+            if ( @candidates || @reservelist ) {
+                foreach ( @candidates, @reservelist ) {
+                    next ENTRY
+                      if $sha1 eq $sha1Machine->addfile($_)->digest;
                 }
             }
-            else { next if $iterator->(); }
             $returnValue->{$name} = $what;
         }
 
