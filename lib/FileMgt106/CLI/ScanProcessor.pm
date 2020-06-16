@@ -261,6 +261,8 @@ sub makeProcessor {
 
         foreach (@_) {
 
+            next if !defined $_ || $_ eq '';
+
             local $_ = decode_utf8 $_;
 
             if (/^-+sync=(.+)$/) {

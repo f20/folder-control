@@ -100,7 +100,7 @@ sub email_downloader {
         $folderHashref->{mailboxPath} = $mailboxPath;
         my $mailArchivePath;
 
-        if ($mailArchivesPath) {
+        if ( $mailArchivesPath && -d $mailArchivesPath ) {
             $mailArchivePath = catdir( $mailArchivesPath, $localName );
             mkdir $mailArchivePath unless -d $mailArchivePath;
             chdir $mailArchivePath;
