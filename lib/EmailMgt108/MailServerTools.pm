@@ -104,6 +104,7 @@ sub email_downloader {
             $mailArchivePath = catdir( $mailArchivesPath, $localName );
             mkdir $mailArchivePath unless -d $mailArchivePath;
             chdir $mailArchivePath;
+            require EmailMgt108::EmailParser;
         }
 
         {
