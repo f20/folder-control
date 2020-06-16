@@ -113,6 +113,7 @@ sub email_downloader {
                 $folderHashref->{mailArchiveCaseidSha1Hex},
                 catdir( $mailArchivesPath, $localName )
               );
+            chdir $mailArchivePath;
             require EmailMgt108::EmailParser;
         }
 
