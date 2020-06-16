@@ -282,7 +282,8 @@ sub dequeued {
         my $rgid =
           defined $self->[SM_RGID] ? $self->[SM_RGID] : ( stat '.' )[STAT_GID];
         my $frotl =
-            defined $self->[SM_FROTL]         ? $time + $self->[SM_FROTL]
+          defined $self->[SM_FROTL]
+          ? ( $self->[SM_FROTL] ? $time + $self->[SM_FROTL] : 0 )
           : $rgid < 500                       ? 0
           : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i ? $time + 604_800
           : $self->[SM_DIR] =~ m#/X_#i        ? $time - 13
