@@ -50,7 +50,8 @@ sub remove_messages {
     $imap->close or die "close error: $@\n";
 }
 
-sub email_downloader_forked {
+sub email_downloader_forked
+{    # running successive connections in the same process seems to go wrong
     if ( my $pid = fork ) {
         waitpid $pid, 0;
     }
@@ -63,14 +64,14 @@ sub email_downloader_forked {
 sub email_downloader {
 
     my ( $server, $account, $password, $cataloguePath, $mailboxesPath,
-        $mailArchivesPath, %otherSettings )
+        $mailArchivesPath, %generalSettings )
       = @_;
 
     my $storedCatalogue;
     $storedCatalogue = YAML::LoadFile($cataloguePath) if -s $cataloguePath;
 
     my %catalogueToStore;
-    my $maxMessages = $otherSettings{maxMessages} || 442;
+    my $maxMessages = $generalSettings{maxMessages} || 0;
 
     my $imap = Mail::IMAPClient->new(
         Ssl      => 1,
@@ -80,10 +81,10 @@ sub email_downloader {
         User     => $account,
         Password => $password,
       )
-      or die "$account\@$server connection error: $@\n"
+      or die "$account connection error: $@\n"
       ;    # Do not do $imap->compress as it seems to break things
     my $folders = $imap->folders
-      or die "List folders error: ", $imap->LastError, "\n";
+      or die "$account list folders error: ", $imap->LastError, "\n";
 
   FOLDER: foreach my $folder (@$folders) {
 
@@ -95,15 +96,22 @@ sub email_downloader {
         my %folderHashFromServer =
           $imap->fetch_hash(qw(RFC822.SIZE INTERNALDATE FLAGS));
         my $folderHashref = delete $storedCatalogue->{$folder};
-        my $mailboxPath = catdir( $mailboxesPath, $localName );
-        mkdir $mailboxPath unless -d $mailboxPath;
-        $folderHashref->{mailboxPath} = $mailboxPath;
-        my $mailArchivePath;
 
+        ( my $mailboxPath, $folderHashref->{mailboxCaseidSha1Hex} ) =
+          find_or_make_folder(
+            $generalSettings{searchSha1},
+            $folderHashref->{mailboxCaseidSha1Hex},
+            catdir( $mailboxesPath, $localName )
+          );
+
+        my $mailArchivePath;
         if ( $mailArchivesPath && -d $mailArchivesPath ) {
-            $mailArchivePath = catdir( $mailArchivesPath, $localName );
-            mkdir $mailArchivePath unless -d $mailArchivePath;
-            chdir $mailArchivePath;
+            ( $mailArchivePath, $folderHashref->{mailArchiveCaseidSha1Hex} ) =
+              find_or_make_folder(
+                $generalSettings{searchSha1},
+                $folderHashref->{mailArchiveCaseidSha1Hex},
+                catdir( $mailArchivesPath, $localName )
+              );
             require EmailMgt108::EmailParser;
         }
 
@@ -200,27 +208,24 @@ sub email_downloader {
 }
 
 sub find_or_make_folder {
-    my ( $caseidsha1hex, $hints, $name, $parentFolder, ) = @_;
+    my ( $searchSha1, $caseidsha1hex, $fallbackPath, ) = @_;
     my $folder;
-    if ($caseidsha1hex) {
-        $hints->beginInteractive;
-        my $iterator = $hints->{searchSha1}->( pack( 'H*', $caseidsha1hex ) );
+    if ( $searchSha1 && defined $caseidsha1hex ) {
+        my $iterator = $searchSha1->( pack( 'H*', $caseidsha1hex ) );
         while ( my ($path) = $iterator->() ) {
             next if $path =~ m#/Y_Cellar.*/#;
             $folder = dirname($path);
             last;
         }
-        $hints->commit;
     }
     return $folder, $caseidsha1hex if defined $folder;
-    return unless defined $parentFolder;
-    $folder = catdir( $parentFolder, $name );
-    mkdir $folder unless -e $folder;
-    return unless -d $folder;
-    my $caseidFile = catfile( $folder, '.caseid' );
+    return              unless defined $fallbackPath;
+    mkdir $fallbackPath unless -e $fallbackPath;
+    return              unless -d $fallbackPath;
+    my $caseidFile = catfile( $fallbackPath, '.caseid' );
     system 'dd', 'if=/dev/urandom', 'count=1', "of=$caseidFile"
       unless -e $caseidFile;
-    return $folder, Digest::SHA->new->addfile($caseidFile)->hexdigest;
+    return $fallbackPath, Digest::SHA->new->addfile($caseidFile)->hexdigest;
 }
 
 1;
