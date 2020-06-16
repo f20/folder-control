@@ -29,6 +29,7 @@ use warnings;
 use Mail::IMAPClient;
 use Time::Piece;
 use File::Spec::Functions qw(catdir catfile);
+use File::Basename qw(dirname);
 use Digest::SHA;
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
