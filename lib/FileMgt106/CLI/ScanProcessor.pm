@@ -151,7 +151,7 @@ sub makeProcessor {
                     my ( $cellarScanner, $cellarDir );
                     if ( $grabSource ne 'done' ) {
                         $cellarDir = $self->homePath;
-                        if ( -d ( my $d = $cellarDir . '/Grab.tmp' ) ) {
+                        if ( -d ( my $d = catdir( $cellarDir, 'Grab.tmp' ) ) ) {
                             $cellarDir = $d;
                         }
                         {
