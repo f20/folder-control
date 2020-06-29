@@ -67,20 +67,20 @@ sub attach {
             $toBeDeleted->unwatchAll;
             warn "Stopped watching $toBeDeleted";
         }
-        $hints->enqueue(
-            $runner->{qu},
-            sub {
-                my ($hints) = @_;
-                my $doclocid =
-                  $hints->{topFolder}
-                  ->( $root, ( stat $root )[ STAT_DEV, STAT_INO ] );
-                die unless $doclocid;
-                my $oldChildrenHashref = $hints->{children}->($doclocid);
-                my @expected           = keys %$oldChildrenHashref;
-                $hints->{uproot}->( $oldChildrenHashref->{$_} )
-                  foreach grep { !exists $list{$_} } @expected;
-            }
-        );
+        my $uprooter = sub {
+            my ($hints) = @_;
+            my $doclocid =
+              $hints->{topFolder}
+              ->( $root, ( stat $root )[ STAT_DEV, STAT_INO ] );
+            die unless $doclocid;
+            my $oldChildrenHashref = $hints->{children}->($doclocid);
+            my @expected           = keys %$oldChildrenHashref;
+            $hints->{uproot}->( $oldChildrenHashref->{$_} )
+              foreach grep { !exists $list{$_} } @expected;
+        };
+        $runner->{qu}
+          ? $hints->enqueue( $runner->{qu}, $uprooter )
+          : $uprooter->($hints);
 
         my $time;
         foreach (@list) {
@@ -101,7 +101,9 @@ sub attach {
                 $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_, $dir )
                   if $topMaster->{'/scanMasterConfig'};
                 $time ||= time + 2;
-                $runner->{qu}->enqueue( ++$time, $scanMaster );
+                $runner->{qu}
+                  ? $runner->{qu}->enqueue( ++$time, $scanMaster )
+                  : $scanMaster->dequeued($runner);
             }
             elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
                 $scanMaster->attach( $dir, $runner );
@@ -161,7 +163,7 @@ sub attach {
       ->startWatching( $topMaster->{'/kq'}, $root )
       if $topMaster->{'/kq'};
 
-    $runner->{qu}->enqueue( time + 1, $topMaster ) if $runner;
+    $runner->{qu}->enqueue( time + 1, $topMaster ) if $runner && $runner->{qu};
 
     $topMaster;
 
@@ -170,6 +172,7 @@ sub attach {
 sub dequeued {
     my ( $topMaster, $runner ) = @_;
     $topMaster->{'/RESCANNER'}->($runner);
+    return unless $runner->{qu};
     my $time         = time;
     my @refLocaltime = localtime( $time - 17_084 );
     my $nextRun =

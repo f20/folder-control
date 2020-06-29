@@ -364,11 +364,6 @@ sub makeProcessor {
 
             $hints ||= $self->hintsObj;
 
-            if (/^-+migrate(?:=(.+))?/) {
-                $self->migrate( undef, $1 );
-                next;
-            }
-
             $_ = catdir( $startFolder, $_ ) unless m#^/#s;
             my @argumentStat = lstat;
             if ( -l _ ) {

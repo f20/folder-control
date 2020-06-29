@@ -26,11 +26,14 @@ package FileMgt106::CLI::ScanCLI;
 use warnings;
 use strict;
 
+use Cwd qw(getcwd);
+use Encode qw(decode_utf8);
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(catfile rel2abs);
+use FileMgt106::CLI::Autograb;
+use FileMgt106::CLI::MigVol;
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_MTIME);
-use FileMgt106::CLI::Autograb;
 
 use constant {
     SCLI_START    => 0,
@@ -70,8 +73,9 @@ sub hintsObj {
 sub process {
     my ( $self, @arguments ) = @_;
     local $_ = $arguments[0];
-    return $self->help unless defined $_;
-    return $self->$_(@arguments) if s/^-+//s && UNIVERSAL::can( $self, $_ );
+    return $self->scan_command_help unless defined $_;
+    return $self->$_(@arguments)
+      if s/^-+/scan_command_/s && UNIVERSAL::can( $self, $_ );
     require FileMgt106::CLI::ScanProcessor;
     my ( $scalarAcceptor, $folderAcceptor, $finisher, $legacyArgumentsAcceptor )
       = $self->makeProcessor;
@@ -79,111 +83,53 @@ sub process {
     $finisher->();
 }
 
-sub help {
+sub scan_command_help {
     warn <<EOW;
 Usage:
     scan.pl -autograb [options] <catalogue-files>
     scan.pl -help
-    scan.pl -migrate[=<old-hints-file>]
+    scan.pl -migrate [<old-hints-file>]
+    scan.pl -volume [options]
     scan.pl <legacy-arguments>
 EOW
 }
 
-sub _prettifyField {
-    my ( $number, $spaces ) = @_;
-    $number = 'undef' unless defined $number;
-    do { } while $number =~ s/([0-9])([0-9]{3})(?:,|$)/$1,$2/s;
-    $spaces -= length $number;
-    ( $spaces > 0 ? ' ' x $spaces : '' ) . $number;
-}
-
-sub volume {
-
-    my ( $self, $command, $subcommand, @volumes ) = @_;
-    my $hints    = $self->hintsObj;
-    my $dbHandle = $hints->{dbHandle};
-
-    if ( defined $subcommand && $subcommand =~ /on|off|enab|disab/i ) {
-        my $newparid = $subcommand =~ /on|enab/i ? 0 : -1;
-        $hints->beginInteractive;
-        $dbHandle->do( 'update locations set parid=? where parid<1 and name=?',
-            undef, $newparid, $_ )
-          foreach @volumes;
-        $hints->commit;
+sub scan_command_top {
+    my $self    = shift;
+    my $command = shift;
+    my %locs;
+    my $hints = $self->hintsObj;
+    require Daemon112::TopMaster;
+    foreach (@_) {
+        if (/^-+stash=(.+)/) {
+            local $_ = $1;
+            $locs{stash} = rel2abs( $_, $self->startFolder );
+            next;
+        }
+        elsif (/^-+backup=?(.*)/) {
+            local $_ = $1;
+            $locs{repo} = rel2abs( $_, $self->startFolder );
+            next;
+        }
+        elsif (/^-+git=?(.*)/) {
+            local $_ = $1;
+            $locs{git} = rel2abs( $_, $self->startFolder );
+            next;
+        }
+        elsif (/^-+resolve/) {
+            $locs{resolve} = 1;
+            next;
+        }
+        elsif ( chdir rel2abs( $_, $self->startFolder ) ) {
+            $hints->beginInteractive;
+            Daemon112::TopMaster->new->attach( decode_utf8 getcwd() )
+              ->dequeued( { hints => $hints, locs => \%locs, } );
+            $hints->commit;
+        }
+        else {
+            warn "Ignored: $_";
+        }
     }
-
-    my $reportInfo = sub {
-        print join( '',
-            $_[0],
-            ' ' x ( 8 - length $_[0] ),
-            ( map { _prettifyField( $_, 11 ); } @_[ 1 .. 3 ] ),
-            ' ', $_[4] || '/',
-        ) . "\n";
-    };
-    $reportInfo->( qw(Status Folders Files), 'Max MB', 'Volume' );
-    my $q = $dbHandle->prepare( 'select parid, locid, name from locations'
-          . ' where parid<1 order by parid desc, name' );
-    my $qc =
-      $dbHandle->prepare( 'select sum(size is null), sum(size is not null)'
-          . ', CAST((sum(size)+99999)/1e6 AS INT)'
-          . ' from locations where rootid=?' );
-    $q->execute;
-    while ( my ( $parid, $locid, $name ) = $q->fetchrow_array ) {
-        $qc->execute($locid);
-        $reportInfo->(
-            $parid ? 'Disabled' : 'Enabled',
-            $qc->fetchrow_array, $name
-        );
-        $qc->finish;
-    }
-
-}
-
-*volumes = \&volume;
-
-sub migrate {
-
-    my ( $self, $command, $oldFileName ) = @_;
-
-    $oldFileName = rel2abs( $oldFileName, $self->[SCLI_START] )
-      if defined $oldFileName;
-    chdir dirname( $self->[SCLI_PERL5DIR] )
-      or die "chdir dirname($self->[SCLI_PERL5DIR]): $!";
-    unless ( $oldFileName && -f $oldFileName ) {
-        my $mtime = ( stat '~$hints' )[STAT_MTIME]
-          or die 'No existing hints file';
-     require POSIX;
-   $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
-        $oldFileName = '~$hints ' . $mtime;
-        rename '~$hints', $oldFileName
-          or die "Cannot move ~\$hints to $oldFileName: $!";
-    }
-    my $hints    = $self->hintsObj;
-    my $dbHandle = $hints->{dbHandle};
-    $dbHandle->{AutoCommit} = 1;
-    $dbHandle->do( 'pragma journal_mode=' . ( /nowal/i ? 'delete' : 'wal' ) )
-      if /wal/i;
-    $dbHandle->do("attach '$oldFileName' as old");
-
-    if ( $dbHandle->do('begin exclusive transaction') ) {
-        my $reportProgress = sub {
-            warn join( '',
-                _prettifyField( $_[0], 5 ),
-                map { _prettifyField( $_, 15 ); } @_[ 1 .. $#_ ] )
-              . "\n";
-        };
-        $reportProgress->(qw(Level Added Total));
-        $dbHandle->do('delete from main.locations');
-        $hints->{deepCopy}->( 'old.locations', 0, 0, undef, $reportProgress );
-        warn 'Committing changes';
-        sleep 2 while !$dbHandle->commit;
-        __PACKAGE__->new(@$self)->hintsObj
-          or die 'Cannot complete database initialisation';
-    }
-    else {
-        warn 'New database is in use: no migration done';
-    }
-
 }
 
 1;

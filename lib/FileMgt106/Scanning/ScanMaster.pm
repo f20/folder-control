@@ -178,7 +178,7 @@ sub setRepoloc {
                     warn "Cannot chdir to $gitFolder: $!";
                 }
             };
-            if ($runner) {
+            if ( $runner && $runner->{pq} ) {
                 delete $self->[SM_SCALAR] unless $self->[SM_WATCHING];
                 $self->[SM_HINTS]->enqueue( $runner->{pq}, $run );
             }
@@ -294,19 +294,23 @@ sub dequeued {
         my $run = sub {
             my ($hints) = @_;
             $self->scan( $hints, $rgid, $frotl );
-            $self->schedule( $time, $runner->{qu} ) if $runner;
+            $self->schedule( $time, $runner->{qu} ) if $runner && $runner->{qu};
         };
-        if ($runner) {
+        if ( !$runner ) {
+            $self->[SM_HINTS]->beginInteractive;
+            eval { $run->( $self->[SM_HINTS] ); };
+            warn "scan $self->[SM_DIR]: $@" if $@;
+            $self->[SM_HINTS]->commit;
+        }
+        elsif ( $runner->{pq} ) {
             $self->[SM_HINTS]->enqueue( $runner->{pq}, $run );
             $self->[SM_FULLRESCAN] =
               $time + $self->fullRescanTimeOffset(@refLocaltime);
             return $self;
         }
         else {
-            $self->[SM_HINTS]->beginInteractive;
             eval { $run->( $self->[SM_HINTS] ); };
             warn "scan $self->[SM_DIR]: $@" if $@;
-            $self->[SM_HINTS]->commit;
         }
     }
 
@@ -322,7 +326,9 @@ sub dequeued {
             : ( ( $refLocaltime[2] < 18 ? 23 : 47 ) - $refLocaltime[2] )
         ),
         $runner->{qu}
-    ) if $runner;
+      )
+      if $runner
+      && $runner->{qu};
 
     $self->takeScalar( $runner, $self->[SM_SCALAR] );
 

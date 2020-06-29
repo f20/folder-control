@@ -32,10 +32,11 @@ use FileMgt106::FileSystem qw(STAT_DEV);
 use File::Basename qw(dirname);
 use utf8;
 
-sub autograb {
+sub scan_command_autograb {
 
-    my $self = shift;
     my ( @grabSources, $stashLoc, @fileList, %options );
+    my $self    = shift;
+    my $command = shift;
     foreach (@_) {
         if (/^-+grab=(.+)/s) {
             push @grabSources, $1;
