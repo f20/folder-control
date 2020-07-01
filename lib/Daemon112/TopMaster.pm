@@ -147,9 +147,9 @@ sub attach {
                 else {
                     warn "Could not find folder $category";
                 }
-                if (   $runner
-                    && $runner->{qu}
-                    && !$runner->{locs}{gitLastGarbageCollection}
+                if (    $runner
+                    and $runner->{qu}
+                    and !$runner->{locs}{gitLastGarbageCollection}
                     || time - $runner->{locs}{gitLastGarbageCollection} >
                     86_100 )
                 {
