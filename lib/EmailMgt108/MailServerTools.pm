@@ -216,6 +216,7 @@ sub find_or_make_folder {
         my $iterator = $searchSha1->( pack( 'H*', $caseidsha1hex ) );
         while ( my ($path) = $iterator->() ) {
             next if $path =~ m#/Y_Cellar.*/#;
+            next unless -s $path;
             $folder = dirname($path);
             last;
         }
