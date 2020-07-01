@@ -98,23 +98,49 @@ sub email_downloader {
           $imap->fetch_hash(qw(RFC822.SIZE INTERNALDATE FLAGS));
         my $folderHashref = delete $storedCatalogue->{$folder};
 
-        ( my $mailboxPath, $folderHashref->{mailboxCaseidSha1Hex} ) =
-          find_or_make_folder(
-            $generalSettings{searchSha1},
-            $folderHashref->{mailboxCaseidSha1Hex},
-            catdir( $mailboxesPath, $localName )
-          );
+        my $mailboxPath;
+        if (
+            ( $mailboxPath, my $newSha1Hex ) = find_or_make_folder(
+                $generalSettings{searchSha1},
+                $folderHashref->{mailboxCaseidSha1Hex},
+                catdir( $mailboxesPath, $localName )
+            )
+          )
+        {
+
+            if ( !defined $folderHashref->{mailboxCaseidSha1Hex}
+                || $folderHashref->{mailboxCaseidSha1Hex} ne $newSha1Hex )
+            {
+                %$folderHashref = ( mailboxCaseidSha1Hex => $newSha1Hex );
+            }
+        }
+        else {
+            die "Cannot find or make mailbox folder for $localName";
+        }
 
         my $mailArchivePath;
         if ( $mailArchivesPath && -d $mailArchivesPath ) {
-            ( $mailArchivePath, $folderHashref->{mailArchiveCaseidSha1Hex} ) =
-              find_or_make_folder(
-                $generalSettings{searchSha1},
-                $folderHashref->{mailArchiveCaseidSha1Hex},
-                catdir( $mailArchivesPath, $localName )
-              );
-            chdir $mailArchivePath;
-            require EmailMgt108::EmailParser;
+            if (
+                ( $mailArchivePath, my $newSha1Hex ) = find_or_make_folder(
+                    $generalSettings{searchSha1},
+                    $folderHashref->{mailArchiveCaseidSha1Hex},
+                    catdir( $mailArchivesPath, $localName )
+                )
+              )
+            {
+                if ( !defined $folderHashref->{mailArchiveCaseidSha1Hex} ) {
+                    $folderHashref->{mailArchiveCaseidSha1Hex} = $newSha1Hex;
+                }
+                elsif (
+                    $folderHashref->{mailArchiveCaseidSha1Hex} ne $newSha1Hex )
+                {
+                    $folderHashref->{mailArchiveCaseidSha1Hex} = $newSha1Hex;
+                    delete $_->{archived}
+                      foreach grep { ref $_; } values %$folderHashref;
+                }
+                chdir $mailArchivePath;
+                require EmailMgt108::EmailParser;
+            }
         }
 
         {
@@ -212,10 +238,12 @@ sub email_downloader {
 sub find_or_make_folder {
     my ( $searchSha1, $caseidsha1hex, $fallbackPath, ) = @_;
     my $folder;
+    unlink $fallbackPath if -l $fallbackPath;
     if ( $searchSha1 && defined $caseidsha1hex ) {
         my $iterator = $searchSha1->( pack( 'H*', $caseidsha1hex ) );
         while ( my ($path) = $iterator->() ) {
             next if $path =~ m#/Y_Cellar.*/#;
+            next unless -s $path;
             $folder = dirname($path);
             last;
         }
@@ -227,9 +255,9 @@ sub find_or_make_folder {
         }
         return $folder, $caseidsha1hex;
     }
-    return              unless defined $fallbackPath;
+    return unless defined $fallbackPath;
     mkdir $fallbackPath unless -e $fallbackPath;
-    return              unless -d $fallbackPath;
+    return unless -d $fallbackPath;
     my $caseidFile = catfile( $fallbackPath, '.caseid' );
     system 'dd', 'if=/dev/urandom', 'count=1', "of=$caseidFile"
       unless -e $caseidFile;
