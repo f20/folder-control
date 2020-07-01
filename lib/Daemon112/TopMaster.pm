@@ -89,24 +89,27 @@ sub attach {
                 warn "Not watching $dir (not a directory)";
                 next;
             }
-            my $scanMaster = $topMaster->{$_};
-            if ( !$scanMaster ) {
-                $scanMaster = $topMaster->{$_} =
+            my $controller = $topMaster->{$_};
+            if ( !$controller ) {
+                $controller = $topMaster->{$_} =
                   FileMgt106::Scanning::ScanMaster->new( $hints, $dir )
                   ->setRepoloc( $runner->{locs},
                     $topMaster->{'/repolocOptions'} );
-                $scanMaster->setWatch( 'Daemon112::Watcher',
+                $controller->setWatch( 'Daemon112::Watcher',
                     $topMaster->{'/kq'} )
                   if $topMaster->{'/kq'};
-                $topMaster->{'/scanMasterConfig'}->( $scanMaster, $_, $dir )
+                $topMaster->{'/scanMasterConfig'}->( $controller, $_, $dir )
                   if $topMaster->{'/scanMasterConfig'};
-                $time ||= time + 2;
+                $time ||= time;
                 $runner->{qu}
-                  ? $runner->{qu}->enqueue( ++$time, $scanMaster )
-                  : $scanMaster->dequeued($runner);
+                  ? $runner->{qu}->enqueue( ++$time, $controller )
+                  : $controller->dequeued($runner);
             }
-            elsif ( UNIVERSAL::isa( $scanMaster, __PACKAGE__ ) ) {
-                $scanMaster->attach( $dir, $runner );
+            elsif ( UNIVERSAL::isa( $controller, __PACKAGE__ ) ) {
+                $controller->attach( $dir, $runner );
+            }
+            elsif ( 'CODE' eq ref $controller ) {
+                $controller->( $_, $dir );
             }
             else {
                 next;

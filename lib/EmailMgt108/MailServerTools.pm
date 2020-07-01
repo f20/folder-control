@@ -220,7 +220,13 @@ sub find_or_make_folder {
             last;
         }
     }
-    return $folder, $caseidsha1hex if defined $folder;
+    if ( defined $folder ) {
+        if ( defined $fallbackPath ) {
+            unlink $fallbackPath;
+            symlink $folder, $fallbackPath;
+        }
+        return $folder, $caseidsha1hex;
+    }
     return              unless defined $fallbackPath;
     mkdir $fallbackPath unless -e $fallbackPath;
     return              unless -d $fallbackPath;
