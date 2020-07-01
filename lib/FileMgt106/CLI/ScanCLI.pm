@@ -125,6 +125,9 @@ sub scan_command_top {
             $readOnlyFlag = 1;
             next;
         }
+        elsif (/^$/s) {
+            next;
+        }
         elsif ( chdir rel2abs( $_, $self->startFolder ) ) {
             $hints->beginInteractive;
             Daemon112::TopMaster->new(
