@@ -227,11 +227,12 @@ sub process {
             next;
         }
 
-        if (/^-+stat/i) {
+        if (/^-+stats?(file)?/i) {
             require FileMgt106::Extraction::Statistics;
+            my $method =
+              $1 ? 'makeFileDataExtractor' : 'makeStatisticsExtractor';
             $catalogueProcessor =
-              FileMgt106::Extraction::Statistics::makeStatisticsExtractor(
-                $hintsFile);
+              FileMgt106::Extraction::Statistics->$method($hintsFile);
             next;
         }
 

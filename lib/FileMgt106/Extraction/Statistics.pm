@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Statistics;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use FileMgt106::Database;
 
-sub _prettyNumber {
+sub _prettyDiff {
     my ( $after, $before, $spaces ) = @_;
     $after ||= 0;
     $after -= $before if $before;
@@ -37,15 +37,13 @@ sub _prettyNumber {
 }
 
 sub makeStatisticsExtractor {
-    my ($hintsFile) = @_;
+    ( undef, my $hintsFile ) = @_;
     binmode STDOUT, ':utf8';
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
     my $query =
       $hints->{dbHandle}->prepare('select size from locations where sha1=?');
-    my (
-        %seen,   $found, $missing, $dups, $bytes,
-        $bytes2, %found, %missing, %dups, %bytes
-    );
+    my ( %seen, $found, $missing, $dups, $bytes,
+        $bytesWithDuplication, %found, %missing, %dups, %bytes );
     my $processor;
     $processor = sub {
         my ($cat) = @_;
@@ -60,7 +58,8 @@ sub makeStatisticsExtractor {
                 if ( exists $seen{$sha1hex} ) {
                     ++$dups;
                     ++$dups{$ext} if defined $ext;
-                    $bytes2 += $seen{$sha1hex} if defined $seen{$sha1hex};
+                    $bytesWithDuplication += $seen{$sha1hex}
+                      if defined $seen{$sha1hex};
                 }
                 else {
                     $query->execute( pack( 'H*', $sha1hex ) );
@@ -70,8 +69,8 @@ sub makeStatisticsExtractor {
                     if ( defined $b ) {
                         ++$found;
                         ++$found{$ext} if defined $ext;
-                        $bytes  += $b;
-                        $bytes2 += $b;
+                        $bytes                += $b;
+                        $bytesWithDuplication += $b;
                         $bytes{$ext} += $b if defined $ext;
                     }
                     else {
@@ -85,15 +84,15 @@ sub makeStatisticsExtractor {
     sub {
         my ( $scalar, $name ) = @_;
         unless ( defined $name ) {
-            print _prettyNumber( $found, undef, 10 )
+            print _prettyDiff( $found, undef, 10 )
               . ' found, '
-              . _prettyNumber( $bytes, undef, 15 )
+              . _prettyDiff( $bytes, undef, 15 )
               . ' bytes, '
-              . _prettyNumber( $missing, undef, 7 )
+              . _prettyDiff( $missing, undef, 7 )
               . ' missing, '
-              . _prettyNumber( $dups, undef, 7 )
+              . _prettyDiff( $dups, undef, 7 )
               . ' duplicated, '
-              . _prettyNumber( $bytes2, undef, 11 )
+              . _prettyDiff( $bytesWithDuplication, undef, 11 )
               . " bytes including duplication.\n";
             return;
         }
@@ -102,15 +101,57 @@ sub makeStatisticsExtractor {
         my $startDups    = $dups;
         my $startBytes   = $bytes;
         $processor->($scalar);
-        print _prettyNumber( $found, $startFound, 10 )
+        print _prettyDiff( $found, $startFound, 10 )
           . ' found, '
-          . _prettyNumber( $bytes, $startBytes, 15 )
+          . _prettyDiff( $bytes, $startBytes, 15 )
           . ' bytes, '
-          . _prettyNumber( $missing, $startMissing, 7 )
+          . _prettyDiff( $missing, $startMissing, 7 )
           . ' missing, '
-          . _prettyNumber( $dups, $startDups, 7 )
+          . _prettyDiff( $dups, $startDups, 7 )
           . ' duplicated, '
           . "$name\n";
+        return;
+    };
+}
+
+sub makeFileDataExtractor {
+    ( undef, my $hintsFile ) = @_;
+    binmode STDOUT, ':utf8';
+    require POSIX;
+    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    my $query =
+      $hints->{dbHandle}
+      ->prepare('select mtime, size from locations where sha1=?');
+    print join( "\t", 'Catalogue', 'Date-UTC', 'Time-UTC','Bytes' ) . "\n";
+    sub {
+        my ( $scalar, $name ) = @_;
+        my ( %seen, $processor );
+        $processor = sub {
+            my ($cat) = @_;
+            while ( my ( $k, $v ) = each %$cat ) {
+                if ( 'HASH' eq ref $v ) {
+                    $processor->($v);
+                    next;
+                }
+                if ( $v =~ /([a-fA-F0-9]{40})/ ) {
+                    my $sha1hex = lc $1;
+                    my ($ext) = $k =~ /\.([a-zA-Z0-9_]+)$/s;
+                    next if exists $seen{$sha1hex};
+                    $query->execute( pack( 'H*', $sha1hex ) );
+                    my ( $time, $bytes ) = $query->fetchrow_array;
+                    $query->finish;
+                    undef $seen{$sha1hex};
+                    print join( "\t",
+                        $name,
+                        defined $time
+                        ? POSIX::strftime( "%F\t%T", gmtime($time) )
+                        : "\t",
+                        defined $bytes ? $bytes : '',
+                    ) . "\n";
+                }
+            }
+        };
+        $processor->($scalar);
         return;
     };
 }
