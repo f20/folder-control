@@ -23,6 +23,11 @@ package FileMgt106::CLI::ScanCLI;
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use constant {
+    SCLI_START    => 0,
+    SCLI_PERL5DIR => 1,
+};
+
 sub _prettifyField {
     my ( $number, $spaces ) = @_;
     $number = 'undef' unless defined $number;
@@ -41,7 +46,7 @@ sub scan_command_migrate {
       or die "chdir dirname($self->[SCLI_PERL5DIR]): $!";
     unless ( $oldFileName && -f $oldFileName ) {
         my $mtime = ( stat '~$hints' )[STAT_MTIME]
-          or die 'No existing hints file';
+          or die 'No existing hints file in ' . `pwd`;
         require POSIX;
         $mtime = POSIX::strftime( '%Y-%m-%d %H-%M-%S %Z', localtime($mtime) );
         $oldFileName = '~$hints ' . $mtime;
