@@ -48,6 +48,7 @@ sub makeStatisticsExtractor {
     $processor = sub {
         my ($cat) = @_;
         while ( my ( $k, $v ) = each %$cat ) {
+            next if $k =~ m#^/#s;
             if ( 'HASH' eq ref $v ) {
                 $processor->($v);
                 next;
@@ -122,13 +123,14 @@ sub makeFileDataExtractor {
     my $query =
       $hints->{dbHandle}
       ->prepare('select mtime, size from locations where sha1=?');
-    print join( "\t", 'Catalogue', 'Date-UTC', 'Time-UTC','Bytes' ) . "\n";
+    print join( "\t", 'Catalogue', 'Date-UTC', 'Time-UTC', 'Bytes' ) . "\n";
     sub {
         my ( $scalar, $name ) = @_;
         my ( %seen, $processor );
         $processor = sub {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
+                next if $k =~ m#^/#s;
                 if ( 'HASH' eq ref $v ) {
                     $processor->($v);
                     next;
