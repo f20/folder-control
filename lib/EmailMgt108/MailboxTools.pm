@@ -32,7 +32,7 @@ use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
 use FileMgt106::Folders::Builder;
 use Time::Piece;
 
-sub makeMailboxConsolidator {
+sub makeMailboxProcessor {
 
     my ( $hintsFile, $parseAndArchiveFlag ) = @_;
     my $hintsBuilder =

@@ -62,8 +62,7 @@ sub process {
         if (/^-+mailbox(archive)?/) {
             require EmailMgt108::MailboxTools;
             $catalogueProcessor =
-              EmailMgt108::MailboxTools::makeMailboxConsolidator( $hintsFile,
-                $1 );
+              EmailMgt108::MailboxTools::makeMailboxProcessor( $hintsFile, $1 );
             $outputStream = \*STDOUT;
             next;
         }
