@@ -1,6 +1,6 @@
 package FileMgt106::FilterFactory::ByType;
 
-# Copyright 2011-2019 Franck Latrémolière and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -77,13 +77,13 @@ sub explodeByType {
             }
         }
         else {
-            my ( $base, $ext ) = ( $key =~ m#(.*)(\.\S+)$#s );
+            my ( $base, $ext ) = ( $key =~ m#(.*)(\.\S*)$#s );
             ( $base, $ext ) = ( $key, '' )
               unless defined $ext;
             $ext = lc $ext;
-            $ext =~ s/^\.+//s;
             my $cat = 'Other';
-
+            $cat = 'Message' if $ext eq '.';
+            $ext =~ s/^\.+//s;
             $cat = 'Aperture'
               if $ext =~ /^ap[a-oq-z]+$/;
             $cat = 'Audio'
