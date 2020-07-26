@@ -108,6 +108,7 @@ sub scan_command_autograb {
             if ( !defined $folderPath && $options{initFlag} ) {
                 $folderPath = catdir( "\@$source $category", $name );
                 $folderPath .= '_' while -e $folderPath;
+                mkdir "\@$source $category" unless -e "\@$source $category";
                 mkdir $folderPath;
                 if ( $options{initFlag} < 2 ) {
                     open my $fh, '>', catfile( $folderPath, '🚫.txt' );
