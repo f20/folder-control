@@ -75,8 +75,8 @@ sub scan_command_autograb {
         my @catStat = stat;
         -f _ or next;
         my @components = split /\/+/;
-        my $folder     = pop @components;
-        next unless $folder =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
+        my $name       = pop @components;
+        next unless $name =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         my $fileExtension = $1;
         my $target =
           FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
@@ -86,11 +86,10 @@ sub scan_command_autograb {
         my $source = shift @components;
         $source ||= 'NoSource';
         $source =~ s/^[^a-z]+//i;
-        my $fallbackFolder =
-        my $caseidsha1hex = $target->{'.caseid'};
+        my $fallbackFolder = my $caseidsha1hex = $target->{'.caseid'};
         undef $caseidsha1hex if ref $caseidsha1hex;
 
-        my $folder;
+        my $folderPath;
 
         if ($caseidsha1hex) {
             $hints->beginInteractive;
@@ -100,40 +99,41 @@ sub scan_command_autograb {
             while ( my ($path) = $iterator->() ) {
                 next if $path =~ m#/Y_Cellar.*/#;
                 my $newFolder = dirname($path);
-                symlink $newFolder, $folder if $options{symlinkFolders};
-                $folder = $newFolder;
+                symlink $newFolder, catdir( "\@$source $category", $name )
+                  if $options{symlinkFolders};
+                $folderPath = $newFolder;
                 last;
             }
             $hints->commit;
-            if ( !defined $folder && $options{initFlag} ) {
-            $folder=catdir( "\@$source $category", $folder );
-$folder.='_' while -e $folder;
-                mkdir $folder;
+            if ( !defined $folderPath && $options{initFlag} ) {
+                $folderPath = catdir( "\@$source $category", $name );
+                $folderPath .= '_' while -e $folderPath;
+                mkdir $folderPath;
                 if ( $options{initFlag} < 2 ) {
-                    open my $fh, '>', catfile( $folder, '🚫.txt' );
+                    open my $fh, '>', catfile( $folderPath, '🚫.txt' );
                     print {$fh} '{".":"no"}';
                 }
             }
         }
 
-        if ( defined $folder ) {
+        if ( defined $folderPath ) {
 
             if (
                 my ($buildExclusionsFile) =
-                grep { -f catfile( $folder, $_ ); } '🚫.txt', '⛔️.txt',
+                grep { -f catfile( $folderPath, $_ ); } '🚫.txt', '⛔️.txt',
                 '⚠️.txt', '🔺.json'
               )
             {
                 rename(
-                    catfile( $folder, $buildExclusionsFile ),
-                    catfile( $folder, $buildExclusionsFile = '⛔️.txt' )
+                    catfile( $folderPath, $buildExclusionsFile ),
+                    catfile( $folderPath, $buildExclusionsFile = '⛔️.txt' )
                 ) if $buildExclusionsFile eq '⚠️.txt';
-                unlink catfile( $folder, "📖$fileExtension" );
+                unlink catfile( $folderPath, "📖$fileExtension" );
                 symlink rel2abs( $_, $self->startFolder ),
-                  catfile( $folder, "📖$fileExtension" );
+                  catfile( $folderPath, "📖$fileExtension" );
                 my $exclusions =
                   FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
-                    catfile( $folder, $buildExclusionsFile ) );
+                    catfile( $folderPath, $buildExclusionsFile ) );
                 if ( $buildExclusionsFile eq '🔺.json' ) {
                     require FileMgt106::Catalogues::ConsolidateFilter;
                     my $consolidator =
@@ -152,7 +152,9 @@ $folder.='_' while -e $folder;
             }
 
             $scalarAcceptor->(
-                $target, $folder, $1,
+                $target,
+                $folderPath,
+                $1,
                 \@catStat,
                 {
                     restamp => 1,
@@ -161,7 +163,7 @@ $folder.='_' while -e $folder;
             );
 
         }
-†
+
     }
 
     $finisher->();
