@@ -124,8 +124,8 @@ sub explodeByType {
               || $ext eq 'tiff';
             $cat = 'Image_tiff'
               if $ext eq 'tif';
-            $cat = 'JBZ'
-              if $ext eq 'jbz';
+            $cat = 'JBZ'  if $ext eq 'jbz';
+            $cat = 'JSON' if $ext eq 'json';
             $cat = 'Package'
               if $ext eq 'bz2'
               || $ext eq 'exe'
