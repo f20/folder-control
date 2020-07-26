@@ -76,18 +76,23 @@ sub scan_command_autograb {
         -f _ or next;
         my @components = split /\/+/;
         my $folder     = pop @components;
-        next
-          unless $folder =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
+        next unless $folder =~ s/(\.jbz|\.json\.bz2|\.json|\.txt|\.yml)$//s;
         my $fileExtension = $1;
-        my $source        = $components[0];
-        $source =~ s/^[^a-z]+//i;
-        $folder = "\@$source $folder";
         my $target =
           FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar($_);
 
+        my $category = pop @components;
+        $category ||= 'NoCategory';
+        my $source = shift @components;
+        $source ||= 'NoSource';
+        $source =~ s/^[^a-z]+//i;
+        my $fallbackFolder =
         my $caseidsha1hex = $target->{'.caseid'};
         undef $caseidsha1hex if ref $caseidsha1hex;
-        if ( !-d $folder && $caseidsha1hex ) {
+
+        my $folder;
+
+        if ($caseidsha1hex) {
             $hints->beginInteractive;
             my $iterator =
               $hints->{searchSha1}
@@ -100,7 +105,9 @@ sub scan_command_autograb {
                 last;
             }
             $hints->commit;
-            if ( !-d $folder && $options{initFlag} ) {
+            if ( !defined $folder && $options{initFlag} ) {
+            $folder=catdir( "\@$source $category", $folder );
+$folder.='_' while -e $folder;
                 mkdir $folder;
                 if ( $options{initFlag} < 2 ) {
                     open my $fh, '>', catfile( $folder, '🚫.txt' );
@@ -109,7 +116,7 @@ sub scan_command_autograb {
             }
         }
 
-        if ( -d $folder ) {
+        if ( defined $folder ) {
 
             if (
                 my ($buildExclusionsFile) =
@@ -154,10 +161,7 @@ sub scan_command_autograb {
             );
 
         }
-        elsif ( $options{symlinkCats} ) {
-            symlink $_, "$folder$fileExtension";
-        }
-
+†
     }
 
     $finisher->();

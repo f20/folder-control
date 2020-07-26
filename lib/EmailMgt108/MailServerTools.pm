@@ -256,11 +256,16 @@ sub find_or_make_folder {
         return $folder, $caseidsha1hex;
     }
     return unless defined $fallbackPath;
-    mkdir $fallbackPath unless -e $fallbackPath;
-    return unless -d $fallbackPath;
     my $caseidFile = catfile( $fallbackPath, '.caseid' );
-    system 'dd', 'if=/dev/urandom', 'count=1', "of=$caseidFile"
-      unless -e $caseidFile;
+    return $fallbackPath, $caseidsha1hex
+      if -f $caseidFile
+      && Digest::SHA->new->addfile( catfile( $fallbackPath, '.caseid' ) )
+      ->hexdigest eq $caseidsha1hex;
+    $fallbackPath .= '_' while -e $fallbackPath;
+    mkdir $fallbackPath;
+    return unless -d $fallbackPath;
+    $caseidFile = catfile( $fallbackPath, '.caseid' );
+    system 'dd', 'if=/dev/urandom', 'count=1', "of=$caseidFile";
     return $fallbackPath, Digest::SHA->new->addfile($caseidFile)->hexdigest;
 }
 

@@ -109,19 +109,4 @@ sub makeMailboxProcessor {
 
 }
 
-sub find_dup_uids_from_catalogue_scalar {
-    my $scalar = from_json(shift);
-    my %seen;
-    my @dups;
-    while ( my ( $k, $v ) = each %$scalar ) {
-        if ( exists $seen{$v} ) {
-            push @dups, $1 if $k =~ /^([0-9]+)\.$/s;
-        }
-        else {
-            undef $seen{$v};
-        }
-    }
-    @dups;
-}
-
 1;
