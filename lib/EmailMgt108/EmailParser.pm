@@ -1,6 +1,6 @@
 package EmailMgt108::EmailParser;
 
-# Copyright 2012-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2012-2020 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -265,8 +265,8 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
     $SIG{__WARN__} = $savewarn;
     if (@warnings) {
         open my $fh, '>', "$folder.tmp/Parser warnings.txt";
-        print {$fh} join "\r\n\r\n", "Warnings in parsing $emailFile",
-          @warnings;
+        print {$fh} join "\n",
+          map { local $_ = $_; s# at /.*##; $_; } @warnings;
         close $fh;
     }
     rename "$folder.tmp", $folder or warn "rename $folder.tmp: $!";
