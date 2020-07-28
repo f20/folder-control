@@ -63,11 +63,13 @@ sub makeMailboxProcessor {
         {
             my %sortKey;
             foreach my $file ( keys %cat1 ) {
-                $file = catfile( $whereYouWantIt, $file )
-                  if defined $whereYouWantIt;
-                my @stat = stat $file or next;
+                my $filePath =
+                  defined $whereYouWantIt
+                  ? catfile( $whereYouWantIt, $file )
+                  : $file;
+                my @stat = stat $filePath or next;
                 my %stamp;
-                open my $fh, '<', $file;
+                open my $fh, '<', $filePath;
                 local $/ = "\n";
                 while (<$fh>) {
                     last if /^\s*$/s;
@@ -81,7 +83,7 @@ sub makeMailboxProcessor {
                 ($contentStamp) = sort { $b <=> $a; } values %stamp
                   unless defined $contentStamp;
                 if ( defined $contentStamp && $stat[9] != $contentStamp ) {
-                    utime time, $contentStamp, $file;
+                    utime time, $contentStamp, $filePath;
                     $sortKey{$file} = $contentStamp;
                 }
                 else {
@@ -89,15 +91,19 @@ sub makeMailboxProcessor {
                 }
             }
             my $id2 = 2 * 10**$digits;
-            foreach (
-                sort { $sortKey{$a} <=> $sortKey{$b}; }
+            foreach my $source (
+                sort {
+                    $sortKey{$a} <=> $sortKey{$b} || $cat1{$a} cmp $cat1{$b};
+                }
                 keys %sortKey
               )
             {
                 my $target = $id2++ . '.';
-                $target = catfile( $whereYouWantIt, $target )
-                  if defined $whereYouWantIt;
-                rename $_, $target;
+                if ( defined $whereYouWantIt ) {
+                    $_ = catfile( $whereYouWantIt, $_ )
+                      foreach $source, $target;
+                }
+                rename $source, $target;
                 EmailMgt108::EmailParser::parseMessage($target)
                   if $parseAndArchiveFlag;
             }
