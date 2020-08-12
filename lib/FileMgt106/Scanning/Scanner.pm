@@ -64,25 +64,17 @@ sub new {
         \.core$|
         \.pyc$
       )/sx;
-
     my $regexIgnoreFolderContents = qr/\.(?:app|download|lrdata|tmp)$/is;
-
     my $regexWatchThisFile =
       -e '/System/Library'
       ? qr/\.(?:R|c|command|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
       : qr/\.(?:R|c|command|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
-
-    my $regexCheckThisFile = qr/\.xls$/is;
-
-    my $regexNeverWatchFolder = qr/^Y_|^\@|^#|\.sparsebundle$/is;
-
-    my $regexAlwaysWatchFolder = qr/^[OWXZ]_/is;
-
+    my $regexCheckThisFile       = qr/\.xls$/is;
+    my $regexNeverWatchFolder    = qr/^Y_|^\@|^#|\.sparsebundle$/is;
+    my $regexAlwaysWatchFolder   = qr/^[OWXZ]_/is;
     my $regexQuicklyMakeReadOnly = qr/^[XY]_/is;
+    my $regexNeverMakeReadOnly   = qr/\.sparsebundle$/is;
 
-    my $regexNeverMakeReadOnly = qr/\.sparsebundle$/is;
-
-    my $timeLimitAutowatch = time - 3_000_000;
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
     {
         my @stat = stat $dir or die "$dir: cannot stat";
@@ -273,8 +265,9 @@ sub new {
         my ( $locid, $path, $forceReadOnlyTimeLimit, $watchMaster, $hashref,
             $stasher, $backuper, $reserveWatchMaster, )
           = @_;
+        my $timeNow = time;
         my $mergeEveryone =
-          $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > 1_999_999_999;
+          $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > $timeNow;
         my $oldChildrenHashref = $children->($locid);
         my $runningUnderWatcher = $hashref && $watchMaster;
         if ($runningUnderWatcher) {
@@ -439,7 +432,7 @@ sub new {
                             && $stat[STAT_MTIME] < $stat2[STAT_MTIME] )
                         {
                             $stat2[STAT_MTIME] = $stat[STAT_MTIME]
-                              if utime time, $stat[STAT_MTIME], $tfile;
+                              if utime $timeNow, $stat[STAT_MTIME], $tfile;
                         }
                         next unless rename $tfile, $_;
                         $updateLocation->(
@@ -454,7 +447,8 @@ sub new {
                     $stasher, $backuper )
                   if $watchMaster
                   and !$readOnly
-                  and $stat[STAT_MTIME] > time - 60 || /$regexWatchThisFile/;
+                  and $stat[STAT_MTIME] > $timeNow - 60
+                  || /$regexWatchThisFile/;
 
                 $hashref->{$_} = unpack 'H*', $sha1;
 
@@ -587,15 +581,14 @@ sub new {
                     $watchMasterForChild = $reserveWatchMasterForChild
                       if $reserveWatchMasterForChild
                       and /$regexAlwaysWatchFolder/is
-                      || $stat[STAT_MTIME] > $timeLimitAutowatch;
+                      || $stat[STAT_MTIME] > $timeNow - 3_000_000;
 
                     my $forceReadOnlyTimeLimitForChild =
                       $forceReadOnlyTimeLimit;
                     if ( $allowActions && /$regexQuicklyMakeReadOnly/is ) {
-                        my $now = time;
-                        $forceReadOnlyTimeLimitForChild = $now - 13
+                        $forceReadOnlyTimeLimitForChild = $timeNow - 13
                           unless $forceReadOnlyTimeLimit
-                          && $forceReadOnlyTimeLimit > $now;
+                          && $forceReadOnlyTimeLimit > $timeNow;
                     }
                     elsif (/$regexNeverMakeReadOnly/) {
                         $forceReadOnlyTimeLimitForChild = 0;
