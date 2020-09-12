@@ -65,12 +65,15 @@ sub new {
         \.pyc$
       )/sx;
     my $regexIgnoreFolderContents = qr/\.(?:app|download|lrdata|tmp)$/is;
+
     my $regexWatchThisFile =
-      -e '/System/Library'
+      -e '/System/Library'    # Test whether the system is a Mac
       ? qr/\.(?:R|c|command|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
       : qr/\.(?:R|c|command|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
-    my $regexCheckThisFile       = qr/\.xls$/is;
-    my $regexNeverWatchFolder    = qr/^Y_|^\@|^#|\.sparsebundle$/is;
+    my $regexAlwaysRecheckThisFile = qr/\.xls$/is;
+
+    my $regexNeverWatchFolder    = qr/^Y_|\.sparsebundle$/is;
+    my $regexWatchFolderForADay  = qr/^\@|^#/is;
     my $regexAlwaysWatchFolder   = qr/^[OWXZ]_/is;
     my $regexQuicklyMakeReadOnly = qr/^[XY]_/is;
     my $regexNeverMakeReadOnly   = qr/\.sparsebundle$/is;
@@ -157,7 +160,7 @@ sub new {
             while ( !@stat && @wouldNeedToCopy ) {
                 my $source = pop @wouldNeedToCopy;
                 system qw(cp -p --), $source, $fileName;
-                @stat = $rstat->( $fileName, 604_800 );
+                @stat = $rstat->($fileName);
                 my $newsha1 = sha1File($fileName);
                 unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
                     warn 'SHA1 mismatch after trying to copy '
@@ -365,7 +368,7 @@ sub new {
                   and $stat[STAT_CHMODDED]
                   || !$runningUnderWatcher
                   && !$readOnly
-                  && $_ =~ $regexCheckThisFile;
+                  && $_ =~ $regexAlwaysRecheckThisFile;
 
                 my $mergeCandidate =
                      $readOnly
@@ -531,7 +534,7 @@ sub new {
                         }
                         my $frotl =
                           /^Z_(?:Archive|Cellar)/is
-                          ? 604_800
+                          ? $timeNow + 604_800
                           : $forceReadOnlyTimeLimit;
                         my $cat =
                           substr( $stash, 0, length($dir) + 1 ) eq "$dir/"
@@ -581,7 +584,8 @@ sub new {
                     $watchMasterForChild = $reserveWatchMasterForChild
                       if $reserveWatchMasterForChild
                       and /$regexAlwaysWatchFolder/is
-                      || $stat[STAT_MTIME] > $timeNow - 3_000_000;
+                      || $stat[STAT_MTIME] - $timeNow >
+                      /$regexWatchFolderForADay/is ? 86_400 : 2_419_200;
 
                     my $forceReadOnlyTimeLimitForChild =
                       $forceReadOnlyTimeLimit;

@@ -1,6 +1,6 @@
 package FileMgt106::FileSystem;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -90,11 +90,13 @@ sub noInodeStat {
 
 sub managementStat {
     sub {
-        my ( $name, $force ) = @_;
+        my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
         return @stat
-          unless $force && -f _ && $force > $stat[STAT_MTIME];
+          unless $forceReadOnlyTimeLimit
+          && -f _
+          && $forceReadOnlyTimeLimit > $stat[STAT_MTIME];
         if ( !$> && $stat[STAT_UID] ) {
             chown( 0, -1, $name ) or return @stat;
             $stat[STAT_UID]      = 0;
@@ -112,10 +114,10 @@ sub managementStat {
 
 sub imapStat {
     sub {
-        my ( $name, $force ) = @_;
+        my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat unless $force and -f _ || -d _;
+        return @stat unless $forceReadOnlyTimeLimit and -f _ || -d _;
         if ( !$> and $stat[STAT_UID] != 60 || $stat[STAT_GID] != 6 ) {
             chown( 60, 6, $name ) or return @stat;
             $stat[STAT_UID]      = 60;
@@ -123,7 +125,8 @@ sub imapStat {
             $stat[STAT_CHMODDED] = 1;
         }
         my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 = 0040 | ( $force > $stat[STAT_MTIME] ? 0550 : 0770 ) &
+        my $rwx2 =
+          0040 | ( $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ? 0550 : 0770 ) &
           $stat[STAT_MODE];
         if ( $rwx2 != $rwx1 ) {
             chmod $rwx2, $name or return @stat;
@@ -136,7 +139,7 @@ sub imapStat {
 sub publishedStat {
     my ($rgid) = @_;
     sub {
-        my ( $name, $force ) = @_;
+        my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
         return @stat unless -d _ || -f _;
@@ -149,8 +152,8 @@ sub publishedStat {
             $stat[STAT_GID]      = $rgid;
             $stat[STAT_CHMODDED] = 1;
         }
-        if ( defined $force ) {
-            if ( -f _ && $force > $stat[STAT_MTIME] ) {
+        if ( defined $forceReadOnlyTimeLimit ) {
+            if ( -f _ && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ) {
                 $readOnlyFile = 1;
                 if ( !$> && $stat[STAT_UID] ) {
                     chown( 0, -1, $name ) or return @stat;
@@ -271,7 +274,7 @@ sub statFromGid {
     }
 
     sub {
-        my ( $name, $force ) = @_;
+        my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
         return @stat unless -d _ || -f _;
@@ -299,8 +302,8 @@ sub statFromGid {
         }
         if (   -f _
             && !$readOnlyFile
-            && defined $force
-            && $force > $stat[STAT_MTIME] )
+            && defined $forceReadOnlyTimeLimit
+            && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] )
         {
             $readOnlyFile = 1;
             if ( !$> && $stat[STAT_UID] ) {
