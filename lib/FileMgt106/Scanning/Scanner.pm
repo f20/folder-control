@@ -266,21 +266,27 @@ sub new {
     my $scanDir;
     $scanDir = sub {
         my ( $locid, $path, $forceReadOnlyTimeLimit, $watchMaster, $hashref,
-            $stasher, $backuper, $reserveWatchMaster, )
+            $stasher, $backuper, $watchTimeLimit, )
           = @_;
         my $timeNow = time;
+        if ($watchMaster) {
+            if ( defined $watchTimeLimit && $watchTimeLimit < 0 ) {
+                $watchTimeLimit = -$watchTimeLimit;
+            }
+            else {
+                $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
+                    $forceReadOnlyTimeLimit, $stasher, $backuper );
+            }
+        }
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > $timeNow;
-        my $oldChildrenHashref = $children->($locid);
-        my $runningUnderWatcher = $hashref && $watchMaster;
+        my $target              = !defined $watchMaster && $hashref;
+        my $runningUnderWatcher = $hashref              && $watchMaster;
+        my $oldChildrenHashref  = $children->($locid);
         if ($runningUnderWatcher) {
             $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
         }
-        my $target = !defined $watchMaster && $hashref;
         $hashref = {} if $target || !$hashref;
-        $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
-            $forceReadOnlyTimeLimit, $stasher, $backuper )
-          if $watchMaster;
         my %targetHasBeenApplied;
         my @list;
         {
@@ -577,16 +583,6 @@ sub new {
                         next;
                     }
 
-                    my ( $reserveWatchMasterForChild, $watchMasterForChild );
-                    $reserveWatchMasterForChild =
-                      ( $watchMaster || $reserveWatchMaster )
-                      unless /$regexNeverWatchFolder/is;
-                    $watchMasterForChild = $reserveWatchMasterForChild
-                      if $reserveWatchMasterForChild
-                      and /$regexAlwaysWatchFolder/is
-                      || $stat[STAT_MTIME] - $timeNow >
-                      /$regexWatchFolderForADay/is ? 86_400 : 2_419_200;
-
                     my $forceReadOnlyTimeLimitForChild =
                       $forceReadOnlyTimeLimit;
                     if ( $allowActions && /$regexQuicklyMakeReadOnly/is ) {
@@ -596,6 +592,19 @@ sub new {
                     }
                     elsif (/$regexNeverMakeReadOnly/) {
                         $forceReadOnlyTimeLimitForChild = 0;
+                    }
+
+                    my $watchMasterForChild = $watchMaster
+                      unless /$regexNeverWatchFolder/is;
+                    my $watchTimeLimitForChild;
+                    if ( $watchMasterForChild && !/$regexAlwaysWatchFolder/is )
+                    {
+                        my $ageMax = $timeNow -
+                          ( /$regexWatchFolderForADay/is ? 86_400 : 2_419_200 );
+                        $ageMax = $watchTimeLimit
+                          if $watchTimeLimit && $watchTimeLimit > $ageMax;
+                        $watchTimeLimitForChild =
+                          $stat[STAT_MTIME] < $ageMax ? -$ageMax : $ageMax;
                     }
 
                     my ( $targetForChild, $stasherForChild, $backuperForChild );
@@ -618,7 +627,7 @@ sub new {
                         $targetForChild,
                         $stasherForChild,
                         $backuperForChild,
-                        $reserveWatchMasterForChild,
+                        $watchTimeLimitForChild,
                     );
 
                     delete $target->{$_}
@@ -731,9 +740,9 @@ sub new {
 
         $hashref;
 
-    };
+      }
 
-    $self->{scan} = sub {
+      $self->{scan} = sub {
 
         my ( $forceReadOnlyTimeLimit, $targetHashref, $stashPair, $repoPair,
             $watchMaster, )
@@ -839,7 +848,7 @@ sub new {
 
         wantarray ? ( $scalar, $rootLocid ) : $scalar;
 
-    };
+      };
 
     $self->{infill} = sub {
         my ($whatYouWant) = @_;
