@@ -269,15 +269,6 @@ sub new {
             $stasher, $backuper, $watchTimeLimit, )
           = @_;
         my $timeNow = time;
-        if ($watchMaster) {
-            if ( defined $watchTimeLimit && $watchTimeLimit < 0 ) {
-                $watchTimeLimit = -$watchTimeLimit;
-            }
-            else {
-                $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
-                    $forceReadOnlyTimeLimit, $stasher, $backuper );
-            }
-        }
         my $mergeEveryone =
           $forceReadOnlyTimeLimit && $forceReadOnlyTimeLimit > $timeNow;
         my $target              = !defined $watchMaster && $hashref;
@@ -287,6 +278,15 @@ sub new {
             $oldChildrenHashref->{$_} ||= 0 foreach keys %$hashref;
         }
         $hashref = {} if $target || !$hashref;
+        if ($watchMaster) {
+            if ( defined $watchTimeLimit && $watchTimeLimit < 0 ) {
+                $watchTimeLimit = -$watchTimeLimit;
+            }
+            else {
+                $watchMaster->watchFolder( $scanDir, $locid, $path, $hashref,
+                    $forceReadOnlyTimeLimit, $stasher, $backuper );
+            }
+        }
         my %targetHasBeenApplied;
         my @list;
         {
