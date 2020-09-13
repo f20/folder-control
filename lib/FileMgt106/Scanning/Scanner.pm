@@ -594,9 +594,9 @@ sub new {
                         $forceReadOnlyTimeLimitForChild = 0;
                     }
 
-                    my $watchMasterForChild = $watchMaster
+                    my ( $watchMasterForChild, $watchTimeLimitForChild );
+                    $watchMasterForChild = $watchMaster
                       unless /$regexNeverWatchFolder/is;
-                    my $watchTimeLimitForChild;
                     if ( $watchMasterForChild && !/$regexAlwaysWatchFolder/is )
                     {
                         my $ageMax = $timeNow -
@@ -740,9 +740,9 @@ sub new {
 
         $hashref;
 
-      }
+    };
 
-      $self->{scan} = sub {
+    $self->{scan} = sub {
 
         my ( $forceReadOnlyTimeLimit, $targetHashref, $stashPair, $repoPair,
             $watchMaster, )
@@ -848,7 +848,7 @@ sub new {
 
         wantarray ? ( $scalar, $rootLocid ) : $scalar;
 
-      };
+    };
 
     $self->{infill} = sub {
         my ($whatYouWant) = @_;
