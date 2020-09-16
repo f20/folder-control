@@ -41,7 +41,7 @@ our @EXPORT_OK = qw(
 );
 
 use constant {
-    STAT_DEV      => 0,     # device id
+    STAT_DEV      => 0,     # device id
     STAT_INO      => 1,     # inode
     STAT_MODE     => 2,     # mode
     STAT_NLINK    => 3,     # number of links
@@ -58,7 +58,7 @@ use constant {
 };
 
 my %aclStyleDevMapSingleton;       # undef = POSIX, 1 = NFSv4, 2 = none
-my %macOSGroupFromGidSingleton;    # name from gid
+my %macOSGroupFromGidSingleton;    # name from gid
 my @cmpToolSingleton =
     -e '/usr/bin/cmp' ? ( '/usr/bin/cmp', '--' )
   : -e '/usr/bin/diff' ? ( '/usr/bin/diff', '--brief', '--' )

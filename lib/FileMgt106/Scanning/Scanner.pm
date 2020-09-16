@@ -67,7 +67,7 @@ sub new {
     my $regexIgnoreFolderContents = qr/\.(?:app|download|lrdata|tmp)$/is;
 
     my $regexWatchThisFile =
-      -e '/System/Library'    # Test whether the system is a Mac
+      -e '/System/Library'    # Test whether the system is a Mac
       ? qr/\.(?:R|c|command|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
       : qr/\.(?:R|c|command|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
     my $regexAlwaysRecheckThisFile = qr/\.xls$/is;
@@ -399,7 +399,7 @@ sub new {
                               ;    # undo sha1 storage
                             mkdir "Could not backup $_"
                               ;    # inform file system watcher
-                            rmdir "Could not backup $_";    # clean up
+                            rmdir "Could not backup $_";    # clean up
                             die "Could not backup $dir/$path$_";
                         }
                     }
@@ -752,7 +752,7 @@ sub new {
         my $doStashing = sub {
             my ( $stashLocid, $stashPath, $name, $locid, $suggestedNewName ) =
               @_;
-            my ( $stashName, $stashFile ) =    # assume all on same dev
+            my ( $stashName, $stashFile ) =    # assume all on same dev
               $findName->( $stashLocid, $suggestedNewName || $name,
                 $stashPath );
             if ( rename $name, $stashFile ) {

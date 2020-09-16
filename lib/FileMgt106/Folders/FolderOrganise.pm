@@ -104,7 +104,7 @@ sub datemarkFolder {
             }
         }
         utime time, $maxt, $prefix . $np
-          if $maxt;    # only works if we are root or the folder's owner
+          if $maxt;    # only works if we are root or the folder's owner
         $maxt;
     };
     $datemarker->('');
@@ -131,7 +131,7 @@ sub restampFolder {
             $maxt = $mtime if $mtime > $maxt;
         }
         utime time, $maxt, $path
-          if $maxt;    # only works if we are root or the folder's owner
+          if $maxt;    # only works if we are root or the folder's owner
         $maxt;
     };
     $restamper->( defined $_[0] && length $_[0] ? "$_[0]" : '.' );
@@ -203,7 +203,7 @@ sub automaticNumbering {
     restampFolder($path);
     foreach (@toBeNumbered) {
         my $p = catdir( $path, $_ );
-        my @s = stat $p or return;    # give up if something has moved
+        my @s = stat $p or return;    # give up if something has moved
         $_ = [ $_, $s[STAT_MTIME], $p, -d _ ];
     }
     foreach ( sort { $a->[1] <=> $b->[1]; } @toBeNumbered ) {
