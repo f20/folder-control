@@ -98,7 +98,9 @@ sub new {
       };
 
     my $create = sub {
-        my ( $name, $folderLocid, $whatYouWant, $devNo, $pathToFolder ) = @_;
+        my ( $name, $folderLocid, $whatYouWant, $devNo, $pathToFolder,
+            $forceReadOnlyTimeLimit, )
+          = @_;
 
         # $whatYouWant is either a hashref or a binary sha1.
 
@@ -160,7 +162,7 @@ sub new {
             while ( !@stat && @wouldNeedToCopy ) {
                 my $source = pop @wouldNeedToCopy;
                 system qw(cp -p --), $source, $fileName;
-                @stat = $rstat->($fileName);
+                @stat = $rstat->( $fileName, $forceReadOnlyTimeLimit );
                 my $newsha1 = sha1File($fileName);
                 unless ( defined $newsha1 && $sha1 eq $newsha1 ) {
                     warn 'SHA1 mismatch after trying to copy '
@@ -813,12 +815,14 @@ sub new {
                   or die
                   "$dir: no root locid for repository folder $repoPair->[0]";
                 $repoDev = $stat[STAT_DEV];
+                my $nextWeek = time + 604_800;
                 my $doBackup = sub {
                     my ( $repoLocid, $repoPath, $name, $locid, $sha1 ) = @_;
                     return 1 if $alreadyThere->( $repoLocid, $name, $sha1 );
                     my $repoName = $findName->( $repoLocid, $name, $repoPath );
                     $create->(
-                        $repoName, $repoLocid, $sha1, $repoDev, $repoPath
+                        $repoName, $repoLocid, $sha1,
+                        $repoDev,  $repoPath,  $nextWeek,
                     );
                 };
                 $makeChildBackuper = sub {
