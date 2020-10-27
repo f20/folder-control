@@ -27,7 +27,7 @@ use warnings;
 use strict;
 
 sub explodeByExtension {
-    my ( $what, $path ) = @_;
+    my ($what) = @_;
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
         if ( ref $val eq 'HASH' ) {
@@ -54,11 +54,11 @@ sub explodeByExtension {
             $newHash{$ext}{$key} = $val;
         }
     }
-    \%newHash, $path;
+    \%newHash;
 }
 
 sub explodeByType {
-    my ( $what, $path ) = @_;
+    my ($what) = @_;
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
         if ( ref $val eq 'HASH' ) {
@@ -174,7 +174,7 @@ sub explodeByType {
             $newHash{$cat}{$key} = $val;
         }
     }
-    \%newHash, $path;
+    \%newHash;
 }
 
 1;
