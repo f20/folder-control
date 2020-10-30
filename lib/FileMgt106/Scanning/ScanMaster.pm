@@ -148,13 +148,10 @@ sub setRepoloc {
                         print {$f} $$blobref;
                         close $f;
                         rename "$name.json.$$", "$name.json";
-                        if (
-                            !system qw(git add),
-                            "$name.json"
-                            or !system qw(git init) and !system qw(git add),
-                            "$name.json"
-                          )
-                        {
+                        if ( system qw(git add), "$name.json" ) {
+                            warn "git add failed for $name.json";
+                        }
+                        else {
                             system qw(git rm), "$name.txt" if -e "$name.txt";
                             system qw(git commit -q --untracked-files=no -m),
                               $self->[SM_DIR];

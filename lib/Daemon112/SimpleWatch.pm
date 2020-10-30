@@ -87,7 +87,7 @@ sub new {
       . ( defined $parent ? " = $parent" : ' undefined' );
     my $heartbeat;
     $heartbeat = sub {
-        warn decode_utf8(`pwd`);
+        warn decode_utf8(getcwd);
         $qu->enqueue( time + 600, $heartbeat );
     };
     $heartbeat->();

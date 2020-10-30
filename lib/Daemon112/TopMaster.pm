@@ -51,12 +51,12 @@ sub attach {
         my ($runner) = @_;
         my $hints = $runner->{hints};
         warn "Scanning $root for $topMaster";
-        my @list = $topMaster->_listDirectory($root);
-        my %list = map { ( $_ => 1 ); } @list;
+        my @listRoot = $topMaster->_listDirectory($root);
+        my %setRoot = map { ( $_ => 1 ); } @listRoot;
 
         foreach (
             grep {
-                !exists $list{$_}
+                !exists $setRoot{$_}
                   && UNIVERSAL::isa( $topMaster->{$_},
                     'FileMgt106::Scanning::ScanMaster' );
             } keys %$topMaster
@@ -76,14 +76,14 @@ sub attach {
             my $oldChildrenHashref = $hints->{children}->($doclocid);
             my @expected           = keys %$oldChildrenHashref;
             $hints->{uproot}->( $oldChildrenHashref->{$_} )
-              foreach grep { !exists $list{$_} } @expected;
+              foreach grep { !exists $setRoot{$_} } @expected;
         };
         $runner->{qu}
           ? $hints->enqueue( $runner->{qu}, $uprooter )
           : $uprooter->($hints);
 
         my $time;
-        foreach (@list) {
+        foreach (@listRoot) {
             my $dir = catdir( $root, $_ );
             if ( -l $dir || !-d _ ) {
                 warn "Not watching $dir (not a directory)";
@@ -116,48 +116,38 @@ sub attach {
             }
         }
 
-        if ( defined $runner->{locs}{git} && chdir $runner->{locs}{git} ) {
+        if ( defined $runner->{locs}{git} && chdir $runner->{locs}{git} )
+        {    # Clean-up any stray catalogues in git repository
             $ENV{PATH} =
                 '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
               . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-            if (@list) {
-                my @components = splitdir( $hints->{canonicalPath}->($root) );
-                map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
-                my $category =
-                  join( '.', map { length $_ ? $_ : '_' } @components )
-                  || 'No category';
-                if ( chdir $category ) {
-                    foreach my $catalogueFile ( split /\n/,
-                        decode_utf8(`git ls-files`) )
-                    {
-                        local $_ = $catalogueFile;
-                        s/\.(?:txt|json)$//s;
-                        s/^_/./s;
-                        next if exists $list{$_};
-                        warn "Removing catalogue for $root/$_";
-                        unlink $catalogueFile;
-                        unlink "$runner->{locs}{jbz}/$category/$_.jbz"
-                          if defined $runner->{locs}{jbz}
-                          && -d $runner->{locs}{jbz};
-                        system qw(git rm --cached), $catalogueFile;
-                        system qw(git commit -q --untracked-files=no -m),
-                          "Removing $root/$_";
-                    }
-                }
-                else {
-                    warn "Could not find folder $category";
-                }
-                if (    $runner
-                    and $runner->{qu}
-                    and !$runner->{locs}{gitLastGarbageCollection}
-                    || time - $runner->{locs}{gitLastGarbageCollection} >
-                    86_100 )
+            my @components = splitdir( $hints->{canonicalPath}->($root) );
+            map { s#^\.#_#s; s#\.(\S+)$#_$1#s; } @components;
+            my $category = join( '.', map { length $_ ? $_ : '_' } @components )
+              || 'No category';
+            if ( chdir $category ) {
+                foreach
+                  my $catalogueFile ( split /\n/, decode_utf8(`git ls-files`) )
                 {
-                    warn "Running git gc in $runner->{locs}{git}";
-                    system qw(git gc);
-                    $runner->{locs}{gitLastGarbageCollection} = time;
-                    warn "Finished git gc in $runner->{locs}{git}";
+                    local $_ = $catalogueFile;
+                    s/\.(?:txt|json)$//s;
+                    s/^_/./s;
+                    next if exists $setRoot{$_};
+                    warn "Removing catalogue for $root/$_";
+                    system qw(git rm -f), $catalogueFile;
+                    system qw(git commit -q --untracked-files=no -m),
+                      "Removing $root/$_";
                 }
+            }
+            if (    $runner
+                and $runner->{qu}
+                and !$runner->{locs}{gitLastGarbageCollection}
+                || time - $runner->{locs}{gitLastGarbageCollection} > 86_100 )
+            {
+                warn "Running git gc in $runner->{locs}{git}";
+                system qw(git gc);
+                $runner->{locs}{gitLastGarbageCollection} = time;
+                warn "Finished git gc in $runner->{locs}{git}";
             }
             chdir $root;
         }
