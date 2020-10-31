@@ -40,13 +40,26 @@ sub new {
     bless {@_}, $class;
 }
 
+sub dequeued {
+    my ( $topMaster, $runner ) = @_;
+    $topMaster->{'/rescanClosure'}->($runner);
+    return unless $runner->{qu};
+    my $time         = time;
+    my @refLocaltime = localtime( $time - 17_084 );
+    my $nextRun =
+      $time -
+      int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) +
+      3_600 * ( ( ( $refLocaltime[2] < 18 ? 23 : 47 ) - $refLocaltime[2] ) );
+    $runner->{qu}->enqueue( $nextRun, $topMaster );
+}
+
 sub attach {
 
     my ( $topMaster, $root, $runner ) = @_;
 
-    return $topMaster if $topMaster->{'/RESCANNER'};
+    $topMaster->{'/attachHook'}->(@_) if $topMaster->{'/attachHook'};
 
-    $topMaster->{'/RESCANNER'} = sub {
+    $topMaster->{'/rescanClosure'} ||= sub {
 
         my ($runner) = @_;
         my $hints = $runner->{hints};
@@ -164,7 +177,7 @@ sub attach {
 
     };
 
-    Daemon112::Watcher->new( $topMaster->{'/RESCANNER'}, "Watcher: $root" )
+    Daemon112::Watcher->new( $topMaster->{'/rescanClosure'}, "Watcher: $root" )
       ->startWatching( $topMaster->{'/kq'}, $root )
       if $topMaster->{'/kq'};
 
@@ -172,19 +185,6 @@ sub attach {
 
     $topMaster;
 
-}
-
-sub dequeued {
-    my ( $topMaster, $runner ) = @_;
-    $topMaster->{'/RESCANNER'}->($runner);
-    return unless $runner->{qu};
-    my $time         = time;
-    my @refLocaltime = localtime( $time - 17_084 );
-    my $nextRun =
-      $time -
-      int( 600 * ( $refLocaltime[1] / 10 - rand() ) ) +
-      3_600 * ( ( ( $refLocaltime[2] < 18 ? 23 : 47 ) - $refLocaltime[2] ) );
-    $runner->{qu}->enqueue( $nextRun, $topMaster );
 }
 
 sub _listDirectory {

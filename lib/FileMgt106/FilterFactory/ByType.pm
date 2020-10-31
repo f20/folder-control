@@ -81,8 +81,7 @@ sub explodeByType {
             ( $base, $ext ) = ( $key, '' )
               unless defined $ext;
             $ext = lc $ext;
-            my $cat = 'Other';
-            $cat = 'Message' if $ext eq '.';
+            my $cat = $ext eq '.' ? 'Email' : 'Other';
             $ext =~ s/^\.+//s;
             $cat = 'Aperture'
               if $ext =~ /^ap[a-oq-z]+$/;
@@ -105,6 +104,7 @@ sub explodeByType {
               || $ext eq 'pages'
               || $ext eq 'rtf'
               || $ext eq 'odt';
+            $cat = 'Email' if $ext eq 'eml';
             $cat = 'iOS'
               if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
