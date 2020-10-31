@@ -140,6 +140,7 @@ sub process {
             my $byExtensionFlag = /ext/;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
+                $path = 'STDIN' unless defined $path;
                 my ($module) =
                   grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
                 if ($module) {
@@ -148,12 +149,16 @@ sub process {
                 }
                 require FileMgt106::FilterFactory::ByType unless $module;
                 my ( $exploded, $newPath ) =
-                    $module ? $module->new($scalar)->explode($path)
-                  : $byExtensionFlag
-                  ? FileMgt106::FilterFactory::ByType::explodeByExtension(
-                    $scalar, $path )
-                  : FileMgt106::FilterFactory::ByType::explodeByType( $scalar,
-                    $path );
+                  $module            ? $module->new($scalar)->explode($path)
+                  : $byExtensionFlag ? (
+                    FileMgt106::FilterFactory::ByType::explodeByExtension(
+                        $scalar),
+                    $path
+                  )
+                  : (
+                    FileMgt106::FilterFactory::ByType::explodeByType($scalar),
+                    $path
+                  );
                 while ( my ( $k, $v ) = each %$exploded ) {
                     FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
                         "$newPath \$$k.jbz", $v )
