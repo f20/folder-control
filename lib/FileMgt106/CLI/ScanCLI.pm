@@ -100,7 +100,7 @@ sub scan_command_top {
     my %locs;
     my $hints = $self->hintsObj;
     require Daemon112::TopMaster;
-    my $readOnlyFlag;
+    my ( $readOnlyFlag, $noActionsFlag );
     foreach (@_) {
         if (/^-+stash=(.+)/) {
             local $_ = $1;
@@ -125,25 +125,26 @@ sub scan_command_top {
             $readOnlyFlag = 1;
             next;
         }
+        elsif (/^-+noaction/) {
+            $noActionsFlag = 1;
+            next;
+        }
         elsif (/^$/s) {
             next;
         }
         elsif ( chdir rel2abs( $_, $self->startFolder ) ) {
             $hints->beginInteractive;
             Daemon112::TopMaster->new(
-                $readOnlyFlag
-                ? (
-                    '/scanMasterConfig' => sub {
-                        $_[0]->setFrotl(604_800);
-                    }
-                  )
-                : ()
-              )->attach( decode_utf8 getcwd() )->dequeued(
+                '/scanMasterConfig' => sub {
+                    $_[0]->setFrotl(604_800) if $readOnlyFlag;
+                    $_[0]->prohibitActions   if $noActionsFlag;
+                }
+            )->attach( decode_utf8 getcwd() )->dequeued(
                 {
                     hints => $hints,
                     locs  => \%locs,
                 }
-              );
+            );
             $hints->commit;
         }
         else {
