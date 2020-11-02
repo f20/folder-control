@@ -84,7 +84,7 @@ sub makeStatisticsExtractor {
     };
     sub {
         my ( $scalar, $name ) = @_;
-        unless ( defined $name ) {
+        unless ( defined $scalar ) {
             print _prettyDiff( $found, undef, 10 )
               . ' found, '
               . _prettyDiff( $bytes, undef, 15 )
@@ -110,7 +110,8 @@ sub makeStatisticsExtractor {
           . ' missing, '
           . _prettyDiff( $dups, $startDups, 7 )
           . ' duplicated, '
-          . "$name\n";
+          . "$name\n"
+          if defined $name;
         return;
     };
 }
@@ -127,6 +128,7 @@ sub makeFileDataExtractor {
       . "\n";
     sub {
         my ( $scalar, $name ) = @_;
+        $name = '' unless defined $name;
         my ( %seen, $processor );
         $processor = sub {
             my ($cat) = @_;
