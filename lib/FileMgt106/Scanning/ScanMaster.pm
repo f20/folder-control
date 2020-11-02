@@ -130,49 +130,37 @@ sub setRepoloc {
             my ( $scalar, $blobref, $runner ) = @_;
             my $run = sub {
                 my ($hints) = @_;
-                if ($scalar) {
-                    my $result =
-                      $hints->{updateSha1if}
-                      ->( $self->[SM_SHA1], $self->[SM_ROOTLOCID] );
-                    $hints->commit;
-                    return if defined $result && $result == 0;
+                return unless $scalar;
+                my $result =
+                  $hints->{updateSha1if}
+                  ->( $self->[SM_SHA1], $self->[SM_ROOTLOCID] );
+                $hints->commit;
+                return if defined $result && $result == 0;
+                unless ( chdir $gitFolder ) {
+                    warn "Cannot chdir to $gitFolder: $!";
+                    return;
                 }
-                if ( chdir $gitFolder ) {
-                    $ENV{PATH} =
-                        '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
-                      . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                    if ($scalar) {
-                        warn "Catalogue update for $self";
-                        open my $f, '>', "$name.json.$$";
-                        binmode $f;
-                        print {$f} $$blobref;
-                        close $f;
-                        rename "$name.json.$$", "$name.json";
-                        if ( system qw(git add), "$name.json" ) {
-                            warn "git add failed for $name.json";
-                        }
-                        else {
-                            system qw(git rm), "$name.txt" if -e "$name.txt";
-                            system qw(git commit -q --untracked-files=no -m),
-                              $self->[SM_DIR];
-                        }
-                        if ( defined $jbzFolder && -d $jbzFolder ) {
-                            system qw(bzip2), "$name.json";
-                            rename "$name.json.bz2", "$jbzFolder/$name.jbz";
-                        }
-                    }
-                    else {
-                        warn "Removing catalogue for $self";
-                        unlink "$name.json";
-                        unlink "$jbzFolder/$name.jbz"
-                          if defined $jbzFolder && -d $jbzFolder;
-                        system qw(git rm --cached), "$name.json";
-                        system qw(git commit -q --untracked-files=no -m),
-                          "Removing $self->[SM_DIR]";
-                    }
+                $ENV{PATH} =
+                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+                  . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
+                warn "Catalogue update for $self";
+                open my $f, '>', "$name.json.$$";
+                binmode $f;
+                print {$f} $$blobref;
+                close $f;
+                rename "$name.json.$$", "$name.json";
+
+                if ( system qw(git add), "$name.json" ) {
+                    warn "git add failed for $name.json";
                 }
                 else {
-                    warn "Cannot chdir to $gitFolder: $!";
+                    system qw(git rm), "$name.txt" if -e "$name.txt";
+                    system qw(git commit -q --untracked-files=no -m),
+                      $self->[SM_DIR];
+                }
+                if ( defined $jbzFolder && -d $jbzFolder ) {
+                    system qw(bzip2), "$name.json";
+                    rename "$name.json.bz2", "$jbzFolder/$name.jbz";
                 }
             };
             if ( $runner && $runner->{pq} ) {
