@@ -48,7 +48,6 @@ sub makeStatisticsExtractor {
     $processor = sub {
         my ($cat) = @_;
         while ( my ( $k, $v ) = each %$cat ) {
-            next if $k =~ m#^/#s;
             if ( 'HASH' eq ref $v ) {
                 $processor->($v);
                 next;
@@ -133,7 +132,6 @@ sub makeFileDataExtractor {
         $processor = sub {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
-                next if $k =~ m#^/#s;
                 if ( 'HASH' eq ref $v ) {
                     $processor->($v);
                     next;
