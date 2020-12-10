@@ -64,7 +64,8 @@ sub new {
         \.core$|
         \.pyc$
       )/sx;
-    my $regexIgnoreFolderContents = qr/\.(?:app|download|lrdata|tmp)$/is;
+    my $regexIgnoreFolderContents =
+      qr/(?:\.app|\.download|\.lrdata|\.tmp|_modules)$/is;
 
     my $regexWatchThisFile =
       -e '/System/Library'    # Test whether the system is a Mac
