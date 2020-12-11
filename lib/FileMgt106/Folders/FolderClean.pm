@@ -1,6 +1,6 @@
 package FileMgt106::Folders::FolderClean;
 
-# Copyright 2011-2019 Franck Latrémolière and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -40,7 +40,7 @@ sub deepClean {
                 : $b =~ /\.tmp$/si        ? "T $b"
                 : $b =~ /^Y_.* folder$/s  ? "B $b"
                 :                           "E $b"
-              ) cmp(
+            ) cmp(
                 $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
                 : $a =~ /\.tmp$/si       ? "T $a"
                 : $a =~ /^Y_.* folder$/s ? "B $a"
@@ -59,8 +59,9 @@ sub deepClean {
                 next;
             }
             my $newPath;
-            $newPath = "$folder/_$file"   if $file =~ /^(\~\$|Z_|\.)/is;
-            $newPath = "$folder/${file}_" if $file =~ /\.(?:download|tmp)$/is;
+            $newPath = "$folder/_$file" if $file =~ /^(\~\$|Z_|\.)/is;
+            $newPath = "$folder/${file}_"
+              if $file =~ /(?:\.app|\.download|\.lrdata|\.tmp|_modules)$/is;
             if ($newPath) {
                 if ( -e $newPath ) {
                     my ( $base, $extension ) =

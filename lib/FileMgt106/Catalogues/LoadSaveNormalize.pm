@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::LoadSaveNormalize;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -61,8 +61,9 @@ sub renameFilesToNormalisedScannable {
     foreach (@list) {
         next if /^\.(?:\.?$|_)/ || $_ eq '.DS_Store' || $_ eq '.git';
         my $norm = $normaliser->($_);
-        $norm =~ s/^(\~\$|Z_|\.)/_$1/is;
-        $norm =~ s/\.(download|tmp)$/.${1}_/is;
+        $norm = '_' . $norm if $norm =~ /^(\~\$|Z_|\.)/is;
+        $norm .= '_'
+          if $norm =~ /(?:\.app|\.download|\.lrdata|\.tmp|_modules)$/is;
         my $path = "$dir/$_";
         if ( $norm ne $_ ) {
             my $d3 = "$dir/$norm";
