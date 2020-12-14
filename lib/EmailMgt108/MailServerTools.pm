@@ -97,6 +97,8 @@ sub email_downloader {
         my %folderHashFromServer =
           $imap->fetch_hash(qw(RFC822.SIZE INTERNALDATE FLAGS));
         my $folderHashref = delete $storedCatalogue->{$folder};
+        $folderHashref = {} unless defined $folderHashref;
+        $catalogueToStore{$folder} = $folderHashref;
 
         my $mailboxPath;
         if (
@@ -202,7 +204,6 @@ sub email_downloader {
               }
               : $folderHashFromServer{$uid};
         }
-        $catalogueToStore{$folder} = $folderHashref;
     }
 
     {
