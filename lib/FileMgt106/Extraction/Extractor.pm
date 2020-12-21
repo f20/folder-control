@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,6 +25,7 @@ package FileMgt106::Extraction::Extractor;
 
 use strict;
 use warnings;
+use Encode qw(decode_utf8);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem
@@ -193,6 +194,7 @@ sub makeDataExtractor {
         while ( my ( $rootid, $inode, $size, $name, $parid, $sha1, $mtime ) =
             $q->fetchrow_array )
         {
+            $name = decode_utf8 $name;
             my ($ext) = ( $name =~ /(\.[a-z0-9-_]+)$/i );
             $ext = '' unless defined $ext;
             next unless defined $parid;

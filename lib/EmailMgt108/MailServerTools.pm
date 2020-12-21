@@ -51,8 +51,9 @@ sub remove_messages {
     $imap->close or die "close error: $@\n";
 }
 
-sub email_downloader_forked
-{    # running successive connections in the same process seems to go wrong
+# This is to work around the fact that running successive
+# connections in the same process seems to go wrong.
+sub email_downloader_forked {
     if ( my $pid = fork ) {
         waitpid $pid, 0;
     }

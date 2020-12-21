@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2020 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -22,6 +22,8 @@ package FileMgt106::CLI::ScanCLI;
 # ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use Encode qw(decode_utf8);
 
 use constant {
     SCLI_START    => 0,
@@ -116,7 +118,7 @@ sub scan_command_volume {
         $qc->execute($locid);
         $reportInfo->(
             $parid ? 'Disabled' : 'Enabled',
-            $qc->fetchrow_array, $name
+            $qc->fetchrow_array, decode_utf8 $name
         );
         $qc->finish;
     }
