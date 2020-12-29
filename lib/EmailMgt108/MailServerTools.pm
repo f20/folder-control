@@ -82,9 +82,10 @@ sub email_downloader {
         Server   => $server,
         User     => $account,
         Password => $password,
-      )
-      or die "$account connection error: $@\n"
-      ;    # Do not do $imap->compress as it seems to break things
+    ) or die "$account connection error: $@\n";
+
+    # Do not do $imap->compress as it seems to break things
+
     my $folders = $imap->folders
       or die "$account list folders error: ", $imap->LastError, "\n";
 
@@ -101,25 +102,20 @@ sub email_downloader {
         $folderHashref = {} unless defined $folderHashref;
         $catalogueToStore{$folder} = $folderHashref;
 
-        my $mailboxPath;
-        if (
-            ( $mailboxPath, my $newSha1Hex ) = find_or_make_folder(
-                $generalSettings{searchSha1},
-                $folderHashref->{mailboxCaseidSha1Hex},
-                catdir( $mailboxesPath, $localName )
-            )
-          )
+        my ( $mailboxPath, $newSha1Hex ) = find_or_make_folder(
+            $generalSettings{searchSha1},
+            $folderHashref->{mailboxCaseidSha1Hex},
+            %folderHashFromServer
+            ? catdir( $mailboxesPath, $localName )
+            : undef
+        );
+        if ( defined $newSha1Hex
+            and !defined $folderHashref->{mailboxCaseidSha1Hex}
+            || $folderHashref->{mailboxCaseidSha1Hex} ne $newSha1Hex )
         {
-
-            if ( !defined $folderHashref->{mailboxCaseidSha1Hex}
-                || $folderHashref->{mailboxCaseidSha1Hex} ne $newSha1Hex )
-            {
-                %$folderHashref = ( mailboxCaseidSha1Hex => $newSha1Hex );
-            }
+            %$folderHashref = ( mailboxCaseidSha1Hex => $newSha1Hex );
         }
-        else {
-            die "Cannot find or make mailbox folder for $localName";
-        }
+        next FOLDER unless defined $mailboxPath;
 
         my $mailArchivePath;
         if ( $mailArchivesPath && -d $mailArchivesPath ) {
@@ -240,7 +236,7 @@ sub email_downloader {
 sub find_or_make_folder {
     my ( $searchSha1, $caseidsha1hex, $fallbackPath, ) = @_;
     my $folder;
-    unlink $fallbackPath if -l $fallbackPath;
+    unlink $fallbackPath if defined $fallbackPath && -l $fallbackPath;
     if ( $searchSha1 && defined $caseidsha1hex ) {
         my $iterator = $searchSha1->( pack( 'H*', $caseidsha1hex ) );
         while ( my ($path) = $iterator->() ) {
