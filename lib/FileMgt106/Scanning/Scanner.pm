@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::Scanner;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -148,7 +148,8 @@ sub new {
                     push @wouldNeedToCopy, $path;
                     next;
                 }
-                if ( $path =~ m#/Y_Cellar#i and rename( $path, $fileName ) ) {
+                if ( $path =~ m#/Y_Cellar.*/#i and rename( $path, $fileName ) )
+                {
                     @stat = $rstat->($fileName);
                     $moveByLocid->( $folderLocid, $name, $locid );
                 }
