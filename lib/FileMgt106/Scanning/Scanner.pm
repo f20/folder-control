@@ -141,24 +141,15 @@ sub new {
                 && ( my ( $path, $statref, $locid ) = $iterator->() ) )
             {
                 next unless -f _;
-                unless ( $locid
+                if (   $locid
                     && $statref->[STAT_DEV] == $devNo
-                    && _isMergeable($statref) )
+                    && _isMergeable($statref)
+                    && link( $path, $fileName ) )
                 {
-                    push @wouldNeedToCopy, $path;
-                    next;
-                }
-                if ( $path =~ m#/Y_Cellar.*/#i and rename( $path, $fileName ) )
-                {
-                    @stat = $rstat->($fileName);
-                    $moveByLocid->( $folderLocid, $name, $locid );
-                }
-                elsif ( link( $path, $fileName ) ) {
                     @stat = $rstat->($fileName);
                 }
                 else {
-                    warn "link $path, $fileName: $!";
-                    next;
+                    push @wouldNeedToCopy, $path;
                 }
             }
             while ( !@stat && @wouldNeedToCopy ) {

@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::ScanMaster;
 
-# Copyright 2012-2020 Franck Latrémolière and others.
+# Copyright 2012-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -273,7 +273,8 @@ sub dequeued {
           : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i ? $time + 604_800
           : $self->[SM_DIR] =~ m#/X_#i        ? $time - 13
           :                                     $time - 4_233_600;
-        $self->[SM_REPOPAIR][1] = POSIX::strftime( '%Y-%m-%d', @refLocaltime )
+        $self->[SM_REPOPAIR][1] =
+          POSIX::strftime( 'Y_Cellar %Y-%m-%d', @refLocaltime )
           if $self->[SM_REPOPAIR];
         warn join ' ', "rgid=$rgid", "timelimit=$frotl", $self->[SM_DIR], "\n";
         my $run = sub {
