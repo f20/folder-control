@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ExtractCLI;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -256,6 +256,14 @@ sub process {
             next;
         }
 
+        if (/^-+find=?(.+)/i) {
+            require FileMgt106::Catalogues::FindFilter;
+            $catalogueProcessor =
+              FileMgt106::Catalogues::FindFilter->processor($1);
+            $outputStream = \*STDOUT;
+            next;
+        }
+
         if (/^-+base/i) {
             require FileMgt106::Catalogues::ConsolidateFilter;
             $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
@@ -315,7 +323,7 @@ sub process {
                             tr#/#|#;
                             my $missing = $catalogueProcessor->(
                                 FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                                  )->decode(<$fh>),
+                                )->decode(<$fh>),
                                 $1
                             );
                             $outputScalar->{$1} = $missing if $missing;
@@ -364,7 +372,7 @@ sub process {
                 tr#/#|#;
                 $missing = $catalogueProcessor->(
                     FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                      )->decode(<$fh>),
+                    )->decode(<$fh>),
                     $1
                 );
             }
