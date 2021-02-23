@@ -1,6 +1,6 @@
 package FileMgt106::Folders::FolderClean;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,6 +25,7 @@ package FileMgt106::Folders::FolderClean;
 
 use warnings;
 use strict;
+use Encode qw(decode_utf8);
 
 use constant { STAT_NLINK => 3, };
 
@@ -40,13 +41,13 @@ sub deepClean {
                 : $b =~ /\.tmp$/si        ? "T $b"
                 : $b =~ /^Y_.* folder$/s  ? "B $b"
                 :                           "E $b"
-            ) cmp(
+              ) cmp(
                 $a =~ /^(?:\~?\$|Z?_)/s  ? "X $a"
                 : $a =~ /\.tmp$/si       ? "T $a"
                 : $a =~ /^Y_.* folder$/s ? "B $a"
                 :                          "E $a"
               )
-        } grep { !/^\.\.?$/s } readdir $dh;
+        } grep { !/^\.\.?$/s } map { decode_utf8 $_; } readdir $dh;
         closedir $dh;
         foreach my $file (@list) {
             if ( $file eq '.git' ) {
