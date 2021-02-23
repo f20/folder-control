@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Metadata;
 
-# Copyright 2017-2020 Franck Latrémolière and others.
+# Copyright 2017-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -33,9 +33,15 @@ use Image::ExifTool;
 
 sub metadaExtractorMakerSimple {
     require Image::ExifTool;
-    my $et = Image::ExifTool->new;
-    my @tags =
-      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
+    my $et   = Image::ExifTool->new;
+    my @tags = qw(
+      SerialNumber
+      ShutterCount
+      ImageCount
+      DateTimeOriginal
+      ImageWidth
+      ImageHeight
+    );
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
@@ -212,8 +218,14 @@ EOSQL
 
 sub metadataProcessorMaker {
     my ($mdbFile) = @_;
-    my @tags =
-      qw(SerialNumber ShutterCount ImageCount DateTimeOriginal ImageWidth ImageHeight);
+    my @tags = qw(
+      SerialNumber
+      ShutterCount
+      ImageCount
+      DateTimeOriginal
+      ImageWidth
+      ImageHeight
+    );
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
@@ -244,13 +256,11 @@ sub metadataProcessorMaker {
 }
 
 sub metadataThreadedProcessorMaker {
+
     my ($mdbFile) = @_;
+
     my @tags = qw(
-      CreateDate
-      DateCreated
-      DateTimeCreated
       DateTimeOriginal
-      ImageCount
       ImageHeight
       ImageWidth
       LensID
@@ -259,6 +269,9 @@ sub metadataThreadedProcessorMaker {
       SerialNumber
       ShutterCount
     );
+
+# might be useful for some cameras: CreateDate DateCreated DateTimeCreated ImageCount
+
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
@@ -292,6 +305,7 @@ sub metadataThreadedProcessorMaker {
             );
         };
     };
+
 }
 
 1;
