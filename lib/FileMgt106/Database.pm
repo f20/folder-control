@@ -1,6 +1,6 @@
 package FileMgt106::Database;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -594,10 +594,7 @@ EOL
             last;
         }
         $qGetLikeDesc->finish;
-        $base
-          . ( $number < 10 ? '00' : $number < 100 ? '0' : '' )
-          . $number
-          . $extension;
+        $base . sprintf( '%03d', $number ) . $extension;
     };
 
     $hints->{findName} = sub {

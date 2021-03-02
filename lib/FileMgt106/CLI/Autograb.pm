@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2019-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2019-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -140,7 +140,7 @@ sub scan_command_autograb {
                     my $consolidator =
                       FileMgt106::Catalogues::ConsolidateFilter->new;
                     $consolidator->baseProcessor->($exclusions);
-                    my $processor = $consolidator->additionsProcessor;
+                    my $processor = $consolidator->unseenProcessor;
                     $processor->( $target, 'Z' );
                     $target = $processor->()->{Z};
                 }

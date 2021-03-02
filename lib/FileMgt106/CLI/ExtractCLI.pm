@@ -264,19 +264,6 @@ sub process {
             next;
         }
 
-        if (/^-+base/i) {
-            require FileMgt106::Catalogues::ConsolidateFilter;
-            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
-            $catalogueProcessor = $consolidator->baseProcessor;
-            next;
-        }
-        if (/^-+(add|new)/i) {
-            require FileMgt106::Catalogues::ConsolidateFilter;
-            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
-            $catalogueProcessor = $consolidator->additionsProcessor;
-            $outputStream       = \*STDOUT;
-            next;
-        }
         if (/^-+dups/i) {
             require FileMgt106::Catalogues::ConsolidateFilter;
             $catalogueProcessor =
@@ -285,10 +272,34 @@ sub process {
             $outputStream = \*STDOUT;
             next;
         }
-        if (/^-+dup/i) {
+
+        if (/^-+(?:consol|merge)/i) {
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $catalogueProcessor =
+              FileMgt106::Catalogues::ConsolidateFilter->consolidateProcessor;
+            $outputStream = \*STDOUT;
+            next;
+        }
+
+        if (/^-+base/i) {
             require FileMgt106::Catalogues::ConsolidateFilter;
             $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
-            $catalogueProcessor = $consolidator->duplicationsProcessor;
+            $catalogueProcessor = $consolidator->baseProcessor;
+            next;
+        }
+
+        if (/^-+(?:new|unseen)/i) {
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
+            $catalogueProcessor = $consolidator->unseenProcessor;
+            $outputStream       = \*STDOUT;
+            next;
+        }
+
+        if (/^-+(?:dup|seen)/i) {
+            require FileMgt106::Catalogues::ConsolidateFilter;
+            $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
+            $catalogueProcessor = $consolidator->seenProcessor;
             $outputStream       = \*STDOUT;
             next;
         }
@@ -323,7 +334,7 @@ sub process {
                             tr#/#|#;
                             my $missing = $catalogueProcessor->(
                                 FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                                )->decode(<$fh>),
+                                  )->decode(<$fh>),
                                 $1
                             );
                             $outputScalar->{$1} = $missing if $missing;
@@ -372,7 +383,7 @@ sub process {
                 tr#/#|#;
                 $missing = $catalogueProcessor->(
                     FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                    )->decode(<$fh>),
+                      )->decode(<$fh>),
                     $1
                 );
             }
