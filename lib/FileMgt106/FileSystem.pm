@@ -1,6 +1,6 @@
 package FileMgt106::FileSystem;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -96,6 +96,7 @@ sub managementStat {
         return @stat
           unless $forceReadOnlyTimeLimit
           && -f _
+          && -s _
           && $forceReadOnlyTimeLimit > $stat[STAT_MTIME];
         if ( !$> && $stat[STAT_UID] ) {
             chown( 0, -1, $name ) or return @stat;
@@ -117,7 +118,7 @@ sub imapStat {
         my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat unless $forceReadOnlyTimeLimit and -f _ || -d _;
+        return @stat unless $forceReadOnlyTimeLimit and -f _ && -s _ || -d _;
         if ( !$> and $stat[STAT_UID] != 60 || $stat[STAT_GID] != 6 ) {
             chown( 60, 6, $name ) or return @stat;
             $stat[STAT_UID]      = 60;
@@ -142,7 +143,7 @@ sub publishedStat {
         my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat unless -d _ || -f _;
+        return @stat unless -d _ || -f _ && -s _;
         my $readOnlyFile =
              -f _
           && !( $stat[STAT_MODE] & 022 )
@@ -153,7 +154,7 @@ sub publishedStat {
             $stat[STAT_CHMODDED] = 1;
         }
         if ( defined $forceReadOnlyTimeLimit ) {
-            if ( -f _ && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ) {
+            if ( -f _ && -s _ && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ) {
                 $readOnlyFile = 1;
                 if ( !$> && $stat[STAT_UID] ) {
                     chown( 0, -1, $name ) or return @stat;
@@ -277,7 +278,7 @@ sub statFromGid {
         my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat unless -d _ || -f _;
+        return @stat unless -d _ || -f _ && -s _;
         my $readOnlyFile =
              -f _
           && !( $stat[STAT_MODE] & 022 )
@@ -301,6 +302,7 @@ sub statFromGid {
             $groupStatus         = 431;
         }
         if (   -f _
+            && -s _
             && !$readOnlyFile
             && defined $forceReadOnlyTimeLimit
             && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] )
