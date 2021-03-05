@@ -124,6 +124,7 @@ sub process {
         if (/^-+split/) {
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
+                $path = '' unless defined $path;
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
                     s#/#..#g;
