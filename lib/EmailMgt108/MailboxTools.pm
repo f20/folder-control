@@ -1,6 +1,6 @@
 package EmailMgt108::MailboxTools;
 
-# Copyright 2020 Franck Latrémolière and others.
+# Copyright 2020-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,11 +37,24 @@ sub makeMailboxProcessor {
     my ( $hintsFile, $parseAndArchiveFlag ) = @_;
     my $hintsBuilder =
       FileMgt106::Folders::Builder::makeHintsBuilder($hintsFile);
+    require EmailMgt108::EmailParser if $parseAndArchiveFlag;
 
     sub {
 
         my ( $whatYouWant, $whereYouWantIt, $devNo ) = @_;
         return unless ref $whatYouWant eq 'HASH';
+
+        my $mboxFolder =
+          defined $whereYouWantIt ? catdir( $whereYouWantIt, 'mbox' ) : 'mbox';
+        my $archFolder;
+        $archFolder =
+          defined $whereYouWantIt ? catdir( $whereYouWantIt, 'arch' ) : 'arch'
+          if $parseAndArchiveFlag;
+        foreach ( $mboxFolder, $archFolder ) {
+            next unless defined $_;
+            $_ .= '_' while -e $_;
+            mkdir $_ or die "Cannot mkdir $_: $!";
+        }
 
         my %hashSet;
         my $scanner;
@@ -55,58 +68,46 @@ sub makeMailboxProcessor {
         $scanner->($whatYouWant);
         my $numFiles    = keys %hashSet;
         my $digits      = length( $numFiles - 1 );
-        my $id1         = 1 * 10**$digits;
+        my $id1         = 10**$digits;
         my %cat1        = map { $id1++ . '.' => $_; } keys %hashSet;
-        my $returnValue = $hintsBuilder->( \%cat1, $whereYouWantIt, $devNo );
+        my $returnValue = $hintsBuilder->( \%cat1, $mboxFolder, $devNo );
 
-        require EmailMgt108::EmailParser if $parseAndArchiveFlag;
-        {
-            my %sortKey;
-            foreach my $file ( keys %cat1 ) {
-                my $filePath =
-                  defined $whereYouWantIt
-                  ? catfile( $whereYouWantIt, $file )
-                  : $file;
-                my @stat = stat $filePath or next;
-                my %stamp;
-                open my $fh, '<', $filePath;
-                local $/ = "\n";
-                while (<$fh>) {
-                    last if /^\s*$/s;
-                    $stamp{ lc $1 } =
-                      Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
-                      ->epoch
-                      if
+        my %sortKey;
+        foreach my $file ( keys %cat1 ) {
+            my $filePath = catfile( $mboxFolder, $file );
+            my @stat = stat $filePath or next;
+            my %stamp;
+            open my $fh, '<', $filePath;
+            local $/ = "\n";
+            while (<$fh>) {
+                last if /^\s*$/s;
+                $stamp{ lc $1 } =
+                  Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
+                  ->epoch
+                  if
 /^(\S*date\S*):\s+(\S+,\s+[0-9]+\s+\S+\s+[0-9]{4}\s+[0-9]{2}:[0-9]{2}:[0-9]{2}\s+[+-][0-9]{4})/i;
-                }
-                my $contentStamp = $stamp{'delivered-date'};
-                ($contentStamp) = sort { $b <=> $a; } values %stamp
-                  unless defined $contentStamp;
-                if ( defined $contentStamp && $stat[9] != $contentStamp ) {
-                    utime time, $contentStamp, $filePath;
-                    $sortKey{$file} = $contentStamp;
-                }
-                else {
-                    $sortKey{$file} = $stat[9];
-                }
             }
-            my $id2 = 2 * 10**$digits;
-            foreach my $source (
-                sort {
-                    $sortKey{$a} <=> $sortKey{$b} || $cat1{$a} cmp $cat1{$b};
-                }
-                keys %sortKey
-              )
-            {
-                my $target = $id2++ . '.';
-                if ( defined $whereYouWantIt ) {
-                    $_ = catfile( $whereYouWantIt, $_ )
-                      foreach $source, $target;
-                }
-                rename $source, $target;
-                EmailMgt108::EmailParser::parseMessage($target)
-                  if $parseAndArchiveFlag;
+            my $contentStamp = $stamp{'delivered-date'};
+            ($contentStamp) = sort { $b <=> $a; } values %stamp
+              unless defined $contentStamp;
+            if ( defined $contentStamp && $stat[9] != $contentStamp ) {
+                utime time, $contentStamp, $filePath;
+                $sortKey{$file} = $contentStamp;
             }
+            else {
+                $sortKey{$file} = $stat[9];
+            }
+        }
+        my $id2 = 2 * 10**$digits;
+        foreach my $source (
+            sort { $sortKey{$a} <=> $sortKey{$b} || $cat1{$a} cmp $cat1{$b}; }
+            keys %sortKey
+          )
+        {
+            my $target = catfile( $mboxFolder, $id2++ . '.' );
+            rename catfile( $mboxFolder, $source ), $target;
+            EmailMgt108::EmailParser::parseMessage( $target, $archFolder )
+              if $archFolder;
         }
 
         $returnValue;

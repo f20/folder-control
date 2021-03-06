@@ -24,18 +24,19 @@ package EmailMgt108::EmailParser;
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # To test from the command line on an email file called 1.:
-# perl -I/path/to/lib -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage($_) foreach "1."'
+# perl -I/path/to/lib -MEmailMgt108::EmailParser -e 'EmailMgt108::EmailParser::parseMessage("1.")'
 
 use strict;
 use warnings;
+use Email::MIME;
+use File::Spec::Functions qw(catdir catfile);
+use POSIX;
+use Unicode::Normalize qw(NFKD);
 
 BEGIN {
     die 'Do not use EmailParser as root' unless $>;
 }
 
-use Email::MIME;
-use POSIX;
-use Unicode::Normalize qw(NFKD);
 use constant STAT_MTIME => 9;
 
 sub getRawBody {
@@ -67,19 +68,13 @@ sub getRawBody {
 }
 
 sub parseMessage {
-    my ( $emailFile, $destination ) = @_;
+    my ( $emailFile, $container, $specificDestination ) = @_;
     my $mtime = ( stat $emailFile )[STAT_MTIME];
     unless ( defined $mtime ) {
         warn "Cannot stat $emailFile";
         return;
     }
     my $folder;
-    unless ($destination) {
-        my @localtime = localtime $mtime;
-        $folder = POSIX::strftime( '%Y-%m', @localtime );
-        mkdir $folder unless -e $folder;
-        $folder .= '/Y_' . POSIX::strftime( '%Y-%m-%d %H-%M-%S', @localtime );
-    }
     open my $mfh, '<', $emailFile or die "Cannot open $emailFile: $!";
     binmode $mfh, ':raw';
     local undef $/;
@@ -89,10 +84,16 @@ sub parseMessage {
         return;
     }
     close $mfh or warn $!;
-    if ($destination) {
-        $folder = $destination;
+    if ($specificDestination) {
+        $folder = $specificDestination;
     }
     else {
+        my @localtime = localtime $mtime;
+        $folder = POSIX::strftime( '%Y-%m', @localtime );
+        $folder = catdir( $container, $folder ) if defined $container;
+        mkdir $folder unless -e $folder;
+        $folder = catdir( $folder,
+            'Y_' . POSIX::strftime( '%Y-%m-%d %H-%M-%S', @localtime ) );
         my @titles = (
             $email->header('Subject') || 'No subject',
             $email->header('From') || 'No sender'
@@ -240,7 +241,12 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
                 print {$fh3} getRawBody($item) or die $!;
                 close $fh3 or die $!;
                 if ( $fn =~ /(.*)\.eml$/is ) {
-                    if ( parseMessage( "$folder.tmp/$fn", "$folder.tmp/$1" ) ) {
+                    if (
+                        parseMessage(
+                            "$folder.tmp/$fn", undef, "$folder.tmp/$1"
+                        )
+                      )
+                    {
                         mkdir "$folder.tmp/Z_Unpacked";
                         rename "$folder.tmp/$fn", "$folder.tmp/Z_Unpacked/$fn";
                     }
