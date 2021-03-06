@@ -47,10 +47,10 @@ elsif ( $scriptPath =~ m#^/Users/([^/]+)#s ) {
 my $monorepoUrl = $ARGV[0];
 if ($monorepoUrl) {
     $monorepoUrl = rel2abs($monorepoUrl) unless $monorepoUrl =~ /^ssh:/;
-    warn "### Start: $selfid to synchronise with $monorepoUrl\n";
+    warn "### Begun: $selfid to synchronise with $monorepoUrl\n";
 }
 else {
-    warn "### Start: $selfid\n";
+    warn "### Begun: $selfid\n";
 }
 
 ( $localRepos{"Autocats/$selfid"} ) =
@@ -160,4 +160,4 @@ if ( $user && $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
           : ( $monorepoUrl, $_ );
     }
 }
-warn "### Finished: $selfid\n";
+warn "### Ended: $selfid\n";
