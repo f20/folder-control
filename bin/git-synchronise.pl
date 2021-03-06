@@ -54,13 +54,13 @@ else {
 }
 
 ( $localRepos{"Autocats/$selfid"} ) =
-  grep { -d "$_/.git"; } $user
+  sort grep { -d "$_/.git"; } $user
   ? (
     $ENV{FOLDER_CONTROL_HOME} ? "$ENV{FOLDER_CONTROL_HOME}/Catalogues" : (),
     "$ENV{HOME}/Documents/Archive/Catalogues",
   )
   : $volume ? ( <"$volume/Management/catalogues">, <"$volume/catalogues">, )
-  :           <"/t*/catalogues">;
+  :           ( <"/t*/catalogues">, <"/share/MD0_DATA/*/catalogues">, );
 
 foreach (
     $user
@@ -69,7 +69,8 @@ foreach (
         <"$ENV{HOME}/Documents/Projects/*/.git">,
     )
     : $volume ? <"$volume/*/*/.git">
-    :           ()
+    : ( <"/t*/folder-control/.git">, <"/share/MD0_DATA/*/folder-control/.git">,
+    )
   )
 {
     m#^(.*?([^/]+))/\.git$# or next;
