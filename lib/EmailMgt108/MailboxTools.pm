@@ -45,14 +45,18 @@ sub makeMailboxProcessor {
         return unless ref $whatYouWant eq 'HASH';
 
         my $mboxFolder =
-          defined $whereYouWantIt ? catdir( $whereYouWantIt, 'mbox' ) : 'mbox';
+          defined $whereYouWantIt
+          ? catdir( $whereYouWantIt, 'Mailbox.tmp' )
+          : 'Mailbox.tmp';
         my $archFolder;
         $archFolder =
-          defined $whereYouWantIt ? catdir( $whereYouWantIt, 'arch' ) : 'arch'
+          defined $whereYouWantIt
+          ? catdir( $whereYouWantIt, 'MailArchive.tmp' )
+          : 'MailArchive.tmp'
           if $parseAndArchiveFlag;
         foreach ( $mboxFolder, $archFolder ) {
             next unless defined $_;
-            $_ .= '_' while -e $_;
+            $_ .= '.tmp' while -e $_;
             mkdir $_ or die "Cannot mkdir $_: $!";
         }
 
