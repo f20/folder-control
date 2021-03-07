@@ -59,17 +59,17 @@ else {
     $ENV{FOLDER_CONTROL_HOME} ? "$ENV{FOLDER_CONTROL_HOME}/Catalogues" : (),
     "$ENV{HOME}/Documents/Archive/Catalogues",
   )
-  : $volume ? ( <"$volume/Management/catalogues">, <"$volume/catalogues">, )
-  :           ( <"/t*/catalogues">, <"/share/MD0_DATA/*/catalogues">, );
+  : $volume ? ( <$volume/Management/catalogues>, <$volume/catalogues>, )
+  :           ( </t*/catalogues>, </share/MD0_DATA/*/catalogues>, );
 
 foreach (
     $user
     ? (
-        <"$ENV{HOME}/Documents/*/.git">,
-        <"$ENV{HOME}/Documents/Projects/*/.git">,
+        <$ENV{HOME}/Documents/*/.git>,
+        <$ENV{HOME}/Documents/Projects/*/.git>,
     )
-    : $volume ? <"$volume/*/*/.git">
-    : ( <"/t*/folder-control/.git">, <"/share/MD0_DATA/*/folder-control/.git">,
+    : $volume ? <$volume/*/*/.git>
+    : ( </t*/folder-control/.git>, </share/MD0_DATA/*/folder-control/.git>,
     )
   )
 {
