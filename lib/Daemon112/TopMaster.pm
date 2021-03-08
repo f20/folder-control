@@ -1,6 +1,6 @@
 package Daemon112::TopMaster;
 
-# Copyright 2012-2020 Franck Latrémolière and others.
+# Copyright 2012-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -64,7 +64,7 @@ sub attach {
         my ($runner) = @_;
         my $hints = $runner->{hints};
         warn "Scanning $root for $topMaster";
-        my @listRoot = $topMaster->_listDirectory($root);
+        my @listRoot = $topMaster->_chdir_and_filterd_list($root);
         my %setRoot = map { ( $_ => 1 ); } @listRoot;
 
         foreach (
@@ -98,7 +98,7 @@ sub attach {
         my $time;
         foreach (@listRoot) {
             my $dir = catdir( $root, $_ );
-            if ( -l $dir || !-d _ ) {
+            unless ( -d $dir ) {
                 warn "Not watching $dir (not a directory)";
                 next;
             }
@@ -177,14 +177,14 @@ sub attach {
 
 }
 
-sub _listDirectory {
+sub _chdir_and_filterd_list {
     my ( $topMaster, $dir ) = @_;
     return unless defined $dir && chdir $dir;
     my $handle;
     opendir $handle, '.' or return;
     my @list =
-      map  { decode_utf8 $_; }
-      grep { !/^(?:\.\.?|\.DS_Store|Icon\r)$/s; } readdir $handle;
+      map { decode_utf8 $_; }
+      grep { !/^(?:\.\.?|\.DS_Store|Icon\r)$/s && !-l; } readdir $handle;
     @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
     @list;
 }
