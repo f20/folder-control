@@ -1,6 +1,6 @@
 package EmailMgt108::EmailParser;
 
-# Copyright 2012-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2012-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -149,7 +149,7 @@ sub parseMessage {
             my $fn = $item->filename;
             $fn =~ tr/\000-\037\/\\/ / if $fn;
             my $encodingLayer = ':raw';
-            if ( !$fn || -e $fn ) {
+            if ( !$fn || -e $fn || $fn =~ /^=/s ) {
                 my $ext = '.dat';
                 $ext = $1
                   if $fn && $fn =~ /(\.[a-zA-Z0-9\+\-_]+)$/s;
