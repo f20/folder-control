@@ -44,6 +44,8 @@ sub makeMailboxProcessor {
         my ( $whatYouWant, $whereYouWantIt, $devNo ) = @_;
         return unless ref $whatYouWant eq 'HASH';
 
+        mkdir $whereYouWantIt if defined $whereYouWantIt && !-e $whereYouWantIt;
+
         my $mboxFolder =
           defined $whereYouWantIt
           ? catdir( $whereYouWantIt, 'Mailbox.tmp' )
