@@ -41,7 +41,7 @@ sub makeStatisticsExtractor {
     binmode STDOUT, ':utf8';
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
     my $query =
-      $hints->{dbHandle}->prepare('select size from locations where sha1=?');
+      $hints->{dbHandle}->prepare('select size from locations where sha1=? and size is not null');
     my ( %seen, $found, $missing, $dups, $bytes,
         $bytesWithDuplication, %found, %missing, %dups, %bytes );
     my $processor;
