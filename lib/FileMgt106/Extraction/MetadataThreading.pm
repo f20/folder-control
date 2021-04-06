@@ -1,6 +1,6 @@
-package FileMgt106::Extraction::Threading;
+package FileMgt106::Extraction::MetadataThreading;
 
-# Copyright 2017-2018 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2017-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,6 @@ package FileMgt106::Extraction::Threading;
 
 use strict;
 use warnings;
-
 use threads;
 use Thread::Pool;
 use Thread::Queue;
@@ -58,7 +57,7 @@ sub runPoolQueue {
             while (1) {
                 my $arg = $queue->dequeue;
                 unless ( ref $arg ) {
-                    if ($queue->pending) {
+                    if ( $queue->pending ) {
                         $queue->enqueue($arg);
                         next;
                     }

@@ -186,13 +186,6 @@ sub process {
             next;
         }
 
-        if (/^-+exiftool/i) {
-            require FileMgt106::Extraction::Metadata;
-            $resultsProcessor =
-              FileMgt106::Extraction::Metadata::metadaExtractorMakerSimple();
-            next;
-        }
-
         if (/^-+csv=?(.*)/i) {
             require FileMgt106::Extraction::Extractor;
             require FileMgt106::Extraction::Spreadsheets;

@@ -31,47 +31,30 @@ use Digest::SHA;
 use Digest::SHA3;
 use Image::ExifTool;
 
-sub metadaExtractorMakerSimple {
-    require Image::ExifTool;
-    my $et   = Image::ExifTool->new;
-    my @tags = qw(
+sub tagsToUse {
+    qw(
+      DateTimeOriginal
+      ImageHeight
+      ImageWidth
+      LensID
+      LensSpec
+      MemoryCardNumber
       SerialNumber
       ShutterCount
-      ImageCount
-      DateTimeOriginal
-      ImageWidth
-      ImageHeight
-    );
-    sub {
-        my ($fileWriter) = @_;
-        $fileWriter->( qw(sha1 mtime size ext file folder), @tags );
-        sub {
-            return $fileWriter->() unless @_;
-            my (
-                $sha1,   $mtime, $size,   $ext, $name,
-                $folder, $row,   $rootid, $inode
-            ) = @_;
-            $et->ExtractInfo("$folder/$name") or return map { ['']; } @tags;
-            my $info = $et->GetInfo(@tags);
-            $fileWriter->(
-                $sha1, [$mtime], [$size], $ext, $name, $folder,
-                map { defined $_ ? [$_] : ['']; } @$info{@tags}
-            );
-        };
-    };
+      );    # These might also be useful for some cameras:
+            # CreateDate DateCreated DateTimeCreated ImageCount
 }
 
 sub metadataExtractionWorker {
-    my ( $sha1, $sha512224, $sha3, $shake128, $et );
-    my $preWorker = sub {
-
-        # Digest::SHA and Digest::SHA3 are thread-safe in FreeBSD 11 perl 5.2x
-        # but not in macOS perl 5.18
-        $sha1      = Digest::SHA->new;
-        $sha512224 = Digest::SHA->new(512224);
-        $sha3      = Digest::SHA3->new;
-        $shake128  = Digest::SHA3->new(128000);
-        $et        = Image::ExifTool->new;
+    my ( $sha1, $sha512224, $sha3, $shake128, $objExifTool );
+    my $preWorker = sub
+    {    # Digest::SHA and Digest::SHA3 are thread-safe in FreeBSD 11 perl 5.2x
+            # but not in macOS perl 5.18
+        $sha1        = Digest::SHA->new;
+        $sha512224   = Digest::SHA->new(512224);
+        $sha3        = Digest::SHA3->new;
+        $shake128    = Digest::SHA3->new(128000);
+        $objExifTool = Image::ExifTool->new;
     };
     my $worker = sub {
         my ( $path, $basics ) = @_;
@@ -79,7 +62,7 @@ sub metadataExtractionWorker {
         my $results =
           $path =~
           /\.(?:jpg|jpeg|tif|tiff|psd|png|nef|arw|raw|m4a|mp3|mp4|heic|heif)$/is
-          ? $et->ImageInfo($path)
+          ? $objExifTool->ImageInfo($path)
           : {};
         $results->{'SHA-1'}       = $sha1->addfile($path)->hexdigest;
         $results->{'SHA-512/224'} = $sha512224->addfile($path)->b64digest;
@@ -218,14 +201,7 @@ EOSQL
 
 sub metadataProcessorMaker {
     my ($mdbFile) = @_;
-    my @tags = qw(
-      SerialNumber
-      ShutterCount
-      ImageCount
-      DateTimeOriginal
-      ImageWidth
-      ImageHeight
-    );
+    my @tags = tagsToUse();
     sub {
         my ($fileWriter) = @_;
         $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
@@ -256,30 +232,16 @@ sub metadataProcessorMaker {
 }
 
 sub metadataThreadedProcessorMaker {
-
     my ($mdbFile) = @_;
-
-    my @tags = qw(
-      DateTimeOriginal
-      ImageHeight
-      ImageWidth
-      LensID
-      LensSpec
-      MemoryCardNumber
-      SerialNumber
-      ShutterCount
-    );
-
-# might be useful for some cameras: CreateDate DateCreated DateTimeCreated ImageCount
-
+    my @tags = tagsToUse();
     sub {
         my ($fileWriter) = @_;
         my ( $storageWorkerPre, $storageWorkerDo ) =
           metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           metadataExtractionWorker();
-        require FileMgt106::Extraction::Threading;
-        my $enqueuer = FileMgt106::Extraction::Threading::runPoolQueue(
+        require FileMgt106::Extraction::MetadataThreading;
+        my $enqueuer = FileMgt106::Extraction::MetadataThreading::runPoolQueue(
             $extractionWorkerPre, $extractionWorkerDo, $storageWorkerPre,
             $storageWorkerDo,     $fileWriter,
         );
@@ -305,7 +267,6 @@ sub metadataThreadedProcessorMaker {
             );
         };
     };
-
 }
 
 1;
