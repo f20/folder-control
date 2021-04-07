@@ -68,13 +68,12 @@ sub getRawBody {
 }
 
 sub parseMessage {
-    my ( $emailFile, $container, $specificDestination ) = @_;
+    my ( $emailFile, $container, $destinationFolder ) = @_;
     my $mtime = ( stat $emailFile )[STAT_MTIME];
     unless ( defined $mtime ) {
         warn "Cannot stat $emailFile";
         return;
     }
-    my $folder;
     open my $mfh, '<', $emailFile or die "Cannot open $emailFile: $!";
     binmode $mfh, ':raw';
     local undef $/;
@@ -84,45 +83,51 @@ sub parseMessage {
         return;
     }
     close $mfh or warn $!;
-    if ($specificDestination) {
-        $folder = $specificDestination;
-    }
-    else {
+    unless ( defined $destinationFolder ) {
         my @localtime = localtime $mtime;
-        $folder = POSIX::strftime( '%Y-%m', @localtime );
-        $folder = catdir( $container, $folder ) if defined $container;
-        mkdir $folder unless -e $folder;
-        $folder = catdir( $folder,
+        $destinationFolder = POSIX::strftime( '%Y-%m', @localtime );
+        $destinationFolder = catdir( $container, $destinationFolder )
+          if defined $container;
+        mkdir $destinationFolder unless -e $destinationFolder;
+        $destinationFolder = catdir( $destinationFolder,
             'Y_' . POSIX::strftime( '%Y-%m-%d %H-%M-%S', @localtime ) );
-        my @titles = (
-            $email->header('Subject') || 'No subject',
-            $email->header('From') || 'No sender'
-        );
-        eval { $_ = NFKD($_); } foreach @titles;
-        $titles[1] =~ s/.* //;
-        do {
-            s/\pM//g;
-            s/[^a-zA-Z0-9.,@()-]+/ /gs;
-            s/^ //;
-            s/ $//;
-          }
-          foreach @titles;
-        $titles[0] =~ s/^(.{25,70}\S) .*?$/$1/s
-          if length( $titles[0] ) > 70;
-        my $subject = "@titles";
-        $subject = substr( $subject, 0, 100 ) if length($subject) > 100;
-        $subject =~ s/[. ]+$//;
-        if ( -e "$folder $subject" || -e "$folder $subject.tmp" ) {
+        $destinationFolder .= " ($1)" if $emailFile =~ m/([0-9]+)\.$/s;
+
+        {
+            my @subjectAndSender = (
+                $email->header('Subject') || 'No identification',
+                $email->header('From') || 'No sender'
+            );
+            eval { $_ = NFKD($_); } foreach @subjectAndSender;
+            $subjectAndSender[1] =~ s/.* //;
+            do {
+                s/\pM//g;
+                s/[^a-zA-Z0-9.,@()-]+/ /gs;
+                s/^ //;
+                s/ $//;
+              }
+              foreach @subjectAndSender;
+            $subjectAndSender[0] =~ s/^(.{25,70}\S) .*?$/$1/s
+              if length( $subjectAndSender[0] ) > 70;
+            my $identification = "@subjectAndSender";
+            $identification = substr( $identification, 0, 100 )
+              if length($identification) > 100;
+            $identification =~ s/[. ]+$//;
+            $destinationFolder .= " $identification";
+        }
+
+        if (   -e $destinationFolder
+            || -e "$destinationFolder.tmp" )
+        {
             my $counter = -2;
             --$counter
-              while -e "$folder$counter $subject"
-              || -e "$folder$counter $subject.tmp";
-            $folder .= $counter;
+              while -e "$destinationFolder$counter"
+              || -e "$destinationFolder$counter.tmp";
+            $destinationFolder .= $counter;
         }
-        $folder .= " $subject";
     }
-    unless ( mkdir "$folder.tmp" ) {
-        warn "Cannot make $folder.tmp for $emailFile: $!";
+    unless ( mkdir "$destinationFolder.tmp" ) {
+        warn "Cannot make $destinationFolder.tmp for $emailFile: $!";
         return;
     }
     my $savewarn = $SIG{__WARN__};
@@ -131,7 +136,7 @@ sub parseMessage {
     eval {
         my $fn0   = 'Email.txt';
         my @files = ($fn0);
-        open my $fh, '>', "$folder.tmp/$fn0" or die $!;
+        open my $fh, '>', "$destinationFolder.tmp/$fn0" or die $!;
         binmode $fh, ':utf8' or die $!;
         print {$fh} join "\r\n", '', (
             map {
@@ -197,7 +202,8 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
 
                 else {
                     eval {
-                        open my $fh2, ">", "$folder.tmp/$fn headers.txt"
+                        open my $fh2, ">",
+                          "$destinationFolder.tmp/$fn headers.txt"
                           or die $!;
                         binmode $fh2, ':utf8' or die $!;
                         print {$fh2} join "\r\n", map {
@@ -218,14 +224,14 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
                     print {$w} getRawBody($item);
                     close $w;
                     waitpid $pid, 0;
-                    _unzipfolder("$folder.tmp/winmail");
+                    _unzipfolder("$destinationFolder.tmp/winmail");
                     return;
                 }
                 elsif ( defined $pid ) {
                     close $w;
                     open \*STDIN, '<&', fileno($r);
-                    mkdir "$folder.tmp/winmail"
-                      and chdir "$folder.tmp/winmail"
+                    mkdir "$destinationFolder.tmp/winmail"
+                      and chdir "$destinationFolder.tmp/winmail"
                       and exec qw(tnef --save-body);
                     local undef $/;
                     <$r>;
@@ -236,51 +242,56 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
             }
             unshift @files, $fn;
             eval {
-                open my $fh3, '>', "$folder.tmp/$fn" or die $!;
+                open my $fh3, '>', "$destinationFolder.tmp/$fn" or die $!;
                 binmode $fh3, ':raw' or die $!;
                 print {$fh3} getRawBody($item) or die $!;
                 close $fh3 or die $!;
                 if ( $fn =~ /(.*)\.eml$/is ) {
                     if (
                         parseMessage(
-                            "$folder.tmp/$fn", undef, "$folder.tmp/$1"
+                            "$destinationFolder.tmp/$fn", undef,
+                            "$destinationFolder.tmp/$1"
                         )
                       )
                     {
-                        mkdir "$folder.tmp/Z_Unpacked";
-                        rename "$folder.tmp/$fn", "$folder.tmp/Z_Unpacked/$fn";
+                        mkdir "$destinationFolder.tmp/Z_Unpacked";
+                        rename "$destinationFolder.tmp/$fn",
+                          "$destinationFolder.tmp/Z_Unpacked/$fn";
                     }
                 }
                 if ( $fn =~ /(.*)\.zip$/is ) {
-                    _unzipfile( "$folder.tmp", $fn, $1 );
+                    _unzipfile( "$destinationFolder.tmp", $fn, $1 );
                 }
             };
             warn "$fn: $@" if $@;
         };
         $email->walk_parts($partEater);
         close $fh or warn $!;
-        utime time, $mtime, map { "$folder.tmp/$_" } @files or warn $!;
+        utime time, $mtime, map { "$destinationFolder.tmp/$_" } @files
+          or warn $!;
     };
     if ($@) {
-        my $message = "$emailFile -> $folder:\n$@";
-        if ( open my $h, '>', "$folder.tmp/Email parsing error.txt" ) {
+        my $message = "$emailFile -> $destinationFolder:\n$@";
+        if ( open my $h, '>', "$destinationFolder.tmp/Email parsing error.txt" )
+        {
             binmode $h, ':utf8';
             print {$h} $message;
         }
     }
     $SIG{__WARN__} = $savewarn;
     if (@warnings) {
-        open my $fh, '>', "$folder.tmp/Parser warnings.txt";
+        open my $fh, '>', "$destinationFolder.tmp/Parser warnings.txt";
         print {$fh} join "\n",
           map { local $_ = $_; s# at /.*##; $_; } @warnings;
         close $fh;
     }
-    rename "$folder.tmp", $folder or warn "rename $folder.tmp: $!";
-    $folder;
+    rename "$destinationFolder.tmp", $destinationFolder
+      or warn "rename $destinationFolder.tmp: $!";
+    $destinationFolder;
 }
 
 sub _unzipfile {
-    my ( $container, $zipfile, $folder ) = @_;
+    my ( $container, $zipfile, $destinationFolder ) = @_;
     my $pid = fork;
     if ($pid) {
         my $result = waitpid $pid, 0;
@@ -288,10 +299,11 @@ sub _unzipfile {
             mkdir "$container/Z_Unpacked";
             rename "$container/$zipfile", "$container/Z_Unpacked/$zipfile";
         }
-        _unzipfolder("$container/$folder");
+        _unzipfolder("$container/$destinationFolder");
     }
     elsif ( defined $pid ) {
-        exec qw(unzip -q -n -d), $folder, $zipfile if chdir $container;
+        exec qw(unzip -q -n -d), $destinationFolder, $zipfile
+          if chdir $container;
         require POSIX and POSIX::_exit(0);
         die 'This should not happen';
     }
