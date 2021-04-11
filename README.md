@@ -23,12 +23,12 @@ cataloguing, file backup, synchronisation and file-level deduplication.
 UNIX group IDs determine some of the behaviours of these scripts.  The default assumptions about group IDs, which are in the source code of FileMgt106::FileSystem, are as follows:
 * 0 and 20 are exempted from some automatic tidying actions.
 * 6 is a Cyrus IMAP group.
-* 1030 is for files which are world-readable.
+* 1030 is for files which are world-readable (deprecated).
 * 1037 is a management group.
-* Any member of 1026 or 1037 is a member of 1025.
-* Any member of 1028 is a member of 1025, 1026, 1066 and 1069.
-* Any member of 1029, 1032 or 1034 is a member of 1025 and 1026.
-* Any member of 1066 is a member of 1069.
+* Any member of 1026 or 1037 is also a member of 1025.
+* Any member of 1028 is also a member of 1025, 1026, 1066 and 1069.
+* Any member of 1029, 1032 or 1034 is also a member of 1025 and 1026.
+* Any member of 1066 is also a member of 1069.
 
 Franck Latrémolière
-4 March 2020
+11 April 2021
