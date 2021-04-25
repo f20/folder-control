@@ -153,7 +153,7 @@ if ($monorepoUrl) {
 
 if ( $user && $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
     `git stash`;
-    foreach (qw(Work/folder-control/master Work/mac-account/master)) {
+    foreach (qw(Work/folder-control/master)) {
         my ( $repoKey, $branch ) = m#^([^/]+/[^/]+)/(.+)$# or next;
         system qw(git pull -q --no-edit --no-tags),
           defined $localRepos{$repoKey}

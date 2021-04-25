@@ -50,8 +50,8 @@ sub reloadMyModules {
         $module =~ s^::^/^g;
         $module .= '.pm';
         my $inc = $INC{$module};
-        $inc = substr( $inc, 0, $len );
         my $len = length($inc) - length($module);
+        $inc = substr( $inc, 0, $len );
         undef $pm_to_reload{$_}
           foreach grep { substr( $INC{$_}, 0, $len ) eq $inc; } keys %INC;
     }
