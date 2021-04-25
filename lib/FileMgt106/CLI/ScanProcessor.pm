@@ -155,6 +155,9 @@ sub makeProcessor {
                         {
                             $grabFolder = $d;
                         }
+                        if ( -d ( my $d = catdir( $grabFolder, 'Grab' ) ) ) {
+                            $grabFolder = $d;
+                        }
                         {
                             my $toGrab =
                                 $grabSource =~ s/:\+$//s
