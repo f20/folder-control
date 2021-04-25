@@ -1,6 +1,6 @@
 package Daemon112::Daemon;
 
-# Copyright 2008-2019 Franck Latrémolière, Reckon LLP and others and others.
+# Copyright 2008-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -44,18 +44,26 @@ use Daemon112::ArrayQueue;
 use Encode qw(decode_utf8);
 
 sub reloadMyModules {
-    my $myInc = $INC{'Daemon112/Daemon.pm'};
-    $myInc =~ s#Daemon112/Daemon\.pm$##s;
-    my $l = length $myInc;
-    foreach ( grep { substr( $INC{$_}, 0, $l ) eq $myInc; } keys %INC ) {
-        warn "Force reload of $_";
-        delete $INC{$_};
-        require $_;
+    my ($self) = @_;
+    my %pm_to_reload;
+    foreach my $module ( __PACKAGE__, $$self ) {
+        $module =~ s^::^/^g;
+        $module .= '.pm';
+        my $inc = $INC{$module};
+        $inc = substr( $inc, 0, $len );
+        my $len = length($inc) - length($module);
+        undef $pm_to_reload{$_}
+          foreach grep { substr( $INC{$_}, 0, $len ) eq $inc; } keys %INC;
     }
+    my @pm_to_reload = keys %pm_to_reload;
+    warn 'Force reload of ' . ( 0 + @pm_to_reload ) . ' modules';
+    delete $INC{$_} foreach @pm_to_reload;
+    require $_ foreach @pm_to_reload;
 }
 
 sub run {
-    my ( $self, $module, $nickName, $logging, @args ) = @_;
+    my ( $class, $module, $nickName, $logging, @args ) = @_;
+    my $self = bless \$module, $class;
 
     # NB: "perl:" is needed to avoid confusing the rc.d script.
     $0 = 'perl: Daemon112 ' . ( $nickName ||= $module );
@@ -120,7 +128,7 @@ sub run {
             if ( $signalQueue{HUP} ) {
                 warn 'Reloading ' . __PACKAGE__ . ' with ' . $module;
                 delete $signalQueue{HUP};
-                reloadMyModules();
+                $self->reloadMyModules;
                 $signalQueue{needsLoading} = 1;
             }
             if ( $signalQueue{TERM} || $signalQueue{INT} ) {
@@ -158,7 +166,7 @@ sub run {
                 eval "require $module;";
                 if ($@) {
                     warn "Cannot load $module: $@";
-                    reloadMyModules();
+                    $self->reloadMyModules;
                     sleep $signalQueue{needsLoading};
                     next;
                 }
@@ -167,7 +175,7 @@ sub run {
                     eval { $runner = $module->new( $qu, $pq, $kq, @args ); };
                     if ( !$runner || $@ ) {
                         warn "Error or false result from $module->new: $@";
-                        reloadMyModules();
+                        $self->reloadMyModules;
                         sleep $signalQueue{needsLoading};
                         next;
                     }
@@ -176,7 +184,7 @@ sub run {
                 eval { $runner->start; };
                 if ($@) {
                     warn "Cannot start $module: $@";
-                    reloadMyModules();
+                    $self->reloadMyModules;
                     sleep $signalQueue{needsLoading};
                     next;
                 }

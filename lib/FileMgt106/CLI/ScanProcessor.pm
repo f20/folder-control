@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -69,7 +69,7 @@ sub makeProcessor {
                 0,
                 $scalar,
                 $options->{stash}
-                ? [ $options->{stash}, 'Y_Cellar ' . basename($dir) ]
+                ? [ $options->{stash}, 'Y_Stash ' . basename($dir) ]
                 : (),
               );
         };
@@ -148,11 +148,12 @@ sub makeProcessor {
                 $hints ||= $self->hintsObj;
               SOURCE: foreach (@grabSources) {
                     my $grabSource = $_;    # true copy, not loop alias variable
-                    my ( $cellarScanner, $cellarDir );
+                    my ( $grabScanner, $grabFolder );
                     if ( $grabSource ne 'done' ) {
-                        $cellarDir = $self->homePath;
-                        if ( -d ( my $d = catdir( $cellarDir, 'Grab.tmp' ) ) ) {
-                            $cellarDir = $d;
+                        $grabFolder = $self->homePath;
+                        if ( -d ( my $d = catdir( $grabFolder, 'Grab.tmp' ) ) )
+                        {
+                            $grabFolder = $d;
                         }
                         {
                             my $toGrab =
@@ -168,13 +169,13 @@ sub makeProcessor {
                               m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
                               ? ( $1, $2 )
                               : die "Cannot grab from $grabSource";
-                            $cellarDir .= '/Y_Cellar '
+                            $grabFolder .= '/Y_Grab '
                               . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z',
                                 localtime )
                               . ' '
                               . $host;
-                            mkdir $cellarDir;
-                            chdir $cellarDir;
+                            mkdir $grabFolder;
+                            chdir $grabFolder;
                             open my $fh,
                               qq^| ssh $host 'perl "$extract" -tar -^
                               . q^ 2>/dev/null' | tar -x -f -^;
@@ -187,11 +188,11 @@ sub makeProcessor {
                         $hints->beginInteractive(1);
                         FileMgt106::Folders::FolderClean::deepClean('.');
                         $hints->commit;
-                        $cellarScanner =
+                        $grabScanner =
                           FileMgt106::Scanning::ScanMaster->new( $hints,
                             decode_utf8( getcwd() ),
                             $self->fileSystemObj );
-                        $cellarScanner->dequeued;
+                        $grabScanner->dequeued;
                     }
                     while ( my ( $dir, $scalar ) = each %$missing ) {
                         $hints->beginInteractive;
@@ -215,13 +216,14 @@ sub makeProcessor {
                             delete $missing->{$dir};
                         }
                     }
-                    if ( defined $cellarDir ) {
+                    if ( defined $grabFolder ) {
                         require FileMgt106::Folders::FolderClean;
                         $hints->beginInteractive(1);
-                        FileMgt106::Folders::FolderClean::deepClean($cellarDir);
+                        FileMgt106::Folders::FolderClean::deepClean(
+                            $grabFolder);
                         $hints->commit;
-                        $cellarScanner->dequeued;
-                        push @rmdirList, $cellarDir;
+                        $grabScanner->dequeued;
+                        push @rmdirList, $grabFolder;
                     }
                     last unless %$missing;
                 }
