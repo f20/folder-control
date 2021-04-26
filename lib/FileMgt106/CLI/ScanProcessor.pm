@@ -143,108 +143,10 @@ sub makeProcessor {
 
     my $finisher = sub {
         if ($missing) {
-            if ( grep { $_; } @grabSources ) {
-                my @rmdirList;
-                $hints ||= $self->hintsObj;
-              SOURCE: foreach (@grabSources) {
-                    my $grabSource = $_;    # true copy, not loop alias variable
-                    my ( $grabScanner, $grabFolder );
-                    if ( $grabSource ne 'done' ) {
-                        $grabFolder = $self->homePath;
-                        if ( -d ( my $d = catdir( $grabFolder, 'Grab.tmp' ) ) )
-                        {
-                            $grabFolder = $d;
-                        }
-                        if ( -d ( my $d = catdir( $grabFolder, 'Grab' ) ) ) {
-                            $grabFolder = $d;
-                        }
-                        {
-                            my $toGrab =
-                                $grabSource =~ s/:\+$//s
-                              ? $missing
-                              : _filterByFileName($missing);
-                            next SOURCE unless %$toGrab;
-                            warn "Grabbing from $grabSource\n";
-                            my ( $host, $extract ) =
-                              $grabSource =~ /^([a-zA-Z0-9._-]+)$/s
-                              ? ( $1, 'extract.pl' )
-                              : $grabSource =~
-                              m#^([a-zA-Z0-9._-]+):([ /a-zA-Z0-9._+-]+)$#s
-                              ? ( $1, $2 )
-                              : die "Cannot grab from $grabSource";
-                            $grabFolder .= '/Y_Grab '
-                              . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z',
-                                localtime )
-                              . ' '
-                              . $host;
-                            mkdir $grabFolder;
-                            chdir $grabFolder;
-                            open my $fh,
-                              qq^| ssh $host 'perl "$extract" -tar -^
-                              . q^ 2>/dev/null' | tar -x -f -^;
-                            binmode $fh;
-                            print {$fh}
-                              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                              )->encode($toGrab);
-                        }
-                        require FileMgt106::Folders::FolderClean;
-                        $hints->beginInteractive(1);
-                        FileMgt106::Folders::FolderClean::deepClean('.');
-                        $hints->commit;
-                        $grabScanner =
-                          FileMgt106::Scanning::ScanMaster->new( $hints,
-                            decode_utf8( getcwd() ),
-                            $self->fileSystemObj );
-                        $grabScanner->dequeued;
-                    }
-                    while ( my ( $dir, $scalar ) = each %$missing ) {
-                        $hints->beginInteractive;
-                        eval {
-                            $scalar = (
-                                $scanners{$dir}
-                                  || FileMgt106::Scanning::Scanner->new(
-                                    $dir, $hints,
-                                    $self->fileSystemObj->statFromGid(
-                                        ( stat $dir )[STAT_GID]
-                                    )
-                                  )
-                            )->infill($scalar);
-                        };
-                        warn "infill $dir: $@" if $@;
-                        $hints->commit;
-                        if ($scalar) {
-                            $missing->{$dir} = $scalar;
-                        }
-                        else {
-                            delete $missing->{$dir};
-                        }
-                    }
-                    if ( defined $grabFolder ) {
-                        require FileMgt106::Folders::FolderClean;
-                        $hints->beginInteractive(1);
-                        FileMgt106::Folders::FolderClean::deepClean(
-                            $grabFolder);
-                        $hints->commit;
-                        $grabScanner->dequeued;
-                        push @rmdirList, $grabFolder;
-                    }
-                    last unless %$missing;
-                }
-                $missing = _filterByFileName($missing)
-                  unless grep { /:\+$/s; } @grabSources;
-                while ( my ( $path, $missing ) = each %$missing ) {
-                    my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
-                    open my $fh, '>', $tmpFile;
-                    binmode $fh;
-                    print {$fh}
-                      FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                      )->encode($missing);
-                    close $fh;
-                    rename $tmpFile, catfile( $path, '⚠️.txt' );
-                }
-                rmdir $_ foreach @rmdirList;
+            if ( my @actualSources = grep { $_; } @grabSources ) {
+                $self->grab( $missing, \%scanners, @actualSources );
             }
-            else {    # no grab sources
+            else {
                 binmode STDOUT;
                 print
                   FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
@@ -426,22 +328,90 @@ sub makeProcessor {
 
 }
 
-sub _filterByFileName {
-    my ($src) = @_;
-    my %filtered;
-    foreach (
-        grep { !/(?:^~WRL[0-9]+\.tmp|\.dta|\.[zZ][iI][pP])$/s; }
-        keys %$src
-      )
-    {
-        my $v = $src->{$_};
-        if ( 'HASH' eq ref $v ) {
-            $v = _filterByFileName($v);
-            next unless %$v;
+sub grab {
+    my ( $self, $missing, $scanners, @sources ) = @_;
+    require FileMgt106::Folders::FolderClean;
+    my @rmdirList;
+    my $grabFolderRoot = $self->homePath;
+    foreach (qw(Grab.tmp Grab)) {
+        if ( -d ( my $d = catdir( $grabFolderRoot, $_ ) ) ) {
+            $grabFolderRoot = $d;
+            last;
         }
-        $filtered{$_} = $v;
     }
-    \%filtered;
+    my $hints = $self->hintsObj;
+
+    foreach my $grabSource (@sources) {
+        warn "Grabbing from $grabSource\n";
+        local $_ = $grabSource;
+        $grabSource = "ssh $grabSource perl extract.pl -tar - 2>/dev/null" unless / /;
+        s/[^0-9a-z_ .+-]+/-/g;
+        my $grabFolder = catdir( $grabFolderRoot,
+                'Y_Grab '
+              . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime ) . ' '
+              . $_ );
+        mkdir $grabFolder;
+        chdir $grabFolder;
+        my $grabScanner =
+          FileMgt106::Scanning::ScanMaster->new( $hints,
+            decode_utf8( getcwd() ),
+            $self->fileSystemObj );
+        {
+            open my $fh, qq^| $grabSource | tar -x -f -^;
+            binmode $fh;
+            print {$fh}
+              FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
+              ->encode($missing);
+        }
+        $hints->beginInteractive(1);
+        FileMgt106::Folders::FolderClean::deepClean('.');
+        $hints->commit;
+        $grabScanner->dequeued;
+
+        while ( my ( $dir, $scalar ) = each %$missing ) {
+            $hints->beginInteractive;
+            eval {
+                $scalar = (
+                    $scanners->{$dir} || FileMgt106::Scanning::Scanner->new(
+                        $dir, $hints,
+                        $self->fileSystemObj->statFromGid(
+                            ( stat $dir )[STAT_GID]
+                        )
+                    )
+                )->infill($scalar);
+            };
+            warn "infill $dir: $@" if $@;
+            $hints->commit;
+            if ($scalar) {
+                $missing->{$dir} = $scalar;
+            }
+            else {
+                delete $missing->{$dir};
+            }
+        }
+
+        $hints->beginInteractive(1);
+        FileMgt106::Folders::FolderClean::deepClean($grabFolder);
+        $hints->commit;
+        $grabScanner->dequeued;
+        push @rmdirList, $grabFolder;
+
+        last unless %$missing;
+
+    }
+
+    while ( my ( $path, $missing ) = each %$missing ) {
+        my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
+        open my $fh, '>', $tmpFile;
+        binmode $fh;
+        print {$fh}
+          FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
+          ->encode($missing);
+        close $fh;
+        rename $tmpFile, catfile( $path, '⚠️.txt' );
+    }
+    rmdir $_ foreach @rmdirList;
+
 }
 
 1;
