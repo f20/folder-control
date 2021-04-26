@@ -87,9 +87,11 @@ sub makeMailboxProcessor {
             local $/ = "\n";
             while (<$fh>) {
                 last if /^\s*$/s;
-                $stamp{ lc $1 } =
-                  Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
-                  ->epoch
+                eval {
+                    $stamp{ lc $1 } =
+                      Time::Piece->strptime( $2, '%a, %d %b %Y %H:%M:%S %z' )
+                      ->epoch;
+                }
                   if
 /^(\S*date\S*):\s+(\S+,\s+[0-9]+\s+\S+\s+[0-9]{4}\s+[0-9]{2}:[0-9]{2}:[0-9]{2}\s+[+-][0-9]{4})/i;
             }
