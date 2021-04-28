@@ -28,7 +28,7 @@ use strict;
 
 use Encode qw(decode_utf8);
 use File::Basename qw(dirname basename);
-use File::Spec::Functions qw(catfile);
+use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Catalogues::LoadSaveNormalize;
 
 use constant {
@@ -349,16 +349,18 @@ sub process {
             }
         }
 
-        elsif (/git:(.+):(\S+)/) {
-            my $gitRepo   = $1;
-            my $gitBranch = $2;
+        elsif ( my ( $gitRepo, $gitBranch ) = /git:(.+):(\S+)/ ) {
+            if ( -d ( my $gitRepo2 = catdir( $gitRepo, '.git' ) ) ) {
+                $gitRepo = $gitRepo2;
+            }
             my $jsonMachine =
               FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker();
             local $/ = "\000";
             open my $gh,
               qq^git --git-dir="$gitRepo" ls-tree -z -r $gitBranch |^;
             while (<$gh>) {
-                my ( $sha1, $name ) = /^\S+ blob (\S+)\t(.*)\000$/s or next;
+                my ( $sha1, $name ) = /^\S+ blob (\S+)\t(.*)\000$/s
+                  or next;
                 $name = decode_utf8 $name;
                 open my $h, qq^git --git-dir="$gitRepo" show $sha1 |^;
                 binmode $h;
