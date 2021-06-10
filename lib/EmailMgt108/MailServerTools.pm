@@ -1,6 +1,6 @@
 package EmailMgt108::MailServerTools;
 
-# Copyright 2020 Franck Latrémolière and others.
+# Copyright 2020-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -183,8 +183,9 @@ sub email_downloader {
                 print {$mh} $imap->message_string($uid);
             }
             else {
-                warn "Stopping $account\n";
-                last FOLDER;
+                warn "Messages not downloaded in $folder in $account\n";
+                $maxMessages = 3;
+                last MESSAGE;
             }
             my $lmod = Time::Piece->strptime(
                 $folderHashFromServer{$uid}{'INTERNALDATE'},

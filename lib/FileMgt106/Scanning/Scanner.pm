@@ -69,8 +69,8 @@ sub new {
 
     my $regexWatchThisFile =
       -e '/System/Library'    # Test whether the system is a Mac
-      ? qr/\.(?:R|c|command|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
-      : qr/\.(?:R|c|command|cpp|css|do         |h|java|js|json|m|pl|pm     |py|swift|txt|yml)$/isx;
+      ? qr/\.(?:R|c|command|clj|cpp|css|do|doc|docx|h|java|js|json|m|pl|pm|pptx|py|swift|txt|yml)$/isx
+      : qr/\.(?:R|c|command|clj|cpp|css|do|h|java|js|json|m|pl|pmπ|py|swift|txt|yml)$/isx;
     my $regexAlwaysRecheckThisFile = qr/\.xls$/is;
 
     my $regexNeverWatchFolder    = qr/^Y_|\.sparsebundle$/is;
