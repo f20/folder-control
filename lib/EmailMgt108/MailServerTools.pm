@@ -179,8 +179,14 @@ sub email_downloader {
                   unless $stat[7] == $folderHashFromServer{$uid}{'RFC822.SIZE'};
             }
             elsif ( --$maxMessages ) {
-                open my $mh, '>', $tfile;
-                print {$mh} $imap->message_string($uid);
+                eval {
+                    open my $mh, '>', $tfile;
+                    print {$mh} $imap->message_string($uid);
+                };
+                if ($@) {
+                    warn "Message download error for $folder in $account\n";
+                    last MESSAGE;
+                }
             }
             else {
                 warn "Messages not downloaded in $folder in $account\n";
