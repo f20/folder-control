@@ -1,6 +1,6 @@
 package FileMgt106::Folders::FolderOrganise;
 
-# Copyright 2011-2019 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -223,6 +223,7 @@ sub automaticNumbering {
         }
         else {
             $name =~ s/\.[0-9a-z]+$//si;
+            $name =~ s/[ _]+/ /g;
             my $newFolder = catdir( $path, $name );
             mkdir $newFolder;
             rename $_->[2], catfile( $newFolder, $_->[0] );
