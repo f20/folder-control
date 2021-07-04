@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Statistics;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -41,13 +41,15 @@ sub makeStatisticsExtractor {
     binmode STDOUT, ':utf8';
     my $hints = FileMgt106::Database->new( $hintsFile, 1 );
     my $query =
-      $hints->{dbHandle}->prepare('select size from locations where sha1=? and size is not null');
+      $hints->{dbHandle}
+      ->prepare('select size from locations where sha1=? and size is not null');
     my ( %seen, $found, $missing, $dups, $bytes,
         $bytesWithDuplication, %found, %missing, %dups, %bytes );
     my $processor;
     $processor = sub {
         my ($cat) = @_;
         while ( my ( $k, $v ) = each %$cat ) {
+            next unless defined $v;
             if ( 'HASH' eq ref $v ) {
                 $processor->($v);
                 next;

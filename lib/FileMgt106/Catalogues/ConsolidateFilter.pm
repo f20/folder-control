@@ -60,9 +60,11 @@ sub consolidateProcessor {
     sub {
         my ( $scalar, $path ) = @_ or return $consolidationResult;
         my $accumulator = $consolidationResult;
-        my @segments = split / \$/, $path;
-        shift @segments;
-        $accumulator = $accumulator->{$_} ||= {} foreach @segments;
+        if ( defined $path ) {
+            my @segments = split / \$/, $path;
+            shift @segments;
+            $accumulator = $accumulator->{$_} ||= {} foreach @segments;
+        }
         $runner->( $accumulator, $scalar );
         return;
     };
