@@ -35,8 +35,10 @@ use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
 use YAML;
 
-sub remove_messages {
-    my ( $server, $account, $password, $mailbox, @uidsToRemove ) = @_;
+sub remove_append_messages {
+    my ( $server, $account, $password, $mailboxUidsToRemoveArrayref,
+        $mailboxMessagesDatesToAppendArrayref,
+    ) = @_;
     my $imap = Mail::IMAPClient->new(
         Ssl      => 1,
         Uid      => 1,
@@ -44,11 +46,30 @@ sub remove_messages {
         User     => $account,
         Password => $password,
     ) or die "connection error: $@\n";
-    $imap->select($mailbox) or die "select $mailbox error: $@\n";
-    foreach (@uidsToRemove) {
-        $imap->move( 'INBOX.Trash', $_ ) or die "move $_ error: $@\n";
+    if ( 'ARRAY' eq ref $mailboxUidsToRemoveArrayref ) {
+        my $activeMailbox = '';
+        foreach (@$mailboxUidsToRemoveArrayref) {
+            my ( $mailbox, $uid ) = @$_;
+            $mailbox = "INBOX.$mailbox" unless $mailbox eq 'INBOX';
+            if ( $mailbox ne $activeMailbox ) {
+                $activeMailbox = $mailbox;
+                $imap->select($mailbox) or die "select $mailbox error: $@\n";
+            }
+            $imap->move( 'INBOX.Trash', $uid )
+              or die "move $mailbox $uid error: $@\n";
+        }
+        if ($activeMailbox) {
+            $imap->close or die "close error: $@\n";
+        }
     }
-    $imap->close or die "close error: $@\n";
+    if ( 'ARRAY' eq ref $mailboxMessagesDatesToAppendArrayref ) {
+        foreach (@$mailboxMessagesDatesToAppendArrayref) {
+            my ( $mailbox, $text, $date ) = @$_;
+            $mailbox = "INBOX.$mailbox" unless $mailbox eq 'INBOX';
+            $imap->append_string( $mailbox, $text, undef, $date )
+              or die "append $mailbox $date error: $@\n";
+        }
+    }
 }
 
 # This is to work around the fact that running successive
