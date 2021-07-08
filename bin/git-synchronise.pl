@@ -27,22 +27,18 @@ use warnings;
 use strict;
 use File::Spec::Functions qw(rel2abs);
 
-my ( $user, $volume, %localRepos );
+my ( $rootPath, %localRepos );
 my $selfid = `hostname -s`;
 chomp $selfid;
 
 my $scriptPath = rel2abs($0);
-if ( $scriptPath =~ m#^/(cold[^/]+)#s ) {
-    $volume = "/$1";
-    $selfid = $1;
+if ( $scriptPath =~ m#^(/(cold[^/]+))#s ) {
+    $rootPath = $1;
+    $selfid   = $2;
 }
-elsif ( $scriptPath =~ m#^/Volumes/([^/]+)#s ) {
-    $volume = "/Volumes/$1";
-    $selfid .= '-' . $1;
-}
-elsif ( $scriptPath =~ m#^/Users/([^/]+)#s ) {
-    $user = $1;
-    $selfid .= '-' . $1;
+elsif ( $scriptPath =~ m#^(/(?:Users|Volumes)/([^/]+))#s ) {
+    $rootPath = $1;
+    $selfid .= '-' . $2;
 }
 my $monorepoUrl = $ARGV[0];
 if ($monorepoUrl) {
@@ -54,22 +50,25 @@ else {
 }
 
 ( $localRepos{"Autocats/$selfid"} ) =
-  sort grep { -d "$_/.git"; } $user
+  sort grep { -d "$_/.git"; } $rootPath
   ? (
-    $ENV{FOLDER_CONTROL_HOME} ? "$ENV{FOLDER_CONTROL_HOME}/Catalogues" : (),
-    "$ENV{HOME}/Documents/Archive/Catalogues",
+    <"$rootPath/Documents/Archive/Catalogues">,
+    <"$rootPath/Documents/FolderControl/Catalogues">,
+    <"$rootPath/Management/catalogues">,
+    <"$rootPath/catalogues">,
   )
-  : $volume ? ( <$volume/Management/catalogues>, <$volume/catalogues>, )
-  :           ( </t*/catalogues>, </share/MD0_DATA/*/catalogues>, );
+  : ( <"/t*/catalogues">, <"/share/MD0_DATA/*/catalogues">, );
 
 foreach (
-    $user
+    $rootPath
     ? (
-        <$ENV{HOME}/Documents/*/.git>,
-        <$ENV{HOME}/Documents/Projects/*/.git>,
+        <"$rootPath/Documents/*/.git">,
+        <"$rootPath/Documents/Projects/*/.git">,
+        <"$rootPath/M*/*/.git">,
+        <"$rootPath/T*/*/.git">,
+        <"$rootPath/W*/*/.git">,
     )
-    : $volume ? <$volume/*/*/.git>
-    : ( </t*/folder-control/.git>, </share/MD0_DATA/*/folder-control/.git>,
+    : ( <"/t*/folder-control/.git">, <"/share/MD0_DATA/*/folder-control/.git">,
     )
   )
 {
@@ -151,7 +150,7 @@ if ($monorepoUrl) {
     }
 }
 
-if ( $user && $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
+if ( $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
     `git stash`;
     foreach (qw(Work/folder-control/master)) {
         my ( $repoKey, $branch ) = m#^([^/]+/[^/]+)/(.+)$# or next;
