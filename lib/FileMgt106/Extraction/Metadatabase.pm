@@ -1,4 +1,4 @@
-package FileMgt106::Extraction::Metadata;
+package FileMgt106::Extraction::Metadatabase;
 
 # Copyright 2017-2021 Franck Latrémolière and others.
 #
@@ -25,25 +25,10 @@ package FileMgt106::Extraction::Metadata;
 
 use strict;
 use warnings;
-use File::Spec::Functions qw(catfile);
 use DBD::SQLite;
 use Digest::SHA;
 use Digest::SHA3;
 use Image::ExifTool;
-
-sub tagsToUse {
-    qw(
-      DateTimeOriginal
-      ImageHeight
-      ImageWidth
-      LensID
-      LensSpec
-      MemoryCardNumber
-      SerialNumber
-      ShutterCount
-      );    # These might also be useful for some cameras:
-            # CreateDate DateCreated DateTimeCreated ImageCount
-}
 
 sub metadataExtractionWorker {
     my ( $sha1, $sha512224, $sha3, $shake128, $objExifTool );
@@ -197,76 +182,6 @@ EOSQL
 
     $storagePreWorker, $storageWorker;
 
-}
-
-sub metadataProcessorMaker {
-    my ($mdbFile) = @_;
-    my @tags = tagsToUse();
-    sub {
-        my ($fileWriter) = @_;
-        $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
-        my ( $extractionWorkerPre, $extractionWorkerDo ) =
-          metadataExtractionWorker();
-        my ( $storageWorkerPre, $storageWorkerDo ) =
-          metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
-        $extractionWorkerPre->();
-        $storageWorkerPre->();
-        sub {
-            return $storageWorkerDo->() unless @_;
-            my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            my $info = $storageWorkerDo->(
-                {
-                    sha1   => $sha1,
-                    mtime  => $mtime,
-                    size   => $size,
-                    ext    => $ext,
-                    name   => $name,
-                    folder => $folder,
-                }
-            );
-            $storageWorkerDo->(
-                $extractionWorkerDo->( catfile( $folder, $name ), $info ) )
-              if $info;
-        };
-    };
-}
-
-sub metadataThreadedProcessorMaker {
-    my ($mdbFile) = @_;
-    my @tags = tagsToUse();
-    sub {
-        my ($fileWriter) = @_;
-        my ( $storageWorkerPre, $storageWorkerDo ) =
-          metadataStorageWorker( $mdbFile, $fileWriter, \@tags );
-        my ( $extractionWorkerPre, $extractionWorkerDo ) =
-          metadataExtractionWorker();
-        require FileMgt106::Extraction::MetadataThreading;
-        my $enqueuer = FileMgt106::Extraction::MetadataThreading::runPoolQueue(
-            $extractionWorkerPre, $extractionWorkerDo, $storageWorkerPre,
-            $storageWorkerDo,     $fileWriter,
-        );
-        $enqueuer->(
-            {
-                map { ( $_ => $_ ); } qw(sha1 mtime size ext name folder path),
-                @tags
-            }
-        );
-        sub {
-            return $enqueuer->() unless @_;
-            my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            $enqueuer->(
-                {
-                    extractionPath => catfile( $folder, $name ),
-                    sha1           => $sha1,
-                    mtime          => $mtime,
-                    size           => $size,
-                    ext            => $ext,
-                    name           => $name,
-                    folder         => $folder,
-                }
-            );
-        };
-    };
 }
 
 1;

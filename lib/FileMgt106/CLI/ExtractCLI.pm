@@ -171,17 +171,17 @@ sub process {
         }
 
         if (/^-+metadatasingle/i) {
-            require FileMgt106::Extraction::Metadata;
+            require FileMgt106::Extraction::MetadataReports;
             $resultsProcessor =
-              FileMgt106::Extraction::Metadata::metadataProcessorMaker(
+              FileMgt106::Extraction::MetadataReports::metadataProcessorMaker(
                 catfile( dirname($perl5dir), '~$metadata' ) );
             next;
         }
 
         if (/^-+metadata/i) {
-            require FileMgt106::Extraction::Metadata;
+            require FileMgt106::Extraction::MetadataReports;
             $resultsProcessor =
-              FileMgt106::Extraction::Metadata::metadataThreadedProcessorMaker(
+              FileMgt106::Extraction::MetadataReports::metadataThreadedProcessorMaker(
                 catfile( dirname($perl5dir), '~$metadata' ) );
             next;
         }
