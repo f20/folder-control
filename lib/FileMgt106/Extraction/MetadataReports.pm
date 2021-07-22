@@ -137,36 +137,30 @@ sub metadataThreadedProcessorMaker {
             }
         );
 
-        my $enqueuer = sub {
-            my ($arg) = @_;
-            unless ( defined $arg ) {
-                $queue->enqueue(1);
-                $storageThread->join;
-                return;
-            }
-            $queue->enqueue($arg);
-        };
-
-        $enqueuer->(
+        $queue->enqueue(
             {
                 map { ( $_ => $_ ); } qw(sha1 mtime size ext name folder path),
                 @tags
             }
         );
         sub {
-            return $enqueuer->() unless @_;
-            my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            $enqueuer->(
-                {
-                    extractionPath => catfile( $folder, $name ),
-                    sha1           => $sha1,
-                    mtime          => $mtime,
-                    size           => $size,
-                    ext            => $ext,
-                    name           => $name,
-                    folder         => $folder,
-                }
-            );
+            if ( my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_ ) {
+                $queue->enqueue(
+                    {
+                        extractionPath => catfile( $folder, $name ),
+                        sha1           => $sha1,
+                        mtime          => $mtime,
+                        size           => $size,
+                        ext            => $ext,
+                        name           => $name,
+                        folder         => $folder,
+                    }
+                );
+            }
+            else {
+                $queue->enqueue(1);
+                $storageThread->join;
+            }
         };
     };
 
