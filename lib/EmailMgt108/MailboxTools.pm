@@ -67,15 +67,15 @@ sub makeMailboxProcessor {
         $scanner = sub {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
-                if    ( ref $v eq 'HASH' ) { $scanner->($v); }
-                elsif ( $k =~ s/\.$//s )   { undef $hashSet{$v}; }
+                if    ( ref $v eq 'HASH' )       { $scanner->($v); }
+                elsif ( $k =~ s/\.(?:eml)?$//s ) { undef $hashSet{$v}; }
             }
         };
         $scanner->($whatYouWant);
         my $numFiles    = keys %hashSet;
         my $digits      = length( $numFiles - 1 );
         my $id1         = 10**$digits;
-        my %cat1        = map { $id1++ . '.' => $_; } keys %hashSet;
+        my %cat1        = map { $id1++ . '.eml' => $_; } keys %hashSet;
         my $returnValue = $hintsBuilder->( \%cat1, $mboxFolder, $devNo );
 
         my %sortKey;
@@ -112,7 +112,7 @@ sub makeMailboxProcessor {
             keys %sortKey
           )
         {
-            my $target = catfile( $mboxFolder, $id2++ . '.' );
+            my $target = catfile( $mboxFolder, $id2++ . '.eml' );
             rename catfile( $mboxFolder, $source ), $target;
             EmailMgt108::EmailParser::parseMessage( $target, $archFolder )
               if $archFolder;

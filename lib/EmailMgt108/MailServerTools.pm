@@ -168,14 +168,14 @@ sub email_downloader {
             opendir $dh, $mailboxPath;
             my $stashPath;
             while ( readdir $dh ) {
-                next unless /^([0-9]+).$/s;
+                next unless /^([0-9]+)\.eml$/s;
                 next if exists $folderHashFromServer{$1};
                 unless ( defined $stashPath ) {
                     $stashPath = catdir( $mailboxPath, 'Z_Removed' );
                     mkdir $stashPath;
                 }
-                rename catfile( $mailboxPath, "$1." ),
-                  catfile( $stashPath, "$1." );
+                rename catfile( $mailboxPath, "$1.eml" ),
+                  catfile( $stashPath, "$1.eml" );
                 if ( defined $mailArchivesPath
                     && ( my $archived = $folderHashref->{$1}{archived} ) )
                 {
@@ -187,7 +187,7 @@ sub email_downloader {
         }
 
       MESSAGE: foreach my $uid ( keys %folderHashFromServer ) {
-            my $tfile = catfile( $mailboxPath, "$uid." );
+            my $tfile = catfile( $mailboxPath, "$uid.eml" );
             my @stat = lstat $tfile;
             if ( @stat && !$stat[7] ) {
                 unlink $tfile;
