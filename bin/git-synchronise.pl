@@ -27,19 +27,24 @@ use warnings;
 use strict;
 use File::Spec::Functions qw(rel2abs);
 
-my ( $rootPath, %localRepos );
-my $selfid = `hostname -s`;
+my $homePath;
+my $codeRepo = $ENV{FOLDER_CONTROL_HOME};
+my $selfid   = `hostname -s`;
 chomp $selfid;
-
 my $scriptPath = rel2abs($0);
 if ( $scriptPath =~ m#^(/(cold[^/]+))#s ) {
-    $rootPath = $1;
+    $homePath = $1;
     $selfid   = $2;
+    $codeRepo = catdir( $homePath, 'folder-control' );
 }
 elsif ( $scriptPath =~ m#^(/(?:Users|Volumes)/([^/]+))#s ) {
-    $rootPath = $1;
+    $homePath = $1;
     $selfid .= '-' . $2;
+    $codeRepo =
+      catdir( $homePath, 'Documents', 'Archives', 'folder-control-daemon' )
+      unless $codeRepo && substr( $codeRepo, 0, length $homePath ) eq $homePath;
 }
+
 my $monorepoUrl = $ARGV[0];
 if ($monorepoUrl) {
     $monorepoUrl = rel2abs($monorepoUrl) unless $monorepoUrl =~ /^ssh:/;
@@ -49,26 +54,29 @@ else {
     warn "### Begun: $selfid\n";
 }
 
+my %localRepos;
 ( $localRepos{"Autocats/$selfid"} ) =
-  sort grep { -d "$_/.git"; } $rootPath
+  sort grep { -d "$_/.git"; } $homePath
   ? (
-    <"$rootPath/Documents/Archive/Catalogues">,
-    <"$rootPath/Documents/FolderControl/Catalogues">,
-    <"$rootPath/Management/catalogues">,
-    <"$rootPath/catalogues">,
+    <"$homePath/Documents/Archive/Catalogues">,
+    <"$homePath/Documents/FolderControl/Catalogues">,
+    <"$homePath/Management/catalogues">,
+    <"$homePath/catalogues">,
   )
   : ( <"/t*/catalogues">, <"/share/MD0_DATA/*/catalogues">, );
 
 foreach (
-    $rootPath
+    $homePath
     ? (
-        <"$rootPath/Documents/*/.git">,
-        <"$rootPath/Documents/Projects/*/.git">,
-        <"$rootPath/M*/*/.git">,
-        <"$rootPath/T*/*/.git">,
-        <"$rootPath/W*/*/.git">,
+        <"$homePath/Documents/*/.git">,
+        <"$homePath/Documents/Projects/*/.git">,
+        <"$homePath/M*/*/.git">,
+        <"$homePath/T*/*/.git">,
+        <"$homePath/W*/*/.git">,
     )
-    : ( <"/t*/folder-control/.git">, <"/share/MD0_DATA/*/folder-control/.git">,
+    : (
+        <"/t*/folder-control/.git">, <"/t*/storage-info/.git">,
+        <"/share/MD0_DATA/*/folder-control/.git">,
     )
   )
 {
@@ -150,8 +158,9 @@ if ($monorepoUrl) {
     }
 }
 
-if ( $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
-    `git stash`;
+if ( $codeRepo && chdir $codeRepo ) {
+    warn "### Code update in $codeRepo\n";
+    system qw(git stash);
     foreach (qw(Work/folder-control/master)) {
         my ( $repoKey, $branch ) = m#^([^/]+/[^/]+)/(.+)$# or next;
         system qw(git pull -q --no-edit --no-tags),
@@ -160,4 +169,5 @@ if ( $ENV{FOLDER_CONTROL_HOME} && chdir $ENV{FOLDER_CONTROL_HOME} ) {
           : ( $monorepoUrl, $_ );
     }
 }
+
 warn "### Ended: $selfid\n";
