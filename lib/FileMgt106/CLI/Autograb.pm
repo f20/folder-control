@@ -111,7 +111,7 @@ sub scan_command_autograb {
                 mkdir "\@$source $category" unless -e "\@$source $category";
                 mkdir $folderPath;
                 if ( $options{initFlag} < 2 ) {
-                    open my $fh, '>', catfile( $folderPath, '🚫.txt' );
+                    open my $fh, '>', catfile( $folderPath, '🚫.json' );
                     print {$fh} '{".":"no"}';
                 }
             }
@@ -121,14 +121,14 @@ sub scan_command_autograb {
 
             if (
                 my ($buildExclusionsFile) =
-                grep { -f catfile( $folderPath, $_ ); } '🚫.txt', '⛔️.txt',
-                '⚠️.txt', '🔺.json'
+                grep { -f catfile( $folderPath, $_ ); } '🚫.json', '🚫.txt',
+                '⛔️.json', '⛔️.txt', '⚠️.json', '⚠️.txt', '🔺.json',
               )
             {
                 rename(
                     catfile( $folderPath, $buildExclusionsFile ),
-                    catfile( $folderPath, $buildExclusionsFile = '⛔️.txt' )
-                ) if $buildExclusionsFile eq '⚠️.txt';
+                    catfile( $folderPath, $buildExclusionsFile = '⛔️.json' )
+                ) if $buildExclusionsFile =~ /^⚠/;
                 unlink catfile( $folderPath, "📖$fileExtension" );
                 symlink rel2abs( $_, $self->startFolder ),
                   catfile( $folderPath, "📖$fileExtension" );

@@ -344,7 +344,8 @@ sub grab {
     foreach my $grabSource (@sources) {
         warn "Grabbing from $grabSource\n";
         local $_ = $grabSource;
-        $grabSource = "ssh $grabSource perl extract.pl -tar - 2>/dev/null" unless / /;
+        $grabSource = "ssh $grabSource perl extract.pl -tar - 2>/dev/null"
+          unless / /;
         s/[^0-9a-z_ .+-]+/-/g;
         my $grabFolder = catdir( $grabFolderRoot,
                 'Y_Grab '
@@ -401,14 +402,14 @@ sub grab {
     }
 
     while ( my ( $path, $missing ) = each %$missing ) {
-        my $tmpFile = catfile( $path, "\N{U+26A0}$$.txt" );
+        my $tmpFile = catfile( $path, "\N{U+26A0}$$.json" );
         open my $fh, '>', $tmpFile;
         binmode $fh;
         print {$fh}
           FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker()
           ->encode($missing);
         close $fh;
-        rename $tmpFile, catfile( $path, '⚠️.txt' );
+        rename $tmpFile, catfile( $path, '⚠️.json' );
     }
     rmdir $_ foreach @rmdirList;
 
