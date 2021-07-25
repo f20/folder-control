@@ -25,7 +25,7 @@
 
 use warnings;
 use strict;
-use File::Spec::Functions qw(rel2abs);
+use File::Spec::Functions qw(catdir rel2abs);
 
 my $homePath;
 my $codeRepo = $ENV{FOLDER_CONTROL_HOME};
