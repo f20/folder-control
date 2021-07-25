@@ -38,13 +38,13 @@ sub tagsToUse {
       MemoryCardNumber
       SerialNumber
       ShutterCount
-      );    #
-            # The following might be useful for some cameras:
-            # CreateDate DateCreated DateTimeCreated ImageCount
-            #
-            # The following might be useful for PDF files:
-            # CreateDate ModifyDate PageCount
-            #
+      CreateDate
+      ModifyDate
+      PageCount
+      DateCreated
+      DateTimeCreated
+      ImageCount
+    );
 }
 
 sub metadataProcessorMaker {
