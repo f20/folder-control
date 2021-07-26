@@ -36,8 +36,8 @@ use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
 use YAML;
 
 sub remove_append_messages {
-    my ( $server, $account, $password, $mailboxUidsToRemoveArrayref,
-        $mailboxMessagesDatesToAppendArrayref,
+    my ( $server, $account, $password, $mailboxUidToRemoveArrayref,
+        $mailboxMessageDateToAppendArrayref,
     ) = @_;
     my $imap = Mail::IMAPClient->new(
         Ssl      => 1,
@@ -46,9 +46,9 @@ sub remove_append_messages {
         User     => $account,
         Password => $password,
     ) or die "connection error: $@\n";
-    if ( 'ARRAY' eq ref $mailboxUidsToRemoveArrayref ) {
+    if ( 'ARRAY' eq ref $mailboxUidToRemoveArrayref ) {
         my $activeMailbox = '';
-        foreach (@$mailboxUidsToRemoveArrayref) {
+        foreach (@$mailboxUidToRemoveArrayref) {
             my ( $mailbox, $uid ) = @$_;
             $mailbox = "INBOX.$mailbox" unless $mailbox eq 'INBOX';
             if ( $mailbox ne $activeMailbox ) {
@@ -62,8 +62,8 @@ sub remove_append_messages {
             $imap->close or die "close error: $@\n";
         }
     }
-    if ( 'ARRAY' eq ref $mailboxMessagesDatesToAppendArrayref ) {
-        foreach (@$mailboxMessagesDatesToAppendArrayref) {
+    if ( 'ARRAY' eq ref $mailboxMessageDateToAppendArrayref ) {
+        foreach (@$mailboxMessageDateToAppendArrayref) {
             my ( $mailbox, $text, $date ) = @$_;
             $mailbox = "INBOX.$mailbox" unless $mailbox eq 'INBOX';
             $imap->append_string( $mailbox, $text, undef, $date )
@@ -174,8 +174,7 @@ sub email_downloader {
                     $stashPath = catdir( $mailboxPath, 'Z_Removed' );
                     mkdir $stashPath;
                 }
-                rename catfile( $mailboxPath, "$1.eml" ),
-                  catfile( $stashPath, "$1.eml" );
+                rename catfile( $mailboxPath, $_ ), catfile( $stashPath, $_ );
                 if ( defined $mailArchivesPath
                     && ( my $archived = $folderHashref->{$1}{archived} ) )
                 {
