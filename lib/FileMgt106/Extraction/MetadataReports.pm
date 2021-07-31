@@ -26,10 +26,226 @@ package FileMgt106::Extraction::MetadataReports;
 use strict;
 use warnings;
 use File::Spec::Functions qw(catfile);
-use FileMgt106::Extraction::Metadatabase;
+use threads;
 
-sub tagsToUse {
-    qw(
+sub makeFiledataExtractor {
+    ( undef, my $hintsFile ) = @_;
+    binmode STDOUT, ':utf8';
+    print join( "\t", qw(catalogue sha1 modified bytes filename) ) . "\n";
+    require POSIX;
+    require FileMgt106::Database;
+    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    my $query =
+      $hints->{dbHandle}
+      ->prepare('select mtime, size from locations where sha1=?');
+    sub {
+        my ( $scalar, $catname ) = @_;
+        $catname = '' unless defined $catname;
+        my ( %seen, $processor );
+        $processor = sub {
+            my ($cat) = @_;
+            while ( my ( $k, $v ) = each %$cat ) {
+                if ( 'HASH' eq ref $v ) {
+                    $processor->($v);
+                    next;
+                }
+                if ( $v =~ /([a-fA-F0-9]{40})/ ) {
+                    my $sha1hex = lc $1;
+                    next if exists $seen{$sha1hex};
+                    $query->execute( pack( 'H*', $sha1hex ) );
+                    my ( $time, $bytes ) = $query->fetchrow_array;
+                    $query->finish;
+                    undef $seen{$sha1hex};
+                    print join( "\t",
+                        $catname,
+                        $v,
+                        defined $time
+                        ? POSIX::strftime( "%F %T", gmtime($time) )
+                        : "\t",
+                        defined $bytes ? $bytes : '',
+                        $k,
+                    ) . "\n";
+                }
+            }
+        };
+        $processor->($scalar);
+        return;
+    };
+}
+
+sub makeMetadataExtractor {
+
+    ( undef, my $hintsFile, my $mdbFile, my $tsvStream, my $nWorkers ) = @_;
+    $tsvStream ||= \*STDOUT;
+    binmode $tsvStream, ':utf8';
+    $nWorkers ||= 12;
+
+    my $outputWriter = sub {
+        my ( $part1, $part2 ) = @_ or return;
+        my $sha1hex = $part1->{sha1hex};
+        print {$tsvStream} join( "\t", $sha1hex, $_, $part1->{$_} ) . "\n"
+          foreach qw(filename);
+        foreach (
+            qw(
+            CreateDate
+            DateCreated
+            DateTimeCreated
+            DateTimeOriginal
+            ImageCount
+            ImageHeight
+            ImageWidth
+            LensID
+            LensSpec
+            MemoryCardNumber
+            ModifyDate
+            PageCount
+            PDFVersion
+            SerialNumber
+            ShutterCount
+            )
+          )
+        {
+            print {$tsvStream} join( "\t", $sha1hex, $_, $part2->{$_} ) . "\n"
+              if $part2->{$_};
+        }
+    };
+
+    require FileMgt106::Database;
+
+    require Thread::Queue;
+    my $queue = Thread::Queue->new;
+
+    require FileMgt106::Extraction::Metadatabase;
+
+    my $storageThread = threads->create(
+        sub {
+            require Thread::Pool;
+            my ( $extractionWorkerPre, $extractionWorkerDo ) =
+              FileMgt106::Extraction::Metadatabase::metadataExtractionWorker();
+            my $pathFromSha1hex;
+            my $extractionPool = Thread::Pool->new(
+                {
+                    pre => sub {
+                        $extractionWorkerPre->();
+                        my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+                        my $searchSha1 = $hints->{searchSha1};
+                        $pathFromSha1hex = sub {
+                            my ($sha1hex) = @_;
+                            my $iterator =
+                              $searchSha1->( pack( 'H*', $sha1hex ) );
+                            while ( my ($path) = $iterator->() ) {
+                                return $path if -f $path;
+                            }
+                            return;
+                        };
+                    },
+                    do => sub {
+                        my (%extractionSource) = @_;
+                        $queue->enqueue(
+                            {
+                                _extractSource_ => \%extractionSource,
+                                _extractResult_ => $extractionWorkerDo->(
+                                    $pathFromSha1hex->(
+                                        $extractionSource{sha1hex}
+                                    )
+                                ),
+                            }
+                        );
+                    },
+                    workers => $nWorkers,
+                }
+            );
+            my ( $storageSetup, $storageReader, $storageWriter ) =
+              FileMgt106::Extraction::Metadatabase::metadataStorageWorkers(
+                $mdbFile);
+            $storageSetup->();
+            while (1) {
+                my $item = $queue->dequeue;
+                if ( my $finishUpStage = $item->{_finishUp_} ) {
+                    if ( $finishUpStage == 1 ) {
+                        $extractionPool->shutdown;
+                        $queue->enqueue( { _finishUp_ => 1 + $finishUpStage } );
+                        next;
+                    }
+                    if ( $queue->pending ) {
+                        $queue->enqueue( { _finishUp_ => 1 + $finishUpStage } );
+                        next;
+                    }
+                    else {
+                        $storageWriter->();
+                        $outputWriter->();
+                        last;
+                    }
+                }
+                if ( my $extractionSource = $item->{_extractSource_} ) {
+                    $storageWriter->(
+                        $extractionSource->{sha1hex},
+                        $item->{_extractResult_}
+                    );
+                    $outputWriter->(
+                        $extractionSource, $item->{_extractResult_}
+                    );
+                    next;
+                }
+                if ( my $sha1hex = $item->{sha1hex} ) {
+                    my $info = $storageReader->($sha1hex);
+                    if (  !%$info
+                        || $item->{filename} =~ /\.pdf$/si
+                        && !$info->{PDFVersion} )
+                    {
+                        sleep 1 while $extractionPool->todo > 96;
+                        $extractionPool->job( map { "$_"; } %$item );
+                        next;
+                    }
+                    $outputWriter->( $item, $info );
+                    next;
+                }
+                die $item;
+            }
+        }
+    );
+
+    sub {
+        my ( $scalar, $catname ) = @_;
+        unless ( defined $scalar ) {
+            $queue->enqueue( { _finishUp_ => 1 } );
+            $storageThread->join;
+            return;
+        }
+        $catname = '' unless defined $catname;
+        my ( %seen, $processor );
+        $processor = sub {
+            my ($cat) = @_;
+            while ( my ( $k, $v ) = each %$cat ) {
+                if ( 'HASH' eq ref $v ) {
+                    $processor->($v);
+                    next;
+                }
+                if ( $v =~ /([a-fA-F0-9]{40})/ ) {
+                    my $sha1hex = lc $1;
+                    next if exists $seen{$sha1hex};
+                    undef $seen{$sha1hex};
+                    $queue->enqueue(
+                        {
+                            catname  => $catname,
+                            filename => $k,
+                            sha1hex  => $sha1hex,
+                        }
+                    );
+                }
+            }
+        };
+        $processor->($scalar);
+        return;
+    };
+
+}
+
+sub makeMetadataWideProcessor {
+
+    ( undef, my $mdbFile, my $nWorkers ) = @_;
+    $nWorkers ||= 12;
+    my @tags = qw(
       DateTimeOriginal
       ImageHeight
       ImageWidth
@@ -38,130 +254,147 @@ sub tagsToUse {
       MemoryCardNumber
       SerialNumber
       ShutterCount
-      CreateDate
-      ModifyDate
-      PageCount
-      DateCreated
-      DateTimeCreated
-      ImageCount
+      PDFVersion
     );
-}
+    require FileMgt106::Extraction::Metadatabase;
 
-sub metadataProcessorMaker {
-    my ($mdbFile) = @_;
-    my @tags = tagsToUse();
-    sub {
+    return sub {
         my ($fileWriter) = @_;
-        $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
         my ( $extractionWorkerPre, $extractionWorkerDo ) =
           FileMgt106::Extraction::Metadatabase::metadataExtractionWorker();
-        my ( $storageWorkerPre, $storageWorkerDo ) =
-          FileMgt106::Extraction::Metadatabase::metadataStorageWorker( $mdbFile,
-            $fileWriter, \@tags );
+        my ( $storageSetup, $storageReader, $storageWriter ) =
+          FileMgt106::Extraction::Metadatabase::metadataStorageWorkers(
+            $mdbFile);
         $extractionWorkerPre->();
-        $storageWorkerPre->();
+        $storageSetup->();
+        $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
         sub {
-            return $storageWorkerDo->() unless @_;
+            unless (@_) {
+                $storageWriter->();
+                $fileWriter->();
+                return;
+            }
             my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_;
-            my $info = $storageWorkerDo->(
-                {
-                    sha1   => $sha1,
-                    mtime  => $mtime,
-                    size   => $size,
-                    ext    => $ext,
-                    name   => $name,
-                    folder => $folder,
-                }
+            my $info = $storageReader->($sha1);
+            unless (%$info) {
+                $info = $extractionWorkerDo->( catfile( $folder, $name ) );
+                $storageWriter->( $sha1, $info );
+            }
+            $fileWriter->(
+                $sha1, [$mtime], [$size], $ext, $name, $folder,
+                map { defined $_ ? [$_] : ['']; } @{$info}{@tags}
             );
-            $storageWorkerDo->(
-                $extractionWorkerDo->( catfile( $folder, $name ), $info ) )
-              if $info;
         };
-    };
-}
-
-sub metadataThreadedProcessorMaker {
-
-    my ($mdbFile) = @_;
-    my @tags = tagsToUse();
+      }
+      if $nWorkers == 1;
 
     sub {
 
         my ($fileWriter) = @_;
-        my ( $storageWorkerPre, $storageWorkerDo ) =
-          FileMgt106::Extraction::Metadatabase::metadataStorageWorker( $mdbFile,
-            $fileWriter, \@tags );
-        my ( $extractionWorkerPre, $extractionWorkerDo ) =
-          FileMgt106::Extraction::Metadatabase::metadataExtractionWorker();
 
-        require Thread::Pool;
         require Thread::Queue;
         my $queue = Thread::Queue->new;
 
         my $storageThread = threads->create(
             sub {
-                my $workerPool = Thread::Pool->new(
+                require Thread::Pool;
+                my ( $extractionWorkerPre, $extractionWorkerDo ) =
+                  FileMgt106::Extraction::Metadatabase::metadataExtractionWorker(
+                  );
+                my $extractionPool = Thread::Pool->new(
                     {
                         pre => $extractionWorkerPre,
                         do  => sub {
-                            my %hash = @_;
-                            if ( my $p = delete $hash{extractionPath} ) {
-                                $queue->insert( 5,
-                                    $extractionWorkerDo->( $p, \%hash ) );
-                            }
+                            my ( $extractionPath, %identification ) = @_;
+                            my $extracted =
+                              $extractionWorkerDo->($extractionPath);
+                            $queue->enqueue(
+                                {
+                                    id        => \%identification,
+                                    extracted => $extracted
+                                }
+                            );
                         },
-                        workers => 12,
+                        workers => $nWorkers,
                     }
                 );
-                $storageWorkerPre->();
+                my ( $storageSetup, $storageReader, $storageWriter ) =
+                  FileMgt106::Extraction::Metadatabase::metadataStorageWorkers(
+                    $mdbFile);
+                $storageSetup->();
                 while (1) {
-                    my $arg = $queue->dequeue;
-                    unless ( ref $arg ) {
+                    my $item = $queue->dequeue;
+                    if ( my $finishUpStage = $item->{finishUpStage} ) {
+                        if ( $finishUpStage == 1 ) {
+                            $extractionPool->shutdown;
+                            $queue->enqueue(
+                                { finishUpStage => 1 + $finishUpStage } );
+                            next;
+                        }
                         if ( $queue->pending ) {
-                            $queue->enqueue($arg);
+                            $queue->enqueue(
+                                { finishUpStage => 1 + $finishUpStage } );
                             next;
                         }
-                        if ( $arg == 1 ) {
-                            $workerPool->shutdown;
-                            $queue->enqueue(2);
+                        else {
+                            $storageWriter->();
+                            $fileWriter->();
+                            last;
+                        }
+                    }
+                    if ( my $id = $item->{id} ) {
+                        $storageWriter->( $id->{sha1}, $item->{extracted} );
+                        $queue->enqueue(
+                            { w1 => $id, w2 => $item->{extracted} } );
+                        next;
+                    }
+                    if ( my $sha1 = $item->{sha1} ) {
+                        my $info = $storageReader->($sha1);
+                        unless (%$info) {
+                            sleep 1 while $extractionPool->todo > 96;
+                            $extractionPool->job(
+                                catfile( $item->{folder}, $item->{name} ),
+                                map { "$_"; } %$item );
                             next;
                         }
-                        $storageWorkerDo->();
-                        last;
+                        $queue->enqueue( { w1 => $item, w2 => $info } );
+                        next;
                     }
-                    if ( my $wantMore = $storageWorkerDo->($arg) ) {
-                        sleep 1 while $workerPool->todo > 96;
-                        $workerPool->job( map { "$_"; } %$wantMore );
-                    }
+                    $fileWriter->(
+                        $item->{w1}{sha1},
+                        [ $item->{w1}{mtime} ],
+                        [ $item->{w1}{size} ],
+                        $item->{w1}{ext},
+                        $item->{w1}{name},
+                        $item->{w1}{folder},
+                        map { defined $_ ? [$_] : ['']; }
+                          @{ $item->{w2} }{@tags}
+                    );
                 }
             }
         );
 
-        $queue->enqueue(
-            {
-                map { ( $_ => $_ ); } qw(sha1 mtime size ext name folder path),
-                @tags
-            }
-        );
+        $fileWriter->( qw(sha1 mtime size ext name folder), @tags );
+
         sub {
             if ( my ( $sha1, $mtime, $size, $ext, $name, $folder ) = @_ ) {
                 $queue->enqueue(
                     {
-                        extractionPath => catfile( $folder, $name ),
-                        sha1           => $sha1,
-                        mtime          => $mtime,
-                        size           => $size,
-                        ext            => $ext,
-                        name           => $name,
-                        folder         => $folder,
+                        ext    => $ext,
+                        folder => $folder,
+                        mtime  => $mtime,
+                        name   => $name,
+                        sha1   => $sha1,
+                        size   => $size,
                     }
                 );
             }
             else {
-                $queue->enqueue(1);
+                $queue->enqueue( { finishUpStage => 1 } );
                 $storageThread->join;
             }
         };
+
     };
 
 }

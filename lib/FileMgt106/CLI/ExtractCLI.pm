@@ -39,10 +39,7 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my (
-        $catalogueProcessor, $queryProcessor, $resultsProcessor,
-        $consolidator,       $outputScalar
-    );
+    my ( $catalogueProcessor, $queryProcessor, $consolidator, $outputScalar );
     my $outputStream = \*STDERR;
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
@@ -170,67 +167,22 @@ sub process {
             next;
         }
 
-        if (/^-+metadatasingle/i) {
-            require FileMgt106::Extraction::MetadataReports;
-            $resultsProcessor =
-              FileMgt106::Extraction::MetadataReports::metadataProcessorMaker(
-                catfile( dirname($perl5dir), '~$metadata' ) );
-            next;
-        }
-
-        if (/^-+metadata/i) {
-            require FileMgt106::Extraction::MetadataReports;
-            $resultsProcessor =
-              FileMgt106::Extraction::MetadataReports::metadataThreadedProcessorMaker(
-                catfile( dirname($perl5dir), '~$metadata' ) );
-            next;
-        }
-
-        if (/^-+csv=?(.*)/i) {
-            require FileMgt106::Extraction::Extractor;
-            require FileMgt106::Extraction::Spreadsheets;
-            $queryProcessor =
-              FileMgt106::Extraction::Extractor::makeDataExtractor( $hintsFile,
-                FileMgt106::Extraction::Spreadsheets::makeCsvWriter($1),
-                $resultsProcessor );
-            next;
-        }
-
-        if (/^-+(xlsx?)=?(.*)/i) {
-            require FileMgt106::Extraction::Extractor;
-            require FileMgt106::Extraction::Spreadsheets;
-            $queryProcessor =
-              FileMgt106::Extraction::Extractor::makeDataExtractor(
-                $hintsFile,
-                FileMgt106::Extraction::Spreadsheets::makeSpreadsheetWriter(
-                    $1, $2 || 'Extracted'
-                ),
-                $resultsProcessor
-              );
-            next;
-        }
-
-        if (/^-+info/i) {
-            require FileMgt106::Extraction::Extractor;
-            ( $catalogueProcessor, $queryProcessor ) =
-              FileMgt106::Extraction::Extractor::makeInfoExtractor($hintsFile);
-            next;
-        }
-
-        if (/^-+nohints/i) {
-            require FileMgt106::Extraction::Extractor;
-            $catalogueProcessor =
-              FileMgt106::Extraction::Extractor::makeSimpleExtractor(
-                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
-            next;
-        }
-
-        if (/^-+stats?(file)?/i) {
+        if (/^-+stats?/i) {
             require FileMgt106::Extraction::Statistics;
-            my $method =
-              $1 ? 'makeFileDataExtractor' : 'makeStatisticsExtractor';
             $catalogueProcessor =
-              FileMgt106::Extraction::Statistics->$method($hintsFile);
+              FileMgt106::Extraction::Statistics->makeStatisticsExtractor(
+                $hintsFile);
+            next;
+        }
+
+        if (/-+metadata(basic|simple)?/i) {
+            require FileMgt106::Extraction::MetadataReports;
+            $catalogueProcessor =
+              $1
+              ? FileMgt106::Extraction::MetadataReports->makeFiledataExtractor(
+                $hintsFile)
+              : FileMgt106::Extraction::MetadataReports->makeMetadataExtractor(
+                $hintsFile, catfile( dirname($hintsFile), '~$metadata' ) );
             next;
         }
 
@@ -298,11 +250,61 @@ sub process {
             next;
         }
 
+        if (/^-+nohints/i) {
+            require FileMgt106::Extraction::Extractor;
+            $catalogueProcessor =
+              FileMgt106::Extraction::Extractor::makeSimpleExtractor(
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
+            next;
+        }
+
+        if (/^-+(?:sort|tar|tgz|tbz)$/) {
+            require FileMgt106::Extraction::Extractor;
+            $catalogueProcessor =
+              FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor($_) );
+            next;
+        }
+
+        if (/^-+info/i) {
+            require FileMgt106::Extraction::Extractor;
+            ( $catalogueProcessor, $queryProcessor ) =
+              FileMgt106::Extraction::Extractor::makeInfoExtractor($hintsFile);
+            next;
+        }
+
+        if (/^-+(csv|xlsx?)(metadata(single)?)?=?(.*)/i) {
+            require FileMgt106::Extraction::Extractor;
+            require FileMgt106::Extraction::Spreadsheets;
+            $queryProcessor =
+              FileMgt106::Extraction::Extractor::makeDataExtractor(
+                $hintsFile,
+                FileMgt106::Extraction::Spreadsheets::makeSpreadsheetWriter(
+                    $1, $4
+                ),
+                $2
+                ? do {
+                    require FileMgt106::Extraction::MetadataReports;
+                    FileMgt106::Extraction::MetadataReports
+                      ->makeMetadataWideProcessor(
+                        catfile( dirname($hintsFile), '~$metadata' ),
+                        $3 ? 1 : undef );
+                  }
+                : undef,
+              );
+            next;
+        }
+
+        if ($queryProcessor) {
+            $queryProcessor->($_);
+            next;
+        }
+
         unless ($catalogueProcessor) {
             require FileMgt106::Extraction::Extractor;
             $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
-                FileMgt106::Extraction::Extractor::makeExtractAcceptor(@args) );
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor() );
         }
 
         if (/^-$/) {
@@ -397,11 +399,7 @@ sub process {
             $catalogueProcessor->($_);
         }
 
-        elsif ($queryProcessor) {
-            $queryProcessor->($_);
-        }
-
-        elsif ( !/^-+(?:sort|tar|tgz|tbz|newer=.*)$/ ) {
+        else {
             warn "Ignored: $_";
         }
 

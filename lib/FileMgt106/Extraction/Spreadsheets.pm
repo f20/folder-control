@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Spreadsheets;
 
-# Copyright 2011-2020 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -40,12 +40,12 @@ sub _formatCsv {
 }
 
 sub makeCsvWriter {
-    my ($dumpFile) = @_;
-    $dumpFile ||= '';
-    $dumpFile =~ s/[^%_\.a-zA-Z0-9]+/_/gs;
+    my ($coreFileName) = @_;
+    $coreFileName ||= '';
+    $coreFileName =~ s/[^%_\.a-zA-Z0-9]+/_/gs;
     my $c;
-    if ($dumpFile) {
-        open $c, '>', "$dumpFile.$$";
+    if ($coreFileName) {
+        open $c, '>', "$coreFileName.$$";
     }
     else {
         $c = \*STDOUT;
@@ -60,17 +60,19 @@ sub makeCsvWriter {
         }
         else {
             close $c;
-            rename "$dumpFile.$$", "$dumpFile.csv" if $dumpFile;
+            rename "$coreFileName.$$", "$coreFileName.csv" if $coreFileName;
         }
     };
 }
 
 sub makeSpreadsheetWriter {
-    my ( $format, $fileName ) = @_;
+    my ( $format, $coreFileName ) = @_;
+    return makeCsvWriter($coreFileName) if $format =~ /^csv$/si;
+    $coreFileName ||= 'Extracted';
     my $module;
     if ( $format =~ /^xls$/s ) {
         if ( eval { require Spreadsheet::WriteExcel; } ) {
-            $fileName .= '.xls';
+            $coreFileName .= '.xls';
             $module = 'Spreadsheet::WriteExcel';
         }
         else {
@@ -79,7 +81,7 @@ sub makeSpreadsheetWriter {
     }
     if ( !$module ) {
         if ( eval { require Excel::Writer::XLSX; } ) {
-            $fileName .= '.xlsx';
+            $coreFileName .= '.xlsx';
             $module = 'Excel::Writer::XLSX';
         }
         else {
@@ -87,7 +89,7 @@ sub makeSpreadsheetWriter {
         }
     }
     if ( !$module && eval { require Spreadsheet::WriteExcel; } ) {
-        $fileName .= '.xls';
+        $coreFileName .= '.xls';
         $module = 'Spreadsheet::WriteExcel';
     }
     if ($module) {
@@ -130,7 +132,7 @@ sub makeSpreadsheetWriter {
         return sub {
             if (@_) {
                 unless ($wb) {
-                    $wb = $module->new( $fileName . $$ );
+                    $wb = $module->new( $coreFileName . $$ );
                     $ws = $wb->add_worksheet('Extracted');
                     $ws->set_paper(9);
                     $ws->fit_to_pages( 1, 0 );
@@ -155,12 +157,12 @@ sub makeSpreadsheetWriter {
                 $ws->autofilter( 0, 0, $row, $lastCol );
                 $wb->close;
                 undef $wb;
-                rename $fileName . $$, $fileName;
+                rename $coreFileName . $$, $coreFileName;
             }
         };
     }
     warn 'Using CSV';
-    makeCsvWriter($fileName);
+    makeCsvWriter($coreFileName);
 }
 
 1;

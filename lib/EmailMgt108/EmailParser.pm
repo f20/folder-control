@@ -91,7 +91,7 @@ sub parseMessage {
         mkdir $destinationFolder unless -e $destinationFolder;
         $destinationFolder = catdir( $destinationFolder,
             'Y_' . POSIX::strftime( '%Y-%m-%d %H-%M-%S', @localtime ) );
-        $destinationFolder .= " ($1)" if $emailFile =~ m/([0-9]+)\.$/s;
+        $destinationFolder .= " ($1)" if $emailFile =~ m/([0-9]+)\.eml$/is;
 
         {
             my @subjectAndSender = (

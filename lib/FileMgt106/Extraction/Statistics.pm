@@ -45,6 +45,7 @@ sub makeStatisticsExtractor {
       ->prepare('select size from locations where sha1=? and size is not null');
     my ( %seen, $found, $missing, $dups, $bytes,
         $bytesWithDuplication, %found, %missing, %dups, %bytes );
+    my $numLines = 0;
     my $processor;
     $processor = sub {
         my ($cat) = @_;
@@ -95,7 +96,8 @@ sub makeStatisticsExtractor {
               . _prettyDiff( $dups, undef, 7 )
               . ' duplicated, '
               . _prettyDiff( $bytesWithDuplication, undef, 11 )
-              . " bytes including duplication.\n";
+              . " bytes including duplication.\n"
+              if $numLines > 1;
             return;
         }
         my $startFound   = $found;
@@ -103,6 +105,7 @@ sub makeStatisticsExtractor {
         my $startDups    = $dups;
         my $startBytes   = $bytes;
         $processor->($scalar);
+        ++$numLines;
         print _prettyDiff( $found, $startFound, 10 )
           . ' found, '
           . _prettyDiff( $bytes, $startBytes, 15 )
@@ -113,51 +116,6 @@ sub makeStatisticsExtractor {
           . ' duplicated, '
           . "$name\n"
           if defined $name;
-        return;
-    };
-}
-
-sub makeFileDataExtractor {
-    ( undef, my $hintsFile ) = @_;
-    binmode STDOUT, ':utf8';
-    require POSIX;
-    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
-    my $query =
-      $hints->{dbHandle}
-      ->prepare('select mtime, size from locations where sha1=?');
-    print join( "\t", 'Catalogue', 'DateUTC', 'TimeUTC', 'Bytes', 'Filename' )
-      . "\n";
-    sub {
-        my ( $scalar, $name ) = @_;
-        $name = '' unless defined $name;
-        my ( %seen, $processor );
-        $processor = sub {
-            my ($cat) = @_;
-            while ( my ( $k, $v ) = each %$cat ) {
-                if ( 'HASH' eq ref $v ) {
-                    $processor->($v);
-                    next;
-                }
-                if ( $v =~ /([a-fA-F0-9]{40})/ ) {
-                    my $sha1hex = lc $1;
-                    my ($ext) = $k =~ /\.([a-zA-Z0-9_]+)$/s;
-                    next if exists $seen{$sha1hex};
-                    $query->execute( pack( 'H*', $sha1hex ) );
-                    my ( $time, $bytes ) = $query->fetchrow_array;
-                    $query->finish;
-                    undef $seen{$sha1hex};
-                    print join( "\t",
-                        $name,
-                        defined $time
-                        ? POSIX::strftime( "%F\t%T", gmtime($time) )
-                        : "\t",
-                        defined $bytes ? $bytes : '',
-                        $k,
-                    ) . "\n";
-                }
-            }
-        };
-        $processor->($scalar);
         return;
     };
 }

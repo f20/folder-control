@@ -31,45 +31,46 @@ use Digest::SHA3;
 use Image::ExifTool;
 
 sub metadataExtractionWorker {
-    my ( $sha1, $sha512224, $sha3, $shake128, $objExifTool );
-    my $preWorker = sub
+    my (
+        $sha1Machine,     $sha512224Machine, $sha3Machine,
+        $shake128Machine, $exiftoolMachine
+    );
+    my $setup = sub
     {    # Digest::SHA and Digest::SHA3 are thread-safe in FreeBSD 11 perl 5.2x
             # but not in macOS perl 5.18
-        $sha1        = Digest::SHA->new;
-        $sha512224   = Digest::SHA->new(512224);
-        $sha3        = Digest::SHA3->new;
-        $shake128    = Digest::SHA3->new(128000);
-        $objExifTool = Image::ExifTool->new;
+        $sha1Machine      = Digest::SHA->new;
+        $sha512224Machine = Digest::SHA->new(512224);
+        $sha3Machine      = Digest::SHA3->new;
+        $shake128Machine  = Digest::SHA3->new(128000);
+        $exiftoolMachine  = Image::ExifTool->new;
     };
     my $worker = sub {
-        my ( $path, $basics ) = @_;
+        my ($path) = @_;
+        return {} unless defined $path;
         warn "$path\n";
         my $results =
           $path =~
-          /\.(?:jpg|jpeg|tif|tiff|psd|png|nef|arw|raw|m4a|mp3|mp4|heic|heif)$/is
-          ? $objExifTool->ImageInfo($path)
+/\.(?:arw|dng|heic|heif|jpeg|jpg|m4a|m4v|mp3|mov|mp4|nef|pdf|png|psd|raw|tif|tiff)$/is
+          ? $exiftoolMachine->ImageInfo($path)
           : {};
-        $results->{'SHA-1'}       = $sha1->addfile($path)->hexdigest;
-        $results->{'SHA-512/224'} = $sha512224->addfile($path)->b64digest;
-        $results->{'SHA-3/224'}   = $sha3->addfile($path)->b64digest;
-        $results->{bytes}         = -s $path;
-        $results->{path}          = $path;
-
-        while ( my ( $k, $v ) = each %$basics ) {
-            $results->{$k} = $v;
-        }
+        $results->{'SHA-1'} = $sha1Machine->addfile($path)->hexdigest;
+        $results->{'SHA-512/224'} =
+          $sha512224Machine->addfile($path)->b64digest;
+        $results->{'SHA-3/224'} = $sha3Machine->addfile($path)->b64digest;
+        $results->{bytes} = -s $path;
         $results;
     };
-    $preWorker, $worker;
+    $setup, $worker;
 }
 
-sub metadataStorageWorker {
-    my ( $mdbFile, $fileWriter, $tags ) = @_;
-    my ( $mdbh, $getid, $qGetSub, $qGetProps, $qAddSub, $qAddRel );
-    my $counter = -1;
-    my %seen;
+sub metadataStorageWorkers {
 
-    my $storagePreWorker = sub {
+    my ($mdbFile) = @_;
+
+    my ( $mdbh, $getid, $qGetSub, $qGetProps, $qAddSub, $qAddRel );
+    my $counter = 42;
+
+    my $storageSetup = sub {
         $mdbh = DBI->connect( "dbi:SQLite:dbname=$mdbFile",
             { sqlite_unicode => 0, AutoCommit => 0, } );
         do { sleep 1 while !$mdbh->do($_); }
@@ -91,7 +92,8 @@ EOSQL
           $mdbh->prepare(
             'select description, d from dic inner join rel using (p) where s=?'
           );
-        $qAddSub = $mdbh->prepare('insert into subj (sha1) values (?)');
+        $qAddSub =
+          $mdbh->prepare('insert or ignore into subj (sha1) values (?)');
         $qAddRel =
           $mdbh->prepare(
             'insert or replace into rel (s, p, d) values (?, ?, ?)');
@@ -111,76 +113,44 @@ EOSQL
         };
     };
 
-    my $storageWorker = sub {
-
-        my ($info) = @_;
-        unless ($info) {
-            $mdbh->commit;
-            $mdbh->disconnect;
-            $fileWriter->();
-            return;
-        }
-
-        if ( undef && !defined $info->{path} && exists $seen{ $info->{sha1} } )
-        {
-            $fileWriter->(
-                $info->{sha1}, [ $info->{mtime} ],
-                [ $info->{size} ], $info->{ext},
-                $info->{name},     $info->{folder},
-            );
-            return;
-        }
-        undef $seen{ $info->{sha1} };
-
-        $qGetSub->execute( $info->{sha1} );
+    my $storageReader = sub {
+        my ($sha1) = @_;
+        $qGetSub->execute($sha1);
         my ($s) = $qGetSub->fetchrow_array;
         $qGetSub->finish;
-        my %combo;
+        my %info;
         if ($s) {
             $qGetProps->execute($s);
             while ( my ( $p, $v ) = $qGetProps->fetchrow_array ) {
-                $combo{$p} = $v;
+                $info{$p} = $v;
             }
         }
-        while ( my ( $p, $v ) = each %$info ) {
-            $combo{$p} = $v;
+        \%info;
+    };
+
+    my $storageWriter = sub {
+        unless (@_) {
+            $mdbh->commit;
+            $mdbh->disconnect;
+            return;
         }
-        return $info unless $s || defined $info->{path};
-
-        $fileWriter->(
-            $info->{sha1},
-            [ $info->{mtime} ],
-            [ $info->{size} ],
-            $info->{ext},
-            $info->{name},
-            $info->{folder},
-            map { defined $_ ? [$_] : ['']; } @combo{@$tags}
-        );
-
-        return if $s;
-
+        my ( $sha1, $info ) = @_;
         if ( --$counter < 0 ) {
             $mdbh->commit;
             sleep 1 while !$mdbh->do('begin immediate transaction');
-            $counter = 42;
+            $counter = 242;
         }
-        $qAddSub->execute( $info->{sha1} );
-        $qGetSub->execute( $info->{sha1} );
-        ($s) = $qGetSub->fetchrow_array;
+        $qAddSub->execute($sha1);
+        $qGetSub->execute($sha1);
+        my ($s) = $qGetSub->fetchrow_array;
         $qGetSub->finish;
-        delete $info->{name};
-        delete $info->{path};
-        delete $info->{FileName};
-
         while ( my ( $k, $v ) = each %$info ) {
             next unless defined $v;
-            $qAddRel->execute( $s, $getid->($k),
-                'SCALAR' eq ref $v ? $$v : $v );
+            $qAddRel->execute( $s, $getid->($k), $v );
         }
-
     };
 
-    $storagePreWorker, $storageWorker;
+    $storageSetup, $storageReader, $storageWriter;
 
 }
 
