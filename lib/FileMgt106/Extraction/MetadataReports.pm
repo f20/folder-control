@@ -42,9 +42,11 @@ sub makeFiledataExtractor {
         my ( $scalar, $catname ) = @_;
         $catname = '' unless defined $catname;
         my ( %seen, $processor );
+        undef $seen{'da39a3ee5e6b4b0d3255bfef95601890afd80709'};
         $processor = sub {
             my ($cat) = @_;
             while ( my ( $k, $v ) = each %$cat ) {
+                next unless defined $v;
                 if ( 'HASH' eq ref $v ) {
                     $processor->($v);
                     next;

@@ -1,6 +1,6 @@
 package FileMgt106::FilterFactory::ByType;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -83,8 +83,10 @@ sub explodeByType {
             $ext = lc $ext;
             my $cat = $ext eq '.' ? 'Email' : 'Other';
             $ext =~ s/^\.+//s;
+            $cat = 'Android'
+              if $ext eq 'apk';
             $cat = 'Aperture'
-              if $ext =~ /^ap[a-oq-z]+$/;
+              if $ext =~ /^ap[a-jl-oq-z][a-z0-9]*$/;
             $cat = 'Audio'
               if $ext eq 'wav'
               || $ext eq 'mp3'
@@ -97,8 +99,6 @@ sub explodeByType {
               || $ext eq 'ini'
               || $ext eq 'plist'
               || $ext eq 'xml';
-            $cat = 'Database'
-              if $ext eq 'db' || $ext eq 'apdb';
             $cat = 'Document'
               if $ext =~ /^doc/s
               || $ext eq 'pages'
@@ -124,8 +124,8 @@ sub explodeByType {
               || $ext eq 'tiff';
             $cat = 'Image_tiff'
               if $ext eq 'tif';
-            $cat = 'JBZ'  if $ext eq 'jbz';
-            $cat = 'JSON' if $ext eq 'json';
+            $cat = 'JSON'
+              if $ext eq 'jbz' || $ext eq 'json';
             $cat = 'Package'
               if $ext eq 'bz2'
               || $ext eq 'exe'
