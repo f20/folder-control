@@ -322,27 +322,13 @@ sub process {
             }
             else {
                 foreach ( split /[\r\n]+/, $stdinblob ) {
-                    if ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-                        if ( $2 eq 'txt' || $2 eq 'json' ) {
-                            open my $fh, '<', $_;
-                            binmode $fh;
-                            local undef $/;
-                            tr#/#|#;
-                            my $missing = $catalogueProcessor->(
-                                FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                                  )->decode(<$fh>),
-                                $1
-                            );
-                            $outputScalar->{$1} = $missing if $missing;
-                        }
-                        else {
-                            my $scalar =
-                              FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
-                                $_);
-                            tr#/#|#;
-                            my $missing = $catalogueProcessor->( $scalar, $1 );
-                            $outputScalar->{$1} = $missing if $missing;
-                        }
+                    if ( -f $_ && /(.*)\.(?:jbz|json\.bz2|txt|json)$/s ) {
+                        my $scalar =
+                          FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
+                            $_);
+                        tr#/#|#;
+                        my $missing = $catalogueProcessor->( $scalar, $1 );
+                        $outputScalar->{$1} = $missing if $missing;
                     }
                     else {
                         warn "Not processed: $_";
@@ -372,26 +358,12 @@ sub process {
             }
         }
 
-        elsif ( -f $_ && /(.*)\.(jbz|json\.bz2|txt|json)$/s ) {
-            my $missing;
-            if ( $2 eq 'txt' || $2 eq 'json' ) {
-                open my $fh, '<', $_;
-                binmode $fh;
-                local undef $/;
-                tr#/#|#;
-                $missing = $catalogueProcessor->(
-                    FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                      )->decode(<$fh>),
-                    $1
-                );
-            }
-            else {
-                my $scalar =
-                  FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
-                    $_);
-                tr#/#|#;
-                $missing = $catalogueProcessor->( $scalar, $1 );
-            }
+        elsif ( -f $_ && /(.*)\.(?:jbz|json\.bz2|txt|json)$/s ) {
+            my $scalar =
+              FileMgt106::Catalogues::LoadSaveNormalize::loadNormalisedScalar(
+                $_);
+            tr#/#|#;
+            my $missing = $catalogueProcessor->( $scalar, $1 );
             $outputScalar->{$1} = $missing if $missing;
         }
 

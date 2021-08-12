@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::LoadSaveNormalize;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2021 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -147,6 +147,14 @@ sub loadNormalisedScalar {
         if (/\.(?:jbz|bz2)$/i) {
             s/'/'"'"'/g;
             open $fh, "bzcat '$_'|";
+        }
+        elsif (/\.(?:jxz|xz)$/i) {
+            s/'/'"'"'/g;
+            open $fh, "xzcat '$_'|";
+        }
+        elsif (/\.gz$/i) {
+            s/'/'"'"'/g;
+            open $fh, "gzcat '$_'|";
         }
         else {
             open $fh, '<', $_;
