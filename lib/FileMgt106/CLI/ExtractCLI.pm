@@ -318,7 +318,10 @@ sub process {
                 }
               )
             {
-                $outputScalar = $catalogueProcessor->($stdinscalar);
+                $outputScalar = $catalogueProcessor->(
+                    FileMgt106::Catalogues::LoadSaveNormalize::normaliseHash(
+                        $stdinscalar)
+                );
             }
             else {
                 foreach ( split /[\r\n]+/, $stdinblob ) {
