@@ -31,6 +31,164 @@ sub new {
     bless {}, $class;
 }
 
+
+
+sub baseProcessor {
+    my ($seen) = @_;
+    my $preloader;
+    $preloader = sub {
+        my ($hash)   = @_;
+        my $countUnseen = 0;
+        my $countSeen = 0;
+        foreach ( values %$hash ) {
+            if ( ref $_ eq 'HASH' ) {
+                my ( $cUnseen, $cSeen ) = $preloader->($_);
+                $countUnseen += $cUnseen;
+                $countSeen += $cSeen;
+            }
+            elsif ( defined $_ && /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                exists $seen->{$sha1} ? ++$countSeen : ++$countUnseen;
+                undef $seen->{$sha1};
+            }
+        }
+        $countUnseen, $countSeen;
+    };
+    sub {
+        my ( $scalar, $path ) = @_ or return;
+        my ( $countUnseen, $countSeen ) = $preloader->($scalar);
+        warn "$path: $countUnseen new, $countSeen duplicated.\n";
+        return;
+    };
+}
+
+sub unseenProcessor {
+    my ($seen) = @_;
+    my $filter;
+    $filter = sub {
+        my ($hash) = @_;
+        my %newHash;
+        my $countUnseen = 0;
+        my $countSeen = 0;
+        foreach ( keys %$hash ) {
+            my $w = $hash->{$_};
+            if ( ref $w eq 'HASH' ) {
+                my ( $nh, $cUnseen, $cSeen ) = $filter->($w);
+                $newHash{$_} = $nh if $cUnseen;
+                $countUnseen += $cUnseen;
+                $countSeen += $cSeen;
+            }
+            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                if ( exists $seen->{$sha1} ) {
+                    ++$countSeen;
+                }
+                else {
+                    $newHash{$_} = $w;
+                    ++$countUnseen;
+                }
+                undef $seen->{$sha1};
+            }
+        }
+        \%newHash, $countUnseen, $countSeen;
+    };
+    my %consolidationResult;
+    sub {
+        return keys %consolidationResult ? \%consolidationResult : ()
+          unless @_;
+        my ( $scalar, $path ) = @_;
+        my ( $addh, $countUnseen, $countSeen ) = $filter->($scalar);
+        $path ||= 0;
+        warn "$path: $countUnseen new, $countSeen already seen.\n";
+        $path =~ s^.*/^^s;
+        $path .= '_' while exists $consolidationResult{$path};
+        $consolidationResult{$path} = $addh if $countUnseen;
+        return;
+    };
+}
+
+sub seenProcessor {
+    my ($seen) = @_;
+    my $filter;
+    $filter = sub {
+        my ($hash) = @_;
+        my %newHash;
+        my $countUnseen = 0;
+        my $countSeen = 0;
+        foreach ( keys %$hash ) {
+            my $w = $hash->{$_};
+            if ( ref $w eq 'HASH' ) {
+                my ( $nh, $cUnseen, $cSeen ) = $filter->($w);
+                $newHash{$_} = $nh if $cSeen;
+                $countUnseen += $cUnseen;
+                $countSeen += $cSeen;
+            }
+            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+                my $sha1 = lc $1;
+                if ( exists $seen->{$sha1} ) {
+                    $newHash{$_} = $w;
+                    ++$countSeen;
+                }
+                else {
+                    ++$countUnseen;
+                }
+            }
+        }
+        \%newHash, $countUnseen, $countSeen;
+    };
+    my %consolidationResult;
+    sub {
+        return keys %consolidationResult ? \%consolidationResult : () unless @_;
+        my ( $scalar, $path ) = @_;
+        my ( $addh, $countUnseen, $countSeen ) = $filter->($scalar);
+        $path ||= 0;
+        warn "$path: $countSeen already seen, $countUnseen not seen before.\n";
+        $path =~ s^.*/^^s;
+        $path .= '_' while exists $consolidationResult{$path};
+        $consolidationResult{$path} = $addh if $countSeen;
+        return;
+    };
+}
+
+
+sub duplicationsByPairProcessor {
+    my %objectsToExamine;
+    sub {
+        if ( my ( $scalar, $path ) = @_ ) {
+            $path =~ s^.*/^^s;
+            $path =~ s/\.(?:txt|json|jbz)$//si;
+            $path .= '_' while exists $objectsToExamine{$path};
+            $objectsToExamine{$path} = $scalar;
+            return;
+        }
+        else {
+            my %results;
+            my %doNotBother;
+            foreach my $a ( keys %objectsToExamine ) {
+                foreach my $b ( keys %objectsToExamine ) {
+                    next if $a eq $b;
+                    next if exists $doNotBother{$a}{$b};
+                    my $consolidator =
+                      FileMgt106::Catalogues::ConsolidateFilter->new;
+                    $consolidator->baseProcessor->( $objectsToExamine{$a}, $a );
+                    my $processor = $consolidator->seenProcessor;
+                    $processor->( $objectsToExamine{$b}, $b );
+                    if ( my $dups = $processor->() ) {
+                        while ( my ( $k, $v ) = each %$dups ) {
+                            $results{"Duplicated from $a"}{$k} = $v;
+                        }
+                    }
+                    else {
+                        undef $doNotBother{$b}{$a};
+                    }
+                }
+            }
+            keys %results ? \%results : ();
+        }
+    };
+}
+
+
 sub consolidateProcessor {
     my $runner;
     $runner = sub {
@@ -70,158 +228,5 @@ sub consolidateProcessor {
     };
 }
 
-sub baseProcessor {
-    my ($seen) = @_;
-    my $preloader;
-    $preloader = sub {
-        my ($hash)   = @_;
-        my $countNew = 0;
-        my $countDup = 0;
-        foreach ( values %$hash ) {
-            if ( ref $_ eq 'HASH' ) {
-                my ( $cn, $cd ) = $preloader->($_);
-                $countNew += $cn;
-                $countDup += $cd;
-            }
-            elsif ( defined $_ && /([0-9a-fA-F]{40})/ ) {
-                my $sha1 = lc $1;
-                exists $seen->{$sha1} ? ++$countDup : ++$countNew;
-                undef $seen->{$sha1};
-            }
-        }
-        $countNew, $countDup;
-    };
-    sub {
-        my ( $scalar, $path ) = @_ or return;
-        my ( $countNew, $countDup ) = $preloader->($scalar);
-        warn "$path: $countNew new, $countDup duplicated.\n";
-        return;
-    };
-}
-
-sub unseenProcessor {
-    my ($seen) = @_;
-    my $filter;
-    $filter = sub {
-        my ($hash) = @_;
-        my %newHash;
-        my $countNew = 0;
-        my $countDup = 0;
-        foreach ( keys %$hash ) {
-            my $w = $hash->{$_};
-            if ( ref $w eq 'HASH' ) {
-                my ( $nh, $cn, $cd ) = $filter->($w);
-                $newHash{$_} = $nh if $cn;
-                $countNew += $cn;
-                $countDup += $cd;
-            }
-            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
-                my $sha1 = lc $1;
-                if ( exists $seen->{$sha1} ) {
-                    ++$countDup;
-                }
-                else {
-                    $newHash{$_} = $w;
-                    ++$countNew;
-                }
-                undef $seen->{$sha1};
-            }
-        }
-        \%newHash, $countNew, $countDup;
-    };
-    my %consolidationResult;
-    sub {
-        return keys %consolidationResult ? \%consolidationResult : ()
-          unless @_;
-        my ( $scalar, $path ) = @_;
-        my ( $addh, $countNew, $countDup ) = $filter->($scalar);
-        $path ||= 0;
-        warn "$path: $countNew new, $countDup already seen.\n";
-        $path =~ s^.*/^^s;
-        $path .= '_' while exists $consolidationResult{$path};
-        $consolidationResult{$path} = $addh if $countNew;
-        return;
-    };
-}
-
-sub seenProcessor {
-    my ($seen) = @_;
-    my $filter;
-    $filter = sub {
-        my ($hash) = @_;
-        my %newHash;
-        my $countNew = 0;
-        my $countDup = 0;
-        foreach ( keys %$hash ) {
-            my $w = $hash->{$_};
-            if ( ref $w eq 'HASH' ) {
-                my ( $nh, $cn, $cd ) = $filter->($w);
-                $newHash{$_} = $nh if $cd;
-                $countNew += $cn;
-                $countDup += $cd;
-            }
-            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
-                my $sha1 = lc $1;
-                if ( exists $seen->{$sha1} ) {
-                    $newHash{$_} = $w;
-                    ++$countDup;
-                }
-                else {
-                    ++$countNew;
-                }
-            }
-        }
-        \%newHash, $countNew, $countDup;
-    };
-    my %consolidationResult;
-    sub {
-        return keys %consolidationResult ? \%consolidationResult : () unless @_;
-        my ( $scalar, $path ) = @_;
-        my ( $addh, $countNew, $countDup ) = $filter->($scalar);
-        $path ||= 0;
-        warn "$path: $countDup already seen, $countNew not seen before.\n";
-        $path =~ s^.*/^^s;
-        $path .= '_' while exists $consolidationResult{$path};
-        $consolidationResult{$path} = $addh if $countDup;
-        return;
-    };
-}
-
-sub duplicationsByPairProcessor {
-    my %objectsToExamine;
-    sub {
-        if ( my ( $scalar, $path ) = @_ ) {
-            $path =~ s^.*/^^s;
-            $path =~ s/\.(?:txt|json|jbz)$//si;
-            $path .= '_' while exists $objectsToExamine{$path};
-            $objectsToExamine{$path} = $scalar;
-            return;
-        }
-        else {
-            my %results;
-            my %doNotBother;
-            foreach my $a ( keys %objectsToExamine ) {
-                foreach my $b ( keys %objectsToExamine ) {
-                    next if $a eq $b;
-                    next if exists $doNotBother{$a}{$b};
-                    my $consolidator =
-                      FileMgt106::Catalogues::ConsolidateFilter->new;
-                    $consolidator->baseProcessor->( $objectsToExamine{$a}, $a );
-                    my $processor = $consolidator->seenProcessor;
-                    $processor->( $objectsToExamine{$b}, $b );
-                    if ( my $dups = $processor->() ) {
-                        while ( my ( $k, $v ) = each %$dups ) {
-                            $results{"Duplicated from $a"}{$k} = $v;
-                        }
-                    }
-                    else {
-                        undef $doNotBother{$b}{$a};
-                    }
-                }
-            }
-            keys %results ? \%results : ();
-        }
-    };
-}
 
 1;

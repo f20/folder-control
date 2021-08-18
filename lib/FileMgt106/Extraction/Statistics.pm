@@ -89,13 +89,13 @@ sub makeStatisticsExtractor {
         unless ( defined $scalar ) {
             print _prettyDiff( $found, undef, 10 )
               . ' found, '
-              . _prettyDiff( $bytes, undef, 15 )
+              . _prettyDiff( $bytes, undef, 18 )
               . ' bytes, '
               . _prettyDiff( $missing, undef, 7 )
               . ' missing, '
               . _prettyDiff( $dups, undef, 7 )
               . ' duplicated, '
-              . _prettyDiff( $bytesWithDuplication, undef, 11 )
+              . _prettyDiff( $bytesWithDuplication, undef, 7 )
               . " bytes including duplication.\n"
               if $numLines > 1;
             return;
@@ -108,7 +108,7 @@ sub makeStatisticsExtractor {
         ++$numLines;
         print _prettyDiff( $found, $startFound, 10 )
           . ' found, '
-          . _prettyDiff( $bytes, $startBytes, 15 )
+          . _prettyDiff( $bytes, $startBytes, 18 )
           . ' bytes, '
           . _prettyDiff( $missing, $startMissing, 7 )
           . ' missing, '

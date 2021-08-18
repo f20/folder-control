@@ -227,6 +227,13 @@ sub process {
             next;
         }
 
+        if (/^-+tag(only)?=?(.*)/i) {
+            require FileMgt106::Catalogues::IntersectFilter;
+            $consolidator ||= FileMgt106::Catalogues::IntersectFilter->new;
+            $catalogueProcessor = $consolidator->taggedProcessor( $2, !$1 );
+            next;
+        }
+
         if (/^-+base/i) {
             require FileMgt106::Catalogues::ConsolidateFilter;
             $consolidator ||= FileMgt106::Catalogues::ConsolidateFilter->new;
