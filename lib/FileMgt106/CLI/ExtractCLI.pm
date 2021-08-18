@@ -347,7 +347,10 @@ sub process {
             }
         }
 
-        elsif ( my ( $gitRepo, $gitBranch ) = /git:(.+):(\S+)/ ) {
+        elsif ( my ( $gitRepo, $gitBranch, $regExp ) =
+            /git:([^:]+):([^:]+):?(.*)?/ )
+        {
+            undef $regExp if defined $regExp && $regExp eq '';
             if ( -d ( my $gitRepo2 = catdir( $gitRepo, '.git' ) ) ) {
                 $gitRepo = $gitRepo2;
             }
@@ -360,6 +363,7 @@ sub process {
                 my ( $sha1, $name ) = /^\S+ blob (\S+)\t(.*)\000$/s
                   or next;
                 $name = decode_utf8 $name;
+                next if defined $regExp && $name !~ /$regExp/;
                 open my $h, qq^git --git-dir="$gitRepo" show $sha1 |^;
                 binmode $h;
                 my $missing =
