@@ -107,10 +107,12 @@ sub taggedProcessor {
                     --$counter->[ $bitmap->{$sha1} ];
                     ++$counter->[ $bitmap->{$sha1} |= $mask ];
                 }
-                elsif ($addFlag) {
-                    $newHash{$_} = $w;
+                else {
                     ++$countUnseen;
-                    ++$counter->[ $bitmap->{$sha1} = $mask ];
+                    if ($addFlag) {
+                        $newHash{$_} = $w;
+                        ++$counter->[ $bitmap->{$sha1} = $mask ];
+                    }
                 }
             }
         }
