@@ -346,7 +346,7 @@ sub grab {
         local $_ = $grabSource;
         $grabSource = "ssh $grabSource perl extract.pl -tar - 2>/dev/null"
           unless / /;
-        s/[^0-9a-z_ .+-]+/-/g;
+        s/[^0-9a-zA-Z_ .+-]+/-/g;
         my $grabFolder = catdir( $grabFolderRoot,
                 'Y_Grab '
               . POSIX::strftime( '%Y-%m-%d %H-%M-%S%z', localtime ) . ' '
