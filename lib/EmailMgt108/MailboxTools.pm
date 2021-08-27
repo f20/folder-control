@@ -75,7 +75,7 @@ sub makeMailboxProcessor {
         my $numFiles    = keys %hashSet;
         my $digits      = length( $numFiles - 1 );
         my $id1         = 10**$digits;
-        my %cat1        = map { $id1++ . '.eml' => $_; } keys %hashSet;
+        my %cat1        = map { '0' . $id1++ . '.eml' => $_; } keys %hashSet;
         my $returnValue = $hintsBuilder->( \%cat1, $mboxFolder, $devNo );
 
         my %sortKey;
@@ -112,7 +112,7 @@ sub makeMailboxProcessor {
             keys %sortKey
           )
         {
-            my $target = catfile( $mboxFolder, $id2++ . '.eml' );
+            my $target = catfile( $mboxFolder, '0' . $id2++ . '.eml' );
             rename catfile( $mboxFolder, $source ), $target;
             EmailMgt108::EmailParser::parseMessage( $target, $archFolder )
               if $archFolder;
