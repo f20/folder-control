@@ -121,7 +121,7 @@ sub process {
         if (/^-+split/) {
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
-                $path = '-' unless defined $path;
+                $path = '_' unless defined $path;
                 while ( my ( $k, $v ) = each %$scalar ) {
                     local $_ = $k;
                     s#/#..#g;
@@ -138,7 +138,7 @@ sub process {
             my $byExtensionFlag = /ext/;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
-                $path = '-' unless defined $path;
+                $path = '_' unless defined $path;
                 my ($module) =
                   grep { s#^/(FilterFactory::)#FileMgt106::$1#; } keys %$scalar;
                 if ($module) {
