@@ -250,17 +250,19 @@ sub makeInfoExtractor {
 
     my $processQuery = sub {
         local $_ = $_[0];
+        return $processScal->( $_, 1 ) if /^[0-9a-fA-F]{40}$/;
         my $where = ' ';
-        my @args  = ($_);
+        my @args;
         if (/^%%$/) {
             $where = ' where sha1 is not null ';
-            @args  = ();
         }
         elsif (/%/) {
             $where = ' where name like ? ';
+            @args  = $_;
         }
         else {
             $where = ' where name=? ';
+            @args  = $_;
         }
         my $q =
           $hints->{dbHandle}
@@ -284,7 +286,7 @@ sub makeInfoExtractor {
             else {
                 $size .= ' bytes';
             }
-            print $size . lc($sha1hex) . "\n";
+            print '# ' . $size . ' ' . lc($sha1hex) . "\n";
             $processScal->( $sha1hex, 1 );
         }
     };
