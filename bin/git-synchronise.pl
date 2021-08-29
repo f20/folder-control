@@ -66,7 +66,7 @@ my %localRepos;
   :   ( grep { !/^\/cold/si; } <"/*/catalogues">, <"/share/*/*/catalogues">, );
 
 foreach (
-      $homePath ? <"$homePath/*/*/.git">,
+      $homePath ? <"$homePath/*/*/.git">
     : $coldPath ? ()
     : (
         grep { !/^\/cold/si; } <"/*/folder-control/.git">,
@@ -96,7 +96,7 @@ if ($monorepoUrl) {
         if (@showRef) {
             foreach (@showRef) {
                 my ( $sha1, $ref ) = split /\s+/;
-                $ref =~ s# ^ ( refs /[^/ ] + )    #$1/$repoKey#;
+                $ref =~ s#^(refs/[^/]+)#$1/$repoKey#;
                 $refsFromMonorepoAndLocal{$ref}[1] = $sha1;
             }
         }
