@@ -27,15 +27,15 @@ use warnings;
 use strict;
 use File::Spec::Functions qw(catdir rel2abs);
 
-my $homePath;
+my ( $homePath, $coldPath );
 my $codeRepo = $ENV{FOLDER_CONTROL_HOME};
 my $selfid   = `hostname -s`;
 chomp $selfid;
 my $scriptPath = rel2abs($0);
 if ( $scriptPath =~ m#^(/(cold[^/]+))#s ) {
-    $homePath = $1;
+    $coldPath = $1;
     $selfid   = $2;
-    $codeRepo = catdir( $homePath, 'folder-control' );
+    $codeRepo = catdir( $coldPath, 'folder-control' );
 }
 elsif ( $scriptPath =~ m#^(/(?:Users|Volumes)/([^/]+))#s ) {
     $homePath = $1;
@@ -61,22 +61,17 @@ my %localRepos;
     <"$homePath/Documents/Archive/Catalogues">,
     <"$homePath/Documents/FolderControl/Catalogues">,
     <"$homePath/Management/catalogues">,
-    <"$homePath/catalogues">,
   )
-  : ( <"/t*/catalogues">, <"/share/MD0_DATA/*/catalogues">, );
+  : $coldPath ? <"$homePath/catalogues">
+  :   ( grep { !/^\/cold/si; } <"/*/catalogues">, <"/share/*/*/catalogues">, );
 
 foreach (
-    $homePath
-    ? (
-        <"$homePath/Documents/*/.git">,
-        <"$homePath/Documents/Projects/*/.git">,
-        <"$homePath/M*/*/.git">,
-        <"$homePath/T*/*/.git">,
-        <"$homePath/W*/*/.git">,
-    )
+      $homePath ? <"$homePath/*/*/.git">,
+    : $coldPath ? ()
     : (
-        <"/t*/folder-control/.git">, <"/t*/storage-info/.git">,
-        <"/share/MD0_DATA/*/folder-control/.git">,
+        grep { !/^\/cold/si; } <"/*/folder-control/.git">,
+        <"/*/storage-info/.git">,
+        <"/share/*/*/folder-control/.git">,
     )
   )
 {
@@ -101,7 +96,7 @@ if ($monorepoUrl) {
         if (@showRef) {
             foreach (@showRef) {
                 my ( $sha1, $ref ) = split /\s+/;
-                $ref =~ s#^(refs/[^/]+)#$1/$repoKey#;
+                $ref =~ s# ^ ( refs /[^/ ] + )    #$1/$repoKey#;
                 $refsFromMonorepoAndLocal{$ref}[1] = $sha1;
             }
         }
@@ -152,8 +147,11 @@ if ($monorepoUrl) {
         my @mappings = map { "refs/heads/$_:refs/heads/$repoKey/$_"; }
           keys %{ $toPush{$repoKey} };
         warn '* Pushing '
-          . ( @mappings > 1 ? ( @mappings . ' branches' ) : 'one branch' )
-          . " to $repoKey\n";
+          . (
+            @mappings > 1
+            ? ( @mappings . ' branches' )
+            : 'one branch'
+          ) . " to $repoKey\n";
         `git push -q --no-tags '$monorepoUrl' @mappings`;
     }
 }

@@ -269,10 +269,10 @@ sub dequeued {
         my $frotl =
           defined $self->[SM_FROTL]
           ? ( $self->[SM_FROTL] ? $time + $self->[SM_FROTL] : 0 )
-          : $rgid < 500                       ? 0
-          : $self->[SM_DIR] =~ m#/(\~\$|Y_)#i ? $time + 604_800
-          : $self->[SM_DIR] =~ m#/X_#i        ? $time - 13
-          :                                     $time - 4_233_600;
+          : $rgid < 500                ? 0
+          : $self->[SM_DIR] =~ m#/Y_#i ? $time + 604_800
+          : $self->[SM_DIR] =~ m#/X_#i ? $time - 13
+          :                              $time - 4_233_600;
         $self->[SM_REPOPAIR][1] =
           POSIX::strftime( 'Y_Cellar %Y-%m-%d', @refLocaltime )
           if $self->[SM_REPOPAIR];

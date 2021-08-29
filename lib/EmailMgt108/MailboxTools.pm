@@ -73,7 +73,7 @@ sub makeMailboxProcessor {
         };
         $scanner->($whatYouWant);
         my $numFiles    = keys %hashSet;
-        my $digits      = length( $numFiles - 1 );
+        my $digits      = length( $numFiles * 25 - 1 ) - 2;
         my $id1         = 10**$digits;
         my %cat1        = map { '0' . $id1++ . '.eml' => $_; } keys %hashSet;
         my $returnValue = $hintsBuilder->( \%cat1, $mboxFolder, $devNo );
@@ -106,7 +106,7 @@ sub makeMailboxProcessor {
                 $sortKey{$file} = $stat[9];
             }
         }
-        my $id2 = 2 * 10**$digits;
+        my $id2 = 5 * 10**$digits;
         foreach my $source (
             sort { $sortKey{$a} <=> $sortKey{$b} || $cat1{$a} cmp $cat1{$b}; }
             keys %sortKey
