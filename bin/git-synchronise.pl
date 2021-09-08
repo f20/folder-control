@@ -157,8 +157,7 @@ if ($monorepoUrl) {
 }
 
 if ( $codeRepo && chdir $codeRepo ) {
-    warn "* Code update in $codeRepo\n";
-    system qw(git stash -q);
+    system qw(git stash);
     foreach (qw(Work/folder-control/master)) {
         my ( $repoKey, $branch ) = m#^([^/]+/[^/]+)/(.+)$# or next;
         system qw(git pull -q --no-edit --no-tags),
