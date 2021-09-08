@@ -77,16 +77,21 @@ sub result {
     }
 }
 
+sub getMask {
+    my ( $self, $tag ) = @_;
+    $tag =~ s#.*/##s;
+    $tag =~ s#\..*##s;
+    $tag =~ s#\s+#-#sg;
+    my ($tags) = @$self;
+    my $tagid = 0;
+    ++$tagid while ( $tag ne ( $tags->[$tagid] //= $tag ) );
+    1 << $tagid;
+}
+
 sub taggedProcessor {
     my ( $self, $tag, $addFlag ) = @_;
     my ( $tags, $bitmap, $counter, $firstSeen ) = @$self;
-    my $mask = 0;
-    if ($tag) {
-        my $tagid = 0;
-        ++$tagid while ( $tag ne ( $tags->[$tagid] //= $tag ) );
-        $mask = 1 << $tagid;
-    }
-    my $filter;
+    my ( $mask, $filter );
     $filter = sub {
         my ($hash) = @_;
         my %newHash;
@@ -118,9 +123,12 @@ sub taggedProcessor {
         }
         \%newHash, $countUnseen, $countSeen;
     };
+    my $defaultMask;
+    $defaultMask = $self->getMask($tag) if $tag;
     sub {
         return $self->result unless @_;
         my ( $scalar, $path ) = @_;
+        $mask = $defaultMask || $self->getMask($path);
         my ( $addh, $countUnseen, $countSeen ) = $filter->($scalar);
         $path ||= 0;
         warn "$path: $countSeen already seen, $countUnseen not seen before.\n";
