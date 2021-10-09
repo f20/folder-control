@@ -43,8 +43,8 @@ sub makeStatisticsExtractor {
     my $query =
       $hints->{dbHandle}
       ->prepare('select size from locations where sha1=? and size is not null');
-    my ( %seen, $found, $missing, $dups, $bytes,
-        $bytesWithDuplication, %found, %missing, %dups, %bytes );
+    my ( %seen, $known, $unknown, $dups, $bytes,
+        $bytesWithDuplication, %known, %unknown, %dups, %bytes );
     my $numLines = 0;
     my $processor;
     $processor = sub {
@@ -70,15 +70,15 @@ sub makeStatisticsExtractor {
                     $query->finish;
                     $seen{$sha1hex} = $b;
                     if ( defined $b ) {
-                        ++$found;
-                        ++$found{$ext} if defined $ext;
+                        ++$known;
+                        ++$known{$ext} if defined $ext;
                         $bytes                += $b;
                         $bytesWithDuplication += $b;
                         $bytes{$ext} += $b if defined $ext;
                     }
                     else {
-                        ++$missing;
-                        ++$missing{$ext} if defined $ext;
+                        ++$unknown;
+                        ++$unknown{$ext} if defined $ext;
                     }
                 }
             }
@@ -87,12 +87,12 @@ sub makeStatisticsExtractor {
     sub {
         my ( $scalar, $name ) = @_;
         unless ( defined $scalar ) {
-            print _prettyDiff( $found, undef, 10 )
-              . ' found, '
+            print _prettyDiff( $known, undef, 10 )
+              . ' known, '
               . _prettyDiff( $bytes, undef, 18 )
               . ' bytes, '
-              . _prettyDiff( $missing, undef, 7 )
-              . ' missing, '
+              . _prettyDiff( $unknown, undef, 7 )
+              . ' unknown, '
               . _prettyDiff( $dups, undef, 7 )
               . ' duplicated, '
               . _prettyDiff( $bytesWithDuplication, undef, 7 )
@@ -100,18 +100,18 @@ sub makeStatisticsExtractor {
               if $numLines > 1;
             return;
         }
-        my $startFound   = $found;
-        my $startMissing = $missing;
+        my $startKnown   = $known;
+        my $startUnknown = $unknown;
         my $startDups    = $dups;
         my $startBytes   = $bytes;
         $processor->($scalar);
         ++$numLines;
-        print _prettyDiff( $found, $startFound, 10 )
-          . ' found, '
+        print _prettyDiff( $known, $startKnown, 10 )
+          . ' known, '
           . _prettyDiff( $bytes, $startBytes, 18 )
           . ' bytes, '
-          . _prettyDiff( $missing, $startMissing, 7 )
-          . ' missing, '
+          . _prettyDiff( $unknown, $startUnknown, 7 )
+          . ' unknown, '
           . _prettyDiff( $dups, $startDups, 7 )
           . ' duplicated, '
           . "$name\n"
