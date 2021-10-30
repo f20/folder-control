@@ -40,15 +40,18 @@ our @EXPORT_OK = qw(O_EVTONLY
 our %EXPORT_TAGS = ( constants => \@EXPORT_OK );
 
 use Scalar::Util qw(weaken);
-use BSD::Resource;
-my $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
-
-# RLIM_INFINITY does not work on Mac OS X 10.5
-if ( $thresholdWatchCount < 2345 ) {
-    setrlimit( RLIMIT_NOFILE, 2345, 2345 );
-    $thresholdWatchCount = getrlimit(RLIMIT_NOFILE);
+my $thresholdWatchCount = 1234;
+if ( eval 'require BSD::Resource' ) {
+    $thresholdWatchCount =
+      BSD::Resource::getrlimit( BSD::Resource::RLIMIT_NOFILE() )
+      ;    # RLIM_INFINITY does not work on Mac OS X 10.5
+    if ( $thresholdWatchCount < 2345 ) {
+        setrlimit( BSD::Resource::RLIMIT_NOFILE(), 2345, 2345 );
+        $thresholdWatchCount =
+          BSD::Resource::getrlimit( BSD::Resource::RLIMIT_NOFILE() );
+    }
+    $thresholdWatchCount = int( 0.8 * $thresholdWatchCount );
 }
-$thresholdWatchCount = int( 0.8 * $thresholdWatchCount );
 our %watchedByFileno;
 our %priorityByFileno;
 

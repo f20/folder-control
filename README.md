@@ -11,7 +11,7 @@ cataloguing, file backup, synchronisation and file-level deduplication.
     JSON::XS
 
 * CPAN modules needed by some features:
-    BSD::Resource (FreeBSD only)
+    BSD::Resource (FreeBSD and old macOS)
     Digest::SHA3
     Email::MIME
     Excel::Writer::XLSX
