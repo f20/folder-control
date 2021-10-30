@@ -46,7 +46,8 @@ use Encode qw(decode_utf8);
 sub reloadMyModules {
     my ($self) = @_;
     my %pm_to_reload;
-    foreach my $module ( __PACKAGE__, $$self ) {
+    foreach ( __PACKAGE__, $$self ) {
+        my $module = $_;
         $module =~ s^::^/^g;
         $module .= '.pm';
         my $inc = $INC{$module};
