@@ -40,7 +40,7 @@ our @EXPORT_OK = qw(O_EVTONLY
 our %EXPORT_TAGS = ( constants => \@EXPORT_OK );
 
 use Scalar::Util qw(weaken);
-my $thresholdWatchCount = 1234;
+my $thresholdWatchCount = 1024;
 if ( eval 'require BSD::Resource' ) {
     $thresholdWatchCount =
       BSD::Resource::getrlimit( BSD::Resource::RLIMIT_NOFILE() )
