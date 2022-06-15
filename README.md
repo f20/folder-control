@@ -6,6 +6,7 @@ cataloguing, file backup, synchronisation and file-level deduplication.
 
 * CPAN module needed by almost everything:
     DBD::SQLite
+    JSON
 
 * CPAN module recommended for performance:
     JSON::XS
