@@ -46,7 +46,7 @@ if ( eval 'require BSD::Resource' ) {
       BSD::Resource::getrlimit( BSD::Resource::RLIMIT_NOFILE() )
       ;    # RLIM_INFINITY does not work on Mac OS X 10.5
     if ( $thresholdWatchCount < 2345 ) {
-        setrlimit( BSD::Resource::RLIMIT_NOFILE(), 2345, 2345 );
+        BSD::Resource::setrlimit( BSD::Resource::RLIMIT_NOFILE(), 2345, 2345 );
         $thresholdWatchCount =
           BSD::Resource::getrlimit( BSD::Resource::RLIMIT_NOFILE() );
     }
