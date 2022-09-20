@@ -1,6 +1,6 @@
 package FileMgt106::Folders::FolderOrganise;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2022 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -35,7 +35,7 @@ sub flattenCwd {
     require Digest::SHA;
     my $flatten;
     $flatten = sub {
-        my $r = $_[0];
+        my $r  = $_[0];
         my $r_ = $r eq '.' ? '' : " in$r";
         $r_ =~ tr#/.#_ #;
         my $d;
@@ -138,6 +138,7 @@ sub restampFolder {
 }
 
 sub automaticNumbering {
+
     my ( $path, $contents ) = @_;
     return unless ref $contents eq 'HASH';
     my $numberPadding = 0;
@@ -148,7 +149,7 @@ sub automaticNumbering {
         if ( my ( $prefix, $number ) = /^([@# ]?)([ 0-9]+)\. /s ) {
             if ( length $prefix ) {
                 my $len = length($number);
-                ++$len if $prefix eq ' ';
+                ++$len                if $prefix eq ' ';
                 $numberPadding = $len if $len > $numberPadding;
             }
             $highestNumber = $number if $number > $highestNumber;
@@ -162,6 +163,7 @@ sub automaticNumbering {
             1;
         }
     } keys %$contents;
+
     if ($forceNumbering) {
         $highestNumber = $forceNumbering->[0];
         $numberPadding = $forceNumbering->[1];
@@ -171,7 +173,6 @@ sub automaticNumbering {
         $statusByNumber[ $forceNumbering->[0] ] = 1;
         my $newName = $forceNumbering->[2];
         $newName =~ s/^[@# ]?[ 0-9]+//s;
-
         rename catdir( $path, $forceNumbering->[2] ),
           catdir(
             $path,
@@ -199,14 +200,17 @@ sub automaticNumbering {
             push @toBeNumbered, grep { /^$number\. /s; } keys %$contents;
         }
     }
+
     return unless @toBeNumbered;
     restampFolder($path);
-    foreach (@toBeNumbered) {
-        my $p = catdir( $path, $_ );
-        my @s = stat $p or return;    # give up if something has moved
-        $_ = [ $_, $s[STAT_MTIME], $p, -d _ ];
-    }
-    foreach ( sort { $a->[1] <=> $b->[1]; } @toBeNumbered ) {
+    foreach (
+        sort { $a->[1] <=> $b->[1]; } map {
+            my $p = catdir( $path, $_ );
+            my @s = stat $p or return;     # give up if something has moved
+            [ $_, $s[STAT_MTIME], $p, -d _ ];
+        } @toBeNumbered
+      )
+    {
         my $name = $_->[0];
         my $number;
         if ( $name =~ s/^[@# ]*([0-9]+)\. +//s && $statusByNumber[$1] ) {
@@ -216,6 +220,7 @@ sub automaticNumbering {
         $number ||= ++$highestNumber;
         $number = '#' . ( '0' x ( $numberPadding - length($number) ) ) . $number
           if $numberPadding;
+        $name =~ s/^(?:#|[A-Z]_)//;
         $name = "$number. $name";
         if ( $_->[3] ) {
             rename $_->[2], catdir( $path, $name )
@@ -229,6 +234,7 @@ sub automaticNumbering {
             rename $_->[2], catfile( $newFolder, $_->[0] );
         }
     }
+
 }
 
 sub categoriseByDay {
