@@ -39,7 +39,7 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $catalogueProcessor, $queryProcessor, $consolidator, $outputScalar );
+    my ( $catalogueProcessor, $queryProcessor, $consolidator, $outputScalar, $favDevNo );
     my $outputStream = \*STDERR;
     my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
 
@@ -257,6 +257,11 @@ sub process {
             next;
         }
 
+        if (/^-+dev=?(.*)/) {
+            $favDevNo = ( stat ( $1 || '.' ) ) [STAT_DEV];
+            next;
+        }
+
         if (/^-+nohints/i) {
             require FileMgt106::Extraction::Extractor;
             $catalogueProcessor =
@@ -311,7 +316,7 @@ sub process {
             require FileMgt106::Extraction::Extractor;
             $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
-                FileMgt106::Extraction::Extractor::makeExtractAcceptor() );
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(), $favDevNo );
         }
 
         if (/^-$/) {
