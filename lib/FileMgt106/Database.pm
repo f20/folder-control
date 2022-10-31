@@ -1,6 +1,6 @@
 package FileMgt106::Database;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2022 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -181,7 +181,7 @@ EOL
         $hints->beginInteractive;
     };
     $hints->{scheduleNap} = sub { $needsNap = $nap; };
-    $hints->{cleanup} = sub {
+    $hints->{cleanup}     = sub {
         undef $needsNap;
         undef $_
           foreach $qGetLocid, $qGetLocidRootidIno,
@@ -315,48 +315,11 @@ EOL
               unless $inoFromHints && $ino == $inoFromHints;
             return $locid;
         }
-        $qGetLocidByNameRootidIno->execute( $name, $rootidFromDev, $ino );
-        if ( my ($locidToClone) = $qGetLocidByNameRootidIno->fetchrow_array ) {
-            $qGetLocidByNameRootidIno->finish;
-            $qClone->execute( $parid, $rootidFromDev, $locidToClone );
-            $qGetLocid->execute( $parid, $name );
-            my ($cloneLocid) = $qGetLocid->fetchrow_array;
-            $qGetLocid->finish;
-            $deepCopy->(
-                'locations',
-                $locidToClone,
-                $cloneLocid,
-                $rootidFromDev,
-                sub {
-                    warn "$name: level $_[0], $_[1] items, $_[2] total\n";
-                }
-            );
-            $qUproot->execute($locidToClone);
-        }
-        else {
-            $qInsertLocid->execute( $parid, $name, $rootidFromDev, $ino );
-        }
+        $qInsertLocid->execute( $parid, $name, $rootidFromDev, $ino );
         $qGetLocid->execute( $parid, $name );
         my ($locid) = $qGetLocid->fetchrow_array;
         $qGetLocid->finish;
-        unless ($parid) {
-            $rootidFromDev{$dev} = $locid;
-            if ( $name =~ m#^(.+)/\.zfs/snapshot/[^/]+$#s ) {
-                if ( my $motherLocid =
-                    $folder->( 0, $1, ( stat $1 )[ STAT_DEV, STAT_INO ] ) )
-                {
-                    $deepCopy->(
-                        'locations',
-                        $motherLocid,
-                        $locid, $locid,
-                        sub {
-                            warn "Deep copy $1 -> $name: "
-                              . "level $_[0], $_[1] items, $_[2] total\n";
-                        }
-                    );
-                }
-            }
-        }
+        $rootidFromDev{$dev} = $locid unless $parid;
         $locid;
     };
 
