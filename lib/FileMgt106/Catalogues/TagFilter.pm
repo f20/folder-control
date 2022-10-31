@@ -1,4 +1,4 @@
-package FileMgt106::Catalogues::IntersectFilter;
+package FileMgt106::Catalogues::TagFilter;
 
 # Copyright 2021 Franck Latrémolière.
 #

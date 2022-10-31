@@ -228,8 +228,8 @@ sub process {
         }
 
         if (/^-+tag(only)?=?(.*)/i) {
-            require FileMgt106::Catalogues::IntersectFilter;
-            $consolidator ||= FileMgt106::Catalogues::IntersectFilter->new;
+            require FileMgt106::Catalogues::TagFilter;
+            $consolidator ||= FileMgt106::Catalogues::TagFilter->new;
             $catalogueProcessor = $consolidator->taggedProcessor( $2, !$1 );
             next;
         }
