@@ -66,7 +66,7 @@ my %localRepos;
   :   ( grep { !/^\/cold/si; } <"/*/catalogues">, <"/share/*/*/catalogues">, );
 
 foreach (
-      $homePath ? <"$homePath/*/*/.git">
+      $homePath ? grep { !/\(/; } <"$homePath/*/*/.git">
     : $coldPath ? ()
     : (
         grep { !/^\/cold/si; } <"/*/folder-control/.git">,
@@ -108,7 +108,7 @@ if ($monorepoUrl) {
     my ( %toPull, %toPush );
     foreach ( sort keys %refsFromMonorepoAndLocal ) {
         my ( $repoKey, $branch ) = m#^refs/heads/([^/]+/[^/]+)/(.+)$# or next;
-        my ( $mono, $local ) = @{ $refsFromMonorepoAndLocal{$_} };
+        my ( $mono,    $local )  = @{ $refsFromMonorepoAndLocal{$_} };
         next unless defined $local;
         if ( !defined $mono ) {
             $toPush{$repoKey}{$branch} = 1;
