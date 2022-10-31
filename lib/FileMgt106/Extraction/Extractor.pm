@@ -92,10 +92,10 @@ sub makeSimpleExtractor {
 
 sub makeHintsExtractor {
 
-    my ( $hintsFile, $acceptor ) = @_;
+    my ( $hintsFile, $acceptor, $devNo ) = @_;
     my ( $hints, $searchSha1 );
 
-    my $devNo = ( stat $hintsFile )[STAT_DEV];
+    $devNo ||= ( stat $hintsFile )[STAT_DEV];
     require Digest::SHA;
     my $sha1Machine = new Digest::SHA;
 
