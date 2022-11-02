@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::TagFilter;
 
-# Copyright 2021 Franck LatrŽmolire.
+# Copyright 2021-2022 Franck LatrŽmolire.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -50,7 +50,7 @@ sub result {
                 $found{$_} = $nh if $cn;
                 $count += $cn;
             }
-            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+            elsif ( defined $w && $w !~ m#/# && $w =~ /([0-9a-fA-F]{40})/ ) {
                 if ( $bitmap->{ lc $1 } == $mask ) {
                     $found{$_} = $w;
                     ++$count;
@@ -89,7 +89,7 @@ sub getMask {
 }
 
 sub taggedProcessor {
-    my ( $self, $tag, $addFlag ) = @_;
+    my ( $self, $tag,    $addFlag ) = @_;
     my ( $tags, $bitmap, $counter, $firstSeen ) = @$self;
     my ( $mask, $filter );
     $filter = sub {
@@ -105,7 +105,7 @@ sub taggedProcessor {
                 $countUnseen += $cUnseen;
                 $countSeen   += $cSeen;
             }
-            elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
+            elsif ( defined $w && $w !~ m#/# && $w =~ /([0-9a-fA-F]{40})/ ) {
                 my $sha1 = lc $1;
                 if ( exists $bitmap->{$sha1} ) {
                     ++$countSeen;
