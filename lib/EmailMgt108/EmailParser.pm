@@ -1,6 +1,6 @@
 package EmailMgt108::EmailParser;
 
-# Copyright 2012-2021 Franck Latrémolière and others.
+# Copyright 2012-2022 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -48,7 +48,7 @@ sub getRawBody {
     warn "$@ for $item transfer encoding" if $@;
     $how =~ s/\A\s+//;
     $how =~ s/\s+\z//;
-    $how =~ s/;.+//;    # For S/MIME, etc
+    $how =~ s/;.+//;     # For S/MIME, etc
     $how = lc $how;
     $how = "qp"
       if $how eq "quotedprint"
@@ -96,7 +96,7 @@ sub parseMessage {
         {
             my @subjectAndSender = (
                 $email->header('Subject') || 'No identification',
-                $email->header('From') || 'No sender'
+                $email->header('From')    || 'No sender'
             );
             eval { $_ = NFKD($_); } foreach @subjectAndSender;
             $subjectAndSender[1] =~ s/.* //;
@@ -165,7 +165,7 @@ sub parseMessage {
                     return;
                 }
                 $fn = 'Item ' . @files;
-                if ( !$ct ) { }
+                if    ( !$ct ) { }
                 elsif ( $ct =~ m#message/rfc822#i ) {
                     $ext = '.eml';
                 }
@@ -245,7 +245,7 @@ m#application/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet#i
                 open my $fh3, '>', "$destinationFolder.tmp/$fn" or die $!;
                 binmode $fh3, ':raw' or die $!;
                 print {$fh3} getRawBody($item) or die $!;
-                close $fh3 or die $!;
+                close $fh3                     or die $!;
                 if ( $fn =~ /(.*)\.eml$/is ) {
                     if (
                         parseMessage(
@@ -302,7 +302,7 @@ sub _unzipfile {
         _unzipfolder("$container/$destinationFolder");
     }
     elsif ( defined $pid ) {
-        exec qw(unzip -q -n -d), $destinationFolder, $zipfile
+        exec qw(unzip -q -n -P), '', '-d', $destinationFolder, $zipfile
           if chdir $container;
         require POSIX and POSIX::_exit(0);
         die 'This should not happen';
