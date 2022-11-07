@@ -109,8 +109,11 @@ sub explodeByType {
               if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
               if $ext eq 'jpg' || $ext eq 'jpeg';
-            $cat = 'Image_tiff'
-              if $ext eq 'tif' || $ext eq 'tiff';
+            $cat = 'Image_tiff_or_similar'
+              if $ext eq 'tif'
+              || $ext eq 'tiff'
+              || $ext eq 'psd'
+              || $ext eq 'psb';
             $cat = "Image_$ext"
               if $ext eq 'arw'
               || $ext eq 'dng'
@@ -119,11 +122,7 @@ sub explodeByType {
               || $ext eq 'ico'
               || $ext eq 'nef'
               || $ext eq 'png'
-              || $ext eq 'psd'
-              || $ext eq 'svg'
-              || $ext eq 'tiff';
-            $cat = 'Image_tiff'
-              if $ext eq 'tif';
+              || $ext eq 'svg';
             $cat = 'JSON'
               if $ext eq 'jbz' || $ext eq 'json';
             $cat = 'Package'
