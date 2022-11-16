@@ -25,6 +25,7 @@ package FileMgt106::Catalogues::TagFilter;
 
 use strict;
 use warnings;
+use File::Spec::Functions qw(catfile);
 
 sub new {
     my ($class) = @_;
@@ -38,6 +39,9 @@ sub new {
 sub result {
     my ($self) = @_;
     my ( $tags, $bitmap, $counter, $firstSeen ) = @$self;
+    my $folder = join ' ', 'tag', @$tags, $$;
+    mkdir $folder;
+    print "$folder\n";
     my ( $mask, $filter );
     $filter = sub {
         my ($hash) = @_;
@@ -63,15 +67,18 @@ sub result {
         next unless $counter->[$mask];
         my ( $found, $count ) = $filter->($firstSeen);
         FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
-            (
-                join ' ',
-                (
-                    map { $mask & ( 1 << $_ ) ? $tags->[$_] : (); }
-                      0 .. $#$tags
-                ),
-                ( unpack 'b' . @$tags, pack 'L', $mask ),
-            )
-            . '.jbz',
+            catfile(
+                $folder,
+                join(
+                    ' ',
+                    unpack( 'b' . @$tags, pack 'L', $mask ),
+                    (
+                        map { $mask & ( 1 << $_ ) ? $tags->[$_] : (); }
+                          0 .. $#$tags,
+                    )
+                  )
+                  . '.jbz'
+            ),
             $found
         );
     }
