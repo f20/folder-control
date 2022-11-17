@@ -156,7 +156,7 @@ sub automaticNumbering {
             ++$statusByNumber[$number];
             $forceNumbering ||=
               [ $number, length($prefix) ? length($number) : 0, $_ ]
-              if /force renumber/i && !/\(done\)/i;
+              if /force renumber/i && !/(?: done| \(done\))$/is;
             0;
         }
         else {
@@ -170,9 +170,9 @@ sub automaticNumbering {
         @toBeNumbered =
           grep { $_ ne $forceNumbering->[2]; } keys %$contents;
         @statusByNumber = ();
-        $statusByNumber[ $forceNumbering->[0] ] = 1;
         my $newName = $forceNumbering->[2];
         $newName =~ s/^[@# ]?[ 0-9]+//s;
+        $newName =~ s/\s*$/ done/s;
         rename catdir( $path, $forceNumbering->[2] ),
           catdir(
             $path,
@@ -183,7 +183,7 @@ sub automaticNumbering {
                 : ''
               )
               . $forceNumbering->[0]
-              . "$newName (done)"
+              . $newName
           );
     }
     else {
