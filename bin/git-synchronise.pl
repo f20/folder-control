@@ -71,7 +71,7 @@ foreach (
     : (
         grep { !/^\/cold/si; } <"/*/folder-control/.git">,
         <"/*/storage-info/.git">,
-        <"/*/storage-usage/.git">,
+        <"/*/usage/.git">,
         <"/share/*/*/folder-control/.git">,
     )
   )
