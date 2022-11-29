@@ -206,7 +206,7 @@ sub automaticNumbering {
     return unless @toBeNumbered;
     restampFolder($path);
     foreach (
-        sort { $a->[1] <=> $b->[1] || $a->[3] cmp $b->[3]; } map {
+        sort { $a->[1] <=> $b->[1] || $a->[0] cmp $b->[0]; } map {
             my $p = catdir( $path, $_ );
             my @s = stat $p or return;     # give up if something has moved
             [ $_, $s[STAT_MTIME], $p, -d _ ];
