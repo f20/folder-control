@@ -27,9 +27,8 @@ use warnings;
 use strict;
 use Encode qw(decode_utf8 encode_utf8);
 use File::Spec::Functions qw(catfile catdir);
+use FileMgt106::FileSystem qw(STAT_MTIME);
 use POSIX ();
-
-use constant { STAT_MTIME => 9, };
 
 sub flattenCwd {
     require Digest::SHA;
@@ -207,7 +206,7 @@ sub automaticNumbering {
     return unless @toBeNumbered;
     restampFolder($path);
     foreach (
-        sort { $a->[1] <=> $b->[1]; } map {
+        sort { $a->[1] <=> $b->[1] || $a->[3] cmp $b->[3]; } map {
             my $p = catdir( $path, $_ );
             my @s = stat $p or return;     # give up if something has moved
             [ $_, $s[STAT_MTIME], $p, -d _ ];
