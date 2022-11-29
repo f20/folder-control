@@ -169,10 +169,13 @@ sub automaticNumbering {
         $numberPadding = $forceNumbering->[1];
         @toBeNumbered =
           grep { $_ ne $forceNumbering->[2]; } keys %$contents;
+        my $highestNumberLength = length( $highestNumber + @toBeNumbered );
+        $numberPadding = $highestNumberLength
+          if $numberPadding < $highestNumberLength;
         @statusByNumber = ();
         my $newName = $forceNumbering->[2];
         $newName =~ s/^[@# ]?[ 0-9]+//s;
-        $newName =~ s/\s*$/ done/s;
+        $newName =~ s/\s*$/ done/s unless $newName =~ /persistent/i;
         rename catdir( $path, $forceNumbering->[2] ),
           catdir(
             $path,
