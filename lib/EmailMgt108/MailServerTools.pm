@@ -35,7 +35,7 @@ use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
 use YAML;
 
-sub remove_append_messages {
+sub remove_or_append_messages {
     my ( $server, $account, $password, $mailboxUidToRemoveArrayref,
         $mailboxMessageDateToAppendArrayref,
     ) = @_;
