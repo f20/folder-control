@@ -222,7 +222,7 @@ sub automaticNumbering {
         $number ||= ++$highestNumber;
         $number = '#' . ( '0' x ( $numberPadding - length($number) ) ) . $number
           if $numberPadding;
-        $name =~ s/^(?:#|[A-Z]_)//;
+        $name =~ s/^(?:Ω|#|[A-Z]_)//;
         $name = "$number. $name";
         if ( $_->[3] ) {
             rename $_->[2], catdir( $path, $name )
