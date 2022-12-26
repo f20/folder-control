@@ -25,6 +25,7 @@ package FileMgt106::Folders::FolderOrganise;
 
 use warnings;
 use strict;
+use utf8;
 use Encode qw(decode_utf8 encode_utf8);
 use File::Spec::Functions qw(catfile catdir);
 use FileMgt106::FileSystem qw(STAT_MTIME);
@@ -222,7 +223,7 @@ sub automaticNumbering {
         $number ||= ++$highestNumber;
         $number = '#' . ( '0' x ( $numberPadding - length($number) ) ) . $number
           if $numberPadding;
-        $name =~ s/^(?:Ω|#|[A-Z]_)//;
+        $name =~ s/^(?:Ω\s*|#|[A-Z]_)//;
         $name = "$number. $name";
         if ( $_->[3] ) {
             rename $_->[2], catdir( $path, $name )
