@@ -1,6 +1,6 @@
 package FileMgt106::FilterFactory::ByType;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -57,10 +57,54 @@ sub explodeByExtension {
     \%newHash;
 }
 
-sub explodeByType {
+sub explodeByCompressibility {
     my ($what) = @_;
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
+        if ( ref $val eq 'HASH' ) {
+            my ($exploded) = explodeByCompressibility($val);
+            while ( my ( $ext, $con ) = each %$exploded ) {
+                if ( $key eq $ext && ref $con eq 'HASH' ) {
+                    foreach ( keys %$con ) {
+                        my $new = $_;
+                        $new .= '_' while exists $newHash{$key}{$new};
+                        $newHash{$key}{$new} = $con->{$_};
+                    }
+                }
+                else {
+                    $newHash{$ext}{$key} = $con;
+                }
+            }
+        }
+        else
+        { # NB: real-life PDFs and Microsoft Office files are often compressible
+            $newHash{
+                $key =~ /\.(?:
+                	.[bx]z|bz2|
+					gif|
+					gz|
+					jpeg|jpg|
+					heic|
+					m4a|m4v|mov|mp3|mp4|
+					nef|
+					png|
+					webm|
+					xz)$/six
+                ? 'Compressed'
+                : 'Compressible'
+            }{$key} = $val;
+        }
+    }
+    \%newHash;
+}
+
+sub explodeByType {
+
+    my ($what) = @_;
+    my %newHash;
+
+    while ( my ( $key, $val ) = each %$what ) {
+
         if ( ref $val eq 'HASH' ) {
             my ($exploded) = explodeByType($val);
             while ( my ( $ext, $con ) = each %$exploded ) {
@@ -76,13 +120,17 @@ sub explodeByType {
                 }
             }
         }
+
         else {
+
             my ( $base, $ext ) = ( $key =~ m#(.*)(\.\S*)$#s );
             ( $base, $ext ) = ( $key, '' )
               unless defined $ext;
             $ext = lc $ext;
+
             my $cat = $ext eq '.' ? 'Email' : 'Other';
             $ext =~ s/^\.+//s;
+
             $cat = 'Android'
               if $ext eq 'apk';
             $cat = 'Aperture'
@@ -109,7 +157,7 @@ sub explodeByType {
               if $ext eq 'ipa' || $ext eq 'ipsw';
             $cat = 'Image_jpg'
               if $ext eq 'jpg' || $ext eq 'jpeg';
-            $cat = 'Image_tiff_or_similar'
+            $cat = 'Image_tiff'
               if $ext eq 'tif'
               || $ext eq 'tiff'
               || $ext eq 'psd'
@@ -165,15 +213,18 @@ sub explodeByType {
               || $ext eq 'vdi';
             $cat = 'Web'
               if $ext eq 'htm'
-              || $ext eq 'js'
               || $ext eq 'html'
               || $ext eq 'css'
+              || $ext eq 'js'
               || $ext eq 'php';
 
             $newHash{$cat}{$key} = $val;
+
         }
     }
+
     \%newHash;
+
 }
 
 1;

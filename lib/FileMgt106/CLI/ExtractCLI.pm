@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ExtractCLI;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -39,9 +39,10 @@ use constant {
 sub process {
 
     my ( $startFolder, $perl5dir, @args ) = @_;
-    my ( $catalogueProcessor, $queryProcessor, $consolidator, $outputScalar, $favDevNo );
+    my ( $catalogueProcessor, $queryProcessor, $consolidator, $outputScalar,
+        $favDevNo );
     my $outputStream = \*STDERR;
-    my $hintsFile = catfile( dirname($perl5dir), '~$hints' );
+    my $hintsFile    = catfile( dirname($perl5dir), '~$hints' );
 
     foreach (@args) {
 
@@ -135,6 +136,11 @@ sub process {
         }
 
         if (/^-+explode/) {
+            my $exploder =
+                /ext/ ? \&FileMgt106::FilterFactory::ByType::explodeByExtension
+              : /comp/
+              ? \&FileMgt106::FilterFactory::ByType::explodeByCompressibility
+              : \&FileMgt106::FilterFactory::ByType::explodeByType;
             my $byExtensionFlag = /ext/;
             $catalogueProcessor = sub {
                 my ( $scalar, $path ) = @_ or return;
@@ -147,16 +153,9 @@ sub process {
                 }
                 require FileMgt106::FilterFactory::ByType unless $module;
                 my ( $exploded, $newPath ) =
-                  $module            ? $module->new($scalar)->explode($path)
-                  : $byExtensionFlag ? (
-                    FileMgt106::FilterFactory::ByType::explodeByExtension(
-                        $scalar),
-                    $path
-                  )
-                  : (
-                    FileMgt106::FilterFactory::ByType::explodeByType($scalar),
-                    $path
-                  );
+                    $module
+                  ? $module->new($scalar)->explode($path)
+                  : ( $exploder->($scalar), $path );
                 while ( my ( $k, $v ) = each %$exploded ) {
                     FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
                         "$newPath \$$k.jbz", $v )
@@ -258,7 +257,7 @@ sub process {
         }
 
         if (/^-+dev=?(.*)/) {
-            $favDevNo = ( stat ( $1 || '.' ) ) [STAT_DEV];
+            $favDevNo = ( stat( $1 || '.' ) )[STAT_DEV];
             next;
         }
 
@@ -316,7 +315,8 @@ sub process {
             require FileMgt106::Extraction::Extractor;
             $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,
-                FileMgt106::Extraction::Extractor::makeExtractAcceptor(), $favDevNo );
+                FileMgt106::Extraction::Extractor::makeExtractAcceptor(),
+                $favDevNo );
         }
 
         if (/^-$/) {
