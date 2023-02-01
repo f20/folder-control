@@ -137,9 +137,9 @@ sub process {
 
         if (/^-+explode/) {
             my $exploder =
-                /ext/ ? \&FileMgt106::FilterFactory::ByType::explodeByExtension
-              : /comp/
-              ? \&FileMgt106::FilterFactory::ByType::explodeByCompressibility
+                /ext/i ? \&FileMgt106::FilterFactory::ByType::explodeByExtension
+              : /stor|comp/i
+              ? \&FileMgt106::FilterFactory::ByType::explodeByStorageCategory
               : \&FileMgt106::FilterFactory::ByType::explodeByType;
             my $byExtensionFlag = /ext/;
             $catalogueProcessor = sub {

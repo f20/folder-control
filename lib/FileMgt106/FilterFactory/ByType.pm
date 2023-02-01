@@ -57,12 +57,12 @@ sub explodeByExtension {
     \%newHash;
 }
 
-sub explodeByCompressibility {
+sub explodeByStorageCategory {
     my ($what) = @_;
     my %newHash;
     while ( my ( $key, $val ) = each %$what ) {
         if ( ref $val eq 'HASH' ) {
-            my ($exploded) = explodeByCompressibility($val);
+            my ($exploded) = explodeByStorageCategory($val);
             while ( my ( $ext, $con ) = each %$exploded ) {
                 if ( $key eq $ext && ref $con eq 'HASH' ) {
                     foreach ( keys %$con ) {
@@ -76,22 +76,17 @@ sub explodeByCompressibility {
                 }
             }
         }
-        else
-        { # NB: real-life PDFs and Microsoft Office files are often compressible
+        else {
             $newHash{
-                $key =~ /\.(?:
-                	.[bx]z|bz2|
-					gif|
-					gz|
-					jpeg|jpg|
-					heic|
-					m4a|m4v|mov|mp3|mp4|
-					nef|
-					png|
-					webm|
-					xz)$/six
-                ? 'Compressed'
-                : 'Compressible'
+                  $key =~ /\.nef$/si                      ? 'compressed-nikon'
+                : $key =~ /\.arw$/si                      ? 'compressible-sony'
+                : $key =~ /\.(?:m4a|mp3|aac)$/si          ? 'compressed-audio'
+                : $key =~ /\.(?:m4v|mp4|mov|webm|avi)$/si ? 'compressed-video'
+                : $key =~ /\.(?:heic|jpe?g|gif|png)$/si   ? 'compressed-images'
+                : $key =~ /\.(?:[a-z][bx]z|bz2|gz|xz|ipa|ipsw|m?pkg)$/si
+                ? 'compressed-other'
+                : $key =~ /\.(?:tiff?|psd|psb)$/si ? 'compressible-images'
+                : 'compressible-other' # NB: PDFs and Office files are often compressible
             }{$key} = $val;
         }
     }
@@ -204,6 +199,7 @@ sub explodeByType {
               if $ext eq 'mov'
               || $ext eq 'mp4'
               || $ext eq 'm4v'
+              || $ext eq 'webm'
               || $ext eq 'avi';
             $cat = 'Volume'
               if $ext eq 'dmg'
