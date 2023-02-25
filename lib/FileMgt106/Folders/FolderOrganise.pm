@@ -168,7 +168,7 @@ sub automaticNumbering {
         $highestNumber = $forceNumbering->[0];
         $numberPadding = $forceNumbering->[1];
         @toBeNumbered =
-          grep { $_ ne $forceNumbering->[2]; } keys %$contents;
+          grep { !/^\./s && $_ ne $forceNumbering->[2]; } keys %$contents;
         my $highestNumberLength = length( $highestNumber + @toBeNumbered );
         $numberPadding = $highestNumberLength
           if $numberPadding < $highestNumberLength;
