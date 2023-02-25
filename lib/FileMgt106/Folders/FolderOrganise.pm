@@ -190,7 +190,7 @@ sub automaticNumbering {
           );
     }
     else {
-        @toBeNumbered = grep { !/^#[0-9]{$numberPadding}\. /s; }
+        @toBeNumbered = grep { !/^\./s && !/^#[0-9]{$numberPadding}\. /s; }
           keys %$contents
           if $numberPadding;
         foreach my $number (
