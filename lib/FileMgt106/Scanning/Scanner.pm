@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::Scanner;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,6 +25,7 @@ package FileMgt106::Scanning::Scanner;
 
 use strict;
 use warnings;
+use utf8;
 use Encode qw(decode_utf8);
 use POSIX       ();
 use Digest::SHA ();
@@ -74,15 +75,15 @@ sub new {
     my $regexAlwaysRecheckThisFile = qr/\.xls$/is;
 
     my $regexNeverWatchFolder    = qr/^Y_|\.sparsebundle$/is;
-    my $regexWatchFolderForADay  = qr/^\@|^#/is;
-    my $regexAlwaysWatchFolder   = qr/^[OWXZ]_/is;
-    my $regexQuicklyMakeReadOnly = qr/^[XY]_/is;
+    my $regexWatchFolderForADay  = qr/^[@#]/is;
+    my $regexAlwaysWatchFolder   = qr/^[OWXZ🗄️📎📨📬]_/is;
+    my $regexQuicklyMakeReadOnly = qr/^(?:🗄️|📎|📨|📬|X_|Y_)/is;
     my $regexNeverMakeReadOnly   = qr/\.sparsebundle$/is;
 
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
     {
         my @stat = stat $dir or die "$dir: cannot stat";
-        $dev = $stat[STAT_DEV];
+        $dev       = $stat[STAT_DEV];
         $rootLocid = $hints->{topFolder}->( $dir, $dev, $stat[STAT_INO] )
           or die "$dir: no root locid";
     }
@@ -179,8 +180,8 @@ sub new {
     };
 
     my $resolveLocidClosure = sub {
-        my ( $parentClosure, $name )       = @_;
-        my ( $parentLocid,   $parentPath ) = $parentClosure->();
+        my ( $parentClosure, $name )     = @_;
+        my ( $parentLocid, $parentPath ) = $parentClosure->();
         my $path = "$parentPath/$name";
         my @stat = stat $path;
         unless ( -d _ ) {
@@ -315,7 +316,7 @@ sub new {
 
             if (/$regexIgnoreEntirely/s) {
                 delete $oldChildrenHashref->{$_};
-                my @stat = lstat or next;
+                my @stat = lstat        or next;
                 $stat[STAT_DEV] == $dev or next;
                 -d _
                   ? $folder->( $locid, $_, @stat[ STAT_DEV, STAT_INO ] )
@@ -480,8 +481,8 @@ sub new {
 
                     if ($watchMaster) {
                         $watchMaster->watchFolder( $scanDir, $locid, $path,
-                            $hashref, $forceReadOnlyTimeLimit, $stasher,
-                            $backuper, -15, $_ );
+                            $hashref,  $forceReadOnlyTimeLimit, $stasher,
+                            $backuper, -15,                     $_ );
                     }
 
                     chdir $_ or next;
@@ -648,7 +649,7 @@ sub new {
 
         while ( my ( $kname, $klocid ) = each %$oldChildrenHashref ) {
             delete $hashref->{$kname} if $runningUnderWatcher;
-            $uproot->($klocid) if $klocid;
+            $uproot->($klocid)        if $klocid;
         }
 
         if ( keys %binned ) {
@@ -839,7 +840,7 @@ sub new {
         }
 
         my $scalar = $scanDir->(
-            $rootLocid, '', $forceReadOnlyTimeLimit, $watchMaster,
+            $rootLocid,     '',           $forceReadOnlyTimeLimit, $watchMaster,
             $targetHashref, $rootStasher, $rootBackuper
         );
 

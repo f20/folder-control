@@ -1,6 +1,6 @@
 package Daemon112::SimpleWatch;
 
-# Copyright 2013-2020 Franck Latrémolière.
+# Copyright 2013-2023 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -24,7 +24,7 @@ package Daemon112::SimpleWatch;
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 # To test from the command line:
-# perl -I$(pwd)/lib -MDaemon112::Daemon -e "binmode STDERR, ':utf8'; Daemon112::Daemon->run(qw(Daemon112::SimpleWatch watchtest), undef, undef, undef, undef, undef, undef, '$(pwd)')"
+# perl -I$(pwd)/lib -MDaemon112::Daemon -e "binmode STDERR, ':utf8'; Daemon112::Daemon->run(qw(Daemon112::SimpleWatch watchtest), undef, undef, undef, undef, undef, '$(pwd)')"
 
 use warnings;
 use strict;
@@ -39,7 +39,7 @@ require Daemon112::Watcher;    # used but not loaded by TopMaster
 use Encode qw(decode_utf8);
 
 sub new {
-    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $jbz, $parent, )
+    my ( $class, $qu, $pq, $kq, $hintsFile, $top, $repo, $git, $parent, )
       = @_;
     my @extras;
     if ( !$hintsFile && $parent ) {
@@ -47,7 +47,6 @@ sub new {
         $hintsFile = catfile( $home, '~$hints' );
         mkdir $git = catdir( $home, 'git' );
         chdir $git && `git init`;
-        0 and mkdir $jbz = catdir( $home, 'jbz' );
         mkdir $repo = catdir( $home, 'repo' );
         mkdir $top  = catdir( $home, 'top' );
         mkdir catdir( $top, 'mid' );
@@ -81,8 +80,6 @@ sub new {
       . ( defined $repo ? " = $repo" : ' undefined' )
       . '; $git'
       . ( defined $git ? " = $git" : ' undefined' )
-      . '; $jbz'
-      . ( defined $jbz ? " = $jbz" : ' undefined' )
       . '; $parent'
       . ( defined $parent ? " = $parent" : ' undefined' );
     my $heartbeat;
@@ -100,7 +97,6 @@ sub new {
         locs  => {
             repo => $repo,
             git  => $git,
-            jbz  => $jbz,
         },
         topMaster =>    # This field is private
           Daemon112::TopMaster->new( '/kq' => $kq, '/pq' => $pq, @extras )

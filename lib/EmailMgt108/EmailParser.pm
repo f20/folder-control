@@ -1,6 +1,6 @@
 package EmailMgt108::EmailParser;
 
-# Copyright 2012-2022 Franck Latrémolière and others.
+# Copyright 2012-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

@@ -86,7 +86,7 @@ sub scan_command_autograb {
         my $source = shift @components;
         $source ||= 'NoSource';
         $source =~ s/^[^a-z]+//i;
-        my $fallbackFolder = my $caseidsha1hex = $target->{'.caseid'};
+        my $caseidsha1hex = $target->{'.caseid'};
         undef $caseidsha1hex if ref $caseidsha1hex;
 
         my $folderPath;
@@ -147,7 +147,7 @@ sub scan_command_autograb {
                 else {
                     ($target) = _filterExclusions( $target, $exclusions );
                 }
-                $target->{'.caseid'} = $caseidsha1hex if $caseidsha1hex;
+                $target->{'.caseid'}         = $caseidsha1hex if $caseidsha1hex;
                 $target->{"📖$fileExtension"} = [];
                 $target->{$buildExclusionsFile} = [];
             }
@@ -173,7 +173,7 @@ sub scan_command_autograb {
 
 sub _filterExclusions {
     my ( $src, $excl ) = @_;
-    return unless defined $src;
+    return      unless defined $src;
     return $src unless $excl;
     return ( undef, $src ) if !ref $excl || $excl->{'.'};
     my %included = %$src;

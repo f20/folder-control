@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::ScanMaster;
 
-# Copyright 2012-2021 Franck Latrémolière and others.
+# Copyright 2012-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -67,8 +67,8 @@ sub new {
 sub setRepoloc {
 
     my ( $self, $repolocs, $options ) = @_;
-    my ( $repoFolder, $gitFolder, $jbzFolder, $stashFolder, $resolveFlag ) =
-      @{$repolocs}{qw(repo git jbz stash resolve)};
+    my ( $repoFolder, $gitFolder, $stashFolder, $resolveFlag ) =
+      @{$repolocs}{qw(repo git stash resolve)};
     undef $repoFolder if $options->{omitRepo};
 
     my $gid = ( stat( dirname( $self->[SM_DIR] ) ) )[STAT_GID];
@@ -82,7 +82,7 @@ sub setRepoloc {
     $self->[SM_STASHPAIR] = [ $stashFolder, $name ] if defined $stashFolder;
 
     foreach ( grep { defined $_ && !/^\.\.\//s && -d $_; } $repoFolder,
-        $gitFolder, $jbzFolder )
+        $gitFolder )
     {
         $_ = catdir( $_, $category );
         unless ( -e $_ ) {
@@ -118,13 +118,7 @@ sub setRepoloc {
         }
     }
 
-    unless ( defined $gitFolder && -d $gitFolder ) {
-        unless ( defined $jbzFolder && -d $jbzFolder ) {
-            return $self;
-        }
-        return $self->addJbzName("$jbzFolder/$name.jbz");
-    }
-
+   return $self  unless defined $gitFolder && -d $gitFolder;
     $self->addScalarTaker(
         sub {
             my ( $scalar, $blobref, $runner ) = @_;
@@ -140,27 +134,21 @@ sub setRepoloc {
                     warn "Cannot chdir to $gitFolder: $!";
                     return;
                 }
-                $ENV{PATH} =
-                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
-                  . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
                 warn "Catalogue update for $self";
                 open my $f, '>', "$name.json.$$";
                 binmode $f;
                 print {$f} $$blobref;
                 close $f;
                 rename "$name.json.$$", "$name.json";
-
+                $ENV{PATH} =
+                    '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
+                  . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
                 if ( system qw(git add), "$name.json" ) {
                     warn "git add failed for $name.json";
                 }
                 else {
-                    system qw(git rm), "$name.txt" if -e "$name.txt";
                     system qw(git commit -q --untracked-files=no -m),
                       $self->[SM_DIR];
-                }
-                if ( defined $jbzFolder && -d $jbzFolder ) {
-                    system qw(bzip2), "$name.json";
-                    rename "$name.json.bz2", "$jbzFolder/$name.jbz";
                 }
             };
             if ( $runner && $runner->{pq} ) {
