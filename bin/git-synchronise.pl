@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright 2019-2022 Franck Latrémolière and others.
+# Copyright 2019-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -102,7 +102,7 @@ if ($monorepoUrl) {
             }
         }
         else {
-            $refsFromMonorepoAndLocal{"refs/heads/$repoKey/master"}[1] =
+            $refsFromMonorepoAndLocal{"refs/heads/$repoKey/main"}[1] =
               'not yet';
         }
     }
@@ -159,7 +159,7 @@ if ($monorepoUrl) {
 
 if ( $codeRepo && chdir $codeRepo ) {
     system qw(git stash);
-    foreach (qw(Work/folder-control/master)) {
+    foreach (qw(Work/folder-control/main)) {
         my ( $repoKey, $branch ) = m#^([^/]+/[^/]+)/(.+)$# or next;
         system qw(git pull -q --no-edit --no-tags),
           defined $localRepos{$repoKey}
