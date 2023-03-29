@@ -25,6 +25,7 @@ package EmailMgt108::MailServerTools;
 
 use strict;
 use warnings;
+use utf8;
 
 use Mail::IMAPClient;
 use Time::Piece;
@@ -127,7 +128,7 @@ sub email_downloader {
             $generalSettings{searchSha1},
             $folderHashref->{mailboxCaseidSha1Hex},
             %folderHashFromServer
-            ? catdir( $mailboxesPath, $localName )
+            ? catdir( $mailboxesPath, "✉️$localName" )
             : undef
         );
         if ( defined $newSha1Hex
@@ -144,7 +145,7 @@ sub email_downloader {
                 ( $mailArchivePath, my $newSha1Hex ) = find_or_make_folder(
                     $generalSettings{searchSha1},
                     $folderHashref->{mailArchiveCaseidSha1Hex},
-                    catdir( $mailArchivesPath, $localName )
+                    catdir( $mailArchivesPath, "📎$localName" )
                 )
               )
             {
@@ -187,7 +188,7 @@ sub email_downloader {
 
       MESSAGE: foreach my $uid ( keys %folderHashFromServer ) {
             my $tfile = catfile( $mailboxPath, "$uid.eml" );
-            my @stat = lstat $tfile;
+            my @stat  = lstat $tfile;
             if ( @stat && !$stat[7] ) {
                 unlink $tfile;
                 @stat = ();
@@ -239,7 +240,7 @@ sub email_downloader {
                 $mailboxStashPath = catdir( $mailboxesPath, 'Z_Removed' );
                 mkdir $mailboxStashPath;
             }
-            rename catdir( $mailboxesPath, $localName ),
+            rename catdir( $mailboxesPath, "✉️$localName" ),
               catdir( $mailboxStashPath, $localName );
             next unless $mailArchivesPath;
             my $archivePath = catdir( $mailArchivesPath, $localName );
@@ -250,7 +251,7 @@ sub email_downloader {
                   catdir( $mailArchivesPath, 'Z_Removed' );
                 mkdir $mailArchiveStashPath;
             }
-            rename $archivePath, catdir( $mailArchiveStashPath, $localName );
+            rename $archivePath, catdir( $mailArchiveStashPath, "📎$localName" );
         }
     }
 
