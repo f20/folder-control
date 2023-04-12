@@ -128,7 +128,7 @@ sub email_downloader {
             $generalSettings{searchSha1},
             $folderHashref->{mailboxCaseidSha1Hex},
             %folderHashFromServer
-            ? catdir( $mailboxesPath, "✉️$localName" )
+            ? catdir( $mailboxesPath, "✉️$localName ($account)" )
             : undef
         );
         if ( defined $newSha1Hex
@@ -145,7 +145,7 @@ sub email_downloader {
                 ( $mailArchivePath, my $newSha1Hex ) = find_or_make_folder(
                     $generalSettings{searchSha1},
                     $folderHashref->{mailArchiveCaseidSha1Hex},
-                    catdir( $mailArchivesPath, "📎$localName" )
+                    catdir( $mailArchivesPath, "📎$localName ($account)" )
                 )
               )
             {
