@@ -27,8 +27,8 @@ use warnings;
 use strict;
 
 use overload
-  '""' => sub { $_[0][0] || $_[0]; },
-  '0+' => sub { $_[0] },
+  '""'     => sub { $_[0][0] || $_[0]; },
+  '0+'     => sub { $_[0] },
   fallback => 1;
 
 use Storable qw(freeze);
@@ -75,7 +75,7 @@ sub setRepoloc {
     my @components =
       splitdir( $self->[SM_HINTS]->{canonicalPath}->( $self->[SM_DIR] ) );
     map { s#^\.#_.#s; } @components;
-    my $name = pop(@components) || 'No name';
+    my $name     = pop(@components) || 'No name';
     my $category = join( '.', map { length $_ ? $_ : '_' } @components )
       || 'No category';
 
@@ -118,7 +118,7 @@ sub setRepoloc {
         }
     }
 
-   return $self  unless defined $gitFolder && -d $gitFolder;
+    return $self unless defined $gitFolder && -d $gitFolder;
     $self->addScalarTaker(
         sub {
             my ( $scalar, $blobref, $runner ) = @_;
@@ -135,21 +135,43 @@ sub setRepoloc {
                     return;
                 }
                 warn "Catalogue update for $self";
-                open my $f, '>', "$name.json.$$";
-                binmode $f;
-                print {$f} $$blobref;
-                close $f;
-                rename "$name.json.$$", "$name.json";
+                my %fileActionMap;
+                undef $fileActionMap{"$name.json"} if -e "$name.json";
+                undef $fileActionMap{$_} foreach <"$name \$*.json">;
+                while ( my ( $k, $v ) = each %$scalar ) {
+                    if ( ref $v eq 'HASH' && $v->{'.caseid'} ) {
+                        require FileMgt106::Catalogues::LoadSaveNormalize;
+                        $fileActionMap{"$name \$$k.json"} = $v;
+                        $blobref = {%$scalar} unless ref $blobref eq 'HASH';
+                        delete $blobref->{$k};
+                    }
+                }
+                $fileActionMap{"$name.json"} = $blobref
+                  unless ref $blobref eq 'HASH' && !keys %$blobref;
                 $ENV{PATH} =
                     '/usr/local/bin:/usr/local/git/bin:/usr/bin:'
                   . '/bin:/usr/sbin:/sbin:/opt/sbin:/opt/bin';
-                if ( system qw(git add), "$name.json" ) {
-                    warn "git add failed for $name.json";
+                while ( my ( $k, $v ) = each %fileActionMap ) {
+                    if ( !defined $v ) {
+                        warn "git rm failed for $k"
+                          if system qw (git rm), $k;
+                        next;
+                    }
+                    open my $f, '>', "$k.$$";
+                    binmode $f;
+                    print {$f} ref $v eq 'HASH'
+                      ? FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
+                    )->encode($v)
+                      : $$v;
+                    close $f;
+                    rename "$k.$$", $k;
+                    warn "git add failed for $k"
+                      if system qw(git add), $k;
                 }
-                else {
-                    system qw(git commit -q --untracked-files=no -m),
-                      $self->[SM_DIR];
-                }
+                warn "git commit failed"
+                  if system qw(git commit -q --untracked-files=no -m),
+                  $self->[SM_DIR];
+
             };
             if ( $runner && $runner->{pq} ) {
                 delete $self->[SM_SCALAR] unless $self->[SM_WATCHING];
@@ -257,7 +279,7 @@ sub dequeued {
         my $frotl =
           defined $self->[SM_FROTL]
           ? ( $self->[SM_FROTL] ? $time + $self->[SM_FROTL] : 0 )
-          : $rgid < 500                ? 0
+          : $rgid < 500 ? 0
           : $self->[SM_DIR] =~ m#/Y_#i ? $time + 604_800
           : $self->[SM_DIR] =~ m#/X_#i ? $time - 13
           :                              $time - 4_233_600;
