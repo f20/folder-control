@@ -1,6 +1,6 @@
 package EmailMgt108::MailServerTools;
 
-# Copyright 2020-2021 Franck Latrémolière and others.
+# Copyright 2020-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -106,7 +106,7 @@ sub email_downloader {
         Password => $password,
     ) or die "$account connection error: $@\n";
 
-    # Do not do $imap->compress as it seems to break things
+    # No $imap->compress as that seems to break things.
 
     my $folders = $imap->folders
       or die "$account list folders error: ", $imap->LastError, "\n";
@@ -201,6 +201,7 @@ sub email_downloader {
             }
             elsif ( --$maxMessages ) {
                 eval {
+                    warn "Getting $uid from $folder\n";
                     open my $mh, '>', $tfile;
                     print {$mh} $imap->message_string($uid);
                 };
@@ -224,6 +225,7 @@ sub email_downloader {
                 %{ $folderHashFromServer{$uid} },
                 archived => $folderHashref->{$uid}
                   && $folderHashref->{$uid}{archived}
+                  && -e $folderHashref->{$uid}{archived}
                 ? $folderHashref->{$uid}{archived}
                 : EmailMgt108::EmailParser::parseMessage($tfile),
               }
