@@ -121,6 +121,8 @@ sub email_downloader {
         my %folderHashFromServer =
           $imap->fetch_hash(qw(RFC822.SIZE INTERNALDATE FLAGS));
         my $folderHashref = delete $storedCatalogue->{$folder};
+        delete $folderHashref->{mailboxPath};
+        delete $folderHashref->{mailArchivePath};
         $folderHashref = {} unless defined $folderHashref;
         $catalogueToStore{$folder} = $folderHashref;
 
@@ -138,6 +140,7 @@ sub email_downloader {
             %$folderHashref = ( mailboxCaseidSha1Hex => $newSha1Hex );
         }
         next FOLDER unless defined $mailboxPath;
+        $folderHashref->{mailboxPath} = $mailboxPath;
 
         my $mailArchivePath;
         if ( $mailArchivesPath && -d $mailArchivesPath ) {
@@ -161,6 +164,7 @@ sub email_downloader {
                 }
                 chdir $mailArchivePath;
                 require EmailMgt108::EmailParser;
+                $folderHashref->{mailArchivePath} = $mailArchivePath;
             }
         }
 
@@ -266,7 +270,6 @@ sub email_downloader {
 sub find_or_make_folder {
     my ( $searchSha1, $caseidsha1hex, $fallbackPath, ) = @_;
     my $folder;
-    unlink $fallbackPath if defined $fallbackPath && -l $fallbackPath;
     if ( $searchSha1 && defined $caseidsha1hex ) {
         my $iterator = $searchSha1->( pack( 'H*', $caseidsha1hex ) );
         while ( my ($path) = $iterator->() ) {
@@ -276,13 +279,7 @@ sub find_or_make_folder {
             last;
         }
     }
-    if ( defined $folder ) {
-        if ( defined $fallbackPath ) {
-            unlink $fallbackPath;
-            symlink $folder, $fallbackPath;
-        }
-        return $folder, $caseidsha1hex;
-    }
+    return $folder, $caseidsha1hex if defined $folder;
     return unless defined $fallbackPath;
     my $caseidFile = catfile( $fallbackPath, '.caseid' );
     return $fallbackPath, $caseidsha1hex
