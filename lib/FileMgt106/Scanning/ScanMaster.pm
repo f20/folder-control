@@ -31,6 +31,7 @@ use overload
   '0+'     => sub { $_[0] },
   fallback => 1;
 
+use Encode qw(decode_utf8);
 use Storable qw(freeze);
 use Digest::SHA qw(sha1 sha1_base64);
 require POSIX;
@@ -137,12 +138,15 @@ sub setRepoloc {
                 warn "Catalogue update for $self";
                 my %fileActionMap;
                 undef $fileActionMap{"$name.json"} if -e "$name.json";
-                undef $fileActionMap{$_} foreach <"$name \$*.json">;
+                undef $fileActionMap{ decode_utf8 $_}
+                  foreach <"$name \$*.json">;
                 while ( my ( $k, $v ) = each %$scalar ) {
-                    if ( ref $v eq 'HASH' && $v->{'.caseid'} ) {
-                        require FileMgt106::Catalogues::LoadSaveNormalize;
+                    if ( ref $v eq 'HASH' && defined $v->{'.caseid'} ) {
+                        unless ( ref $blobref eq 'HASH' ) {
+                            $blobref = {%$scalar};
+                            require FileMgt106::Catalogues::LoadSaveNormalize;
+                        }
                         $fileActionMap{"$name \$$k.json"} = $v;
-                        $blobref = {%$scalar} unless ref $blobref eq 'HASH';
                         delete $blobref->{$k};
                     }
                 }
@@ -165,8 +169,7 @@ sub setRepoloc {
                       : $$v;
                     close $f;
                     rename "$k.$$", $k;
-                    warn "git add failed for $k"
-                      if system qw(git add), $k;
+                    warn "git add failed for $k" if system qw(git add), $k;
                 }
                 warn "git commit failed"
                   if system qw(git commit -q --untracked-files=no -m),
