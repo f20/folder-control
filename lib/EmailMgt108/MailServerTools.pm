@@ -169,10 +169,10 @@ sub email_downloader {
         }
 
       MESSAGE: foreach my $uid ( keys %folderHashFromServer ) {
-            my $tfile = catfile( $mailboxPath, "$uid.eml" );
-            my @stat  = lstat $tfile;
+            my $emlFile = catfile( $mailboxPath, "$uid.eml" );
+            my @stat    = lstat $emlFile;
             if ( @stat && !$stat[7] ) {
-                unlink $tfile;
+                unlink $emlFile;
                 @stat = ();
             }
             if (@stat) {
@@ -183,8 +183,8 @@ sub email_downloader {
             }
             elsif ( --$maxMessages ) {
                 eval {
-                    warn "Getting $uid from $folder\n";
-                    open my $mh, '>', $tfile;
+                    warn "$emlFile\n";
+                    open my $mh, '>', $emlFile;
                     print {$mh} $imap->message_string($uid);
                 };
                 if ($@) {
@@ -200,7 +200,7 @@ sub email_downloader {
             my $lmod = Time::Piece->strptime(
                 $folderHashFromServer{$uid}{'INTERNALDATE'},
                 '%d-%b-%Y %H:%M:%S %z' )->epoch;
-            utime time, $lmod, $tfile if !@stat || $stat[9] > $lmod;
+            utime time, $lmod, $emlFile if !@stat || $stat[9] > $lmod;
             $folderHashref->{$uid} =
               $mailArchivesPath
               ? {
@@ -209,7 +209,7 @@ sub email_downloader {
                   && $folderHashref->{$uid}{archived}
                   && -e $folderHashref->{$uid}{archived}
                 ? $folderHashref->{$uid}{archived}
-                : EmailMgt108::EmailParser::parseMessage($tfile),
+                : EmailMgt108::EmailParser::parseMessage($emlFile),
               }
               : $folderHashFromServer{$uid};
         }
