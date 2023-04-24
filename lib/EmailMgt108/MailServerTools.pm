@@ -120,51 +120,42 @@ sub email_downloader {
         $imap->select($folder) or next;
         my %folderHashFromServer =
           $imap->fetch_hash(qw(RFC822.SIZE INTERNALDATE FLAGS));
-        my $folderHashref = delete $storedCatalogue->{$folder};
-        delete $folderHashref->{mailboxPath};
-        delete $folderHashref->{mailArchivePath};
-        $folderHashref = {} unless defined $folderHashref;
-        $catalogueToStore{$folder} = $folderHashref;
+        my $folderHashrefFromStore = delete $storedCatalogue->{$folder};
+        my %folderHash;
+        $catalogueToStore{$folder} = \%folderHash;
 
         my ( $mailboxPath, $newSha1Hex ) = find_or_make_folder(
             $generalSettings{searchSha1},
-            $folderHashref->{mailboxCaseidSha1Hex},
+            $folderHashrefFromStore->{mailboxCaseidSha1Hex},
             %folderHashFromServer
             ? catdir( $mailboxesPath, "✉️$localName ($account)" )
             : undef
         );
-        if ( defined $newSha1Hex
-            and !defined $folderHashref->{mailboxCaseidSha1Hex}
-            || $folderHashref->{mailboxCaseidSha1Hex} ne $newSha1Hex )
-        {
-            %$folderHashref = ( mailboxCaseidSha1Hex => $newSha1Hex );
-        }
         next FOLDER unless defined $mailboxPath;
-        $folderHashref->{mailboxPath} = $mailboxPath;
+        $folderHash{mailboxCaseidSha1Hex} = $newSha1Hex;
+        $folderHash{mailboxPath}          = $mailboxPath;
 
         my $mailArchivePath;
         if ( $mailArchivesPath && -d $mailArchivesPath ) {
             if (
                 ( $mailArchivePath, my $newSha1Hex ) = find_or_make_folder(
                     $generalSettings{searchSha1},
-                    $folderHashref->{mailArchiveCaseidSha1Hex},
+                    $folderHashrefFromStore->{mailArchiveCaseidSha1Hex},
                     catdir( $mailArchivesPath, "📎$localName ($account)" )
                 )
               )
             {
-                if ( !defined $folderHashref->{mailArchiveCaseidSha1Hex} ) {
-                    $folderHashref->{mailArchiveCaseidSha1Hex} = $newSha1Hex;
-                }
-                elsif (
-                    $folderHashref->{mailArchiveCaseidSha1Hex} ne $newSha1Hex )
+                if ( defined $folderHashrefFromStore->{mailArchiveCaseidSha1Hex}
+                    && $folderHashrefFromStore->{mailArchiveCaseidSha1Hex} ne
+                    $newSha1Hex )
                 {
-                    $folderHashref->{mailArchiveCaseidSha1Hex} = $newSha1Hex;
                     delete $_->{archived}
-                      foreach grep { ref $_; } values %$folderHashref;
+                      foreach grep { ref $_; } values %$folderHashrefFromStore;
                 }
+                $folderHash{mailArchiveCaseidSha1Hex} = $newSha1Hex;
+                $folderHash{mailArchivePath}          = $mailArchivePath;
                 chdir $mailArchivePath;
                 require EmailMgt108::EmailParser;
-                $folderHashref->{mailArchivePath} = $mailArchivePath;
             }
         }
 
@@ -180,8 +171,11 @@ sub email_downloader {
                     mkdir $stashPath;
                 }
                 rename catfile( $mailboxPath, $_ ), catfile( $stashPath, $_ );
-                if ( defined $mailArchivesPath
-                    && ( my $archived = $folderHashref->{$1}{archived} ) )
+                if (
+                    defined $mailArchivesPath
+                    && ( my $archived =
+                        $folderHashrefFromStore->{$1}{archived} )
+                  )
                 {
                     local $_ = $archived;
                     s%Y_([^/]+)$%Z_$1%s;
@@ -223,41 +217,17 @@ sub email_downloader {
                 $folderHashFromServer{$uid}{'INTERNALDATE'},
                 '%d-%b-%Y %H:%M:%S %z' )->epoch;
             utime time, $lmod, $emlFile if !@stat || $stat[9] > $lmod;
-            $folderHashref->{$uid} =
+            $folderHash{$uid} =
               $mailArchivesPath
               ? {
                 %{ $folderHashFromServer{$uid} },
-                archived => $folderHashref->{$uid}
-                  && $folderHashref->{$uid}{archived}
-                  && -e $folderHashref->{$uid}{archived}
-                ? $folderHashref->{$uid}{archived}
+                archived => $folderHashrefFromStore->{$uid}
+                  && $folderHashrefFromStore->{$uid}{archived}
+                  && -e $folderHashrefFromStore->{$uid}{archived}
+                ? $folderHashrefFromStore->{$uid}{archived}
                 : EmailMgt108::EmailParser::parseMessage($emlFile),
               }
               : $folderHashFromServer{$uid};
-        }
-    }
-
-    {
-        my ( $mailboxStashPath, $mailArchiveStashPath );
-        foreach my $deletedFolder ( keys %$storedCatalogue ) {
-            my $localName = $deletedFolder;
-            $localName =~ s/^INBOX\.//s;
-            unless ( defined $mailboxStashPath ) {
-                $mailboxStashPath = catdir( $mailboxesPath, 'Z_Removed' );
-                mkdir $mailboxStashPath;
-            }
-            rename catdir( $mailboxesPath, "✉️$localName" ),
-              catdir( $mailboxStashPath, $localName );
-            next unless $mailArchivesPath;
-            my $archivePath = catdir( $mailArchivesPath, $localName );
-            next
-              unless -e $archivePath;
-            unless ( defined $mailArchiveStashPath ) {
-                $mailArchiveStashPath =
-                  catdir( $mailArchivesPath, 'Z_Removed' );
-                mkdir $mailArchiveStashPath;
-            }
-            rename $archivePath, catdir( $mailArchiveStashPath, "📎$localName" );
         }
     }
 
