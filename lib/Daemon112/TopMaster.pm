@@ -65,7 +65,7 @@ sub attach {
         my $hints = $runner->{hints};
         warn "Scanning $root for $topMaster";
         my @listRoot = $topMaster->_chdir_and_filterd_list($root);
-        my %setRoot = map { ( $_ => 1 ); } @listRoot;
+        my %setRoot  = map { ( $_ => 1 ); } @listRoot;
 
         foreach (
             grep {
@@ -144,6 +144,7 @@ sub attach {
                 {
                     local $_ = $catalogueFile;
                     s/\.(?:txt|json)$//s;
+                    s/ \$.*//s;
                     s/^_/./s;
                     next if exists $setRoot{$_};
                     warn "Removing catalogue for $root/$_";
