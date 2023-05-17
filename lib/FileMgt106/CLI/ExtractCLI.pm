@@ -369,11 +369,15 @@ sub process {
                   or next;
                 $name = decode_utf8 $name;
                 next if defined $regExp && $name !~ /$regExp/;
+                $name =~ s/\.(?:json|jbz)$//s;
                 open my $h, qq^git --git-dir="$gitRepo" show $sha1 |^;
                 binmode $h;
-                my $missing =
-                  $catalogueProcessor->( $jsonMachine->decode(<$h>), $name );
-                $outputScalar->{$name} = $missing if $missing;
+                if ( my $processingOutput =
+                    $catalogueProcessor->( $jsonMachine->decode(<$h>), $name ) )
+                {
+                    $name .= '_' while exists $outputScalar->{$name};
+                    $outputScalar->{$name} = $processingOutput;
+                }
             }
         }
 
