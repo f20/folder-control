@@ -59,7 +59,6 @@ my %localRepos;
   sort grep { -d "$_/.git"; } $homePath
   ? (
     <"$homePath/Documents/Archive/Catalogues">,
-    <"$homePath/Documents/FolderControl/Catalogues">,
     <"$homePath/Management/catalogues">,
   )
   : $coldPath ? <"$homePath/catalogues">
@@ -71,7 +70,6 @@ foreach (
     : (
         grep { !/^\/cold/si; } <"/*/folder-control/.git">,
         <"/*/storage-info/.git">,
-        <"/*/usage/.git">,
         <"/share/*/*/folder-control/.git">,
     )
   )
@@ -80,8 +78,7 @@ foreach (
     chdir $1;
     warn "* Not clean: $1\n" if `git status -s`;
     $localRepos{"Work/$2"} = $1
-      unless $2 eq 'FolderControl'
-      || lc($2) eq 'monorepo'
+      unless lc($2) eq 'monorepo'
       || lc($2) eq 'catalogues';
 }
 if ($monorepoUrl) {
