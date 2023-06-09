@@ -12,13 +12,13 @@ cataloguing, file backup, synchronisation and file-level deduplication.
     JSON::XS
 
 * CPAN modules needed by some features:
-    BSD::Resource (FreeBSD and old macOS)
+    BSD::Resource (FreeBSD and macOS)
     Digest::SHA3
     Email::MIME
     Excel::Writer::XLSX
     IO::KQueue (FreeBSD and macOS)
     Image::ExifTool
-    Linux::Inotify (Linux only)
+    Linux::Inotify (Linux)
     Thread::Pool
 
 UNIX group IDs determine some of the behaviours of these scripts.  The default assumptions about group IDs, which are in the source code of FileMgt106::FileSystem, are as follows:
@@ -32,4 +32,4 @@ UNIX group IDs determine some of the behaviours of these scripts.  The default a
 * Any member of 1066 is also a member of 1069.
 
 Franck Latrémolière
-11 April 2021
+9 June 2023
