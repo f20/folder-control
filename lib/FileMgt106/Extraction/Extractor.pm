@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -32,8 +32,8 @@ use FileMgt106::FileSystem
   qw(STAT_DEV STAT_INO STAT_MODE STAT_UID STAT_SIZE STAT_MTIME);
 
 sub makeExtractAcceptor {
-    my ($sort)    = grep { /^-+sort/i } @_;
-    my ($tarpipe) = grep { /^-+(?:tar|tbz|tgz)/i } @_;
+    my ($sort)     = grep { /^-+sort/i } @_;
+    my ($tarpipe)  = grep { /^-+(?:tar|tbz|tgz)/i } @_;
     my $fileHandle = \*STDOUT;
     binmode $fileHandle, ':utf8';
     if ( $sort || $tarpipe ) {
@@ -110,7 +110,7 @@ sub makeHintsExtractor {
         }
         return $acceptor->() unless defined $what;
         unless ($searchSha1) {
-            $hints = FileMgt106::Database->new( $hintsFile, 1 );
+            $hints      = FileMgt106::Database->new( $hintsFile, 1 );
             $searchSha1 = $hints->{searchSha1};
         }
         if ( ref $what eq 'HASH' ) {
@@ -126,7 +126,7 @@ sub makeHintsExtractor {
             if ( exists $done{$key} ) {
                 return $done{$key} ? () : $what;
             }
-            my $sha1 = pack( 'H*', $key );
+            my $sha1     = pack( 'H*', $key );
             my $iterator = $searchSha1->( $sha1, $devNo );
             my @candidates;
             while ( my ( $path, $statref, $locid ) = $iterator->() ) {
@@ -200,7 +200,7 @@ sub makeDataExtractor {
             $ext = '' unless defined $ext;
             next unless defined $parid;
             next unless my $folder = $pathFinder->($parid);
-            next unless my @lstat = lstat catfile( $folder, $name );
+            next unless my @lstat  = lstat catfile( $folder, $name );
             next
               unless -f _
               && $lstat[STAT_INO] == $inode
@@ -222,13 +222,13 @@ sub makeInfoExtractor {
     binmode STDOUT, ':utf8';
     my $hints       = FileMgt106::Database->new( $hintsFile, 1 );
     my $devNo       = ( stat $hintsFile )[STAT_DEV];
-    my $search      = $hints->{searchSha1};
+    my $searchSha1  = $hints->{searchSha1};
     my $processScal = sub {
         my ( $sha1hex, $suppressHeader ) = @_;
         return              unless $sha1hex;
         die 'Not supported' unless $sha1hex =~ /^([0-9a-fA-F]{40})$/s;
         print "$sha1hex\n"  unless $suppressHeader;
-        my $iterator = $search->( pack( 'H*', $sha1hex ), $devNo );
+        my $iterator = $searchSha1->( pack( 'H*', $sha1hex ), $devNo );
         my ( @trusted, @untrusted );
         while ( my ( $path, $statref, $locid ) = $iterator->() ) {
             next unless -f _;
@@ -241,7 +241,9 @@ sub makeInfoExtractor {
             {
                 push @untrusted, $path;
             }
-            else { push @trusted, $path; }
+            else {
+                push @trusted, $path;
+            }
         }
         print join "\n", ( sort @trusted ),
           ( map { " $_"; } sort @untrusted ),
@@ -293,6 +295,70 @@ sub makeInfoExtractor {
 
     $processScal, $processQuery;
 
+}
+
+sub makeDedupExtractor {
+    my ( $hintsFile, $acceptor, $devNo ) = @_;
+    my ( $hints, $searchSha1 );
+    $devNo ||= ( stat $hintsFile )[STAT_DEV];
+    my %done = ( 'da39a3ee5e6b4b0d3255bfef95601890afd80709' => undef );
+    my $processScal;
+    $processScal = sub {
+        my ($what) = @_;
+        if ( !defined $what ) {
+            undef $searchSha1;
+            $hints->disconnect if $hints;
+            undef $hints;
+        }
+        return unless defined $what;
+        unless ($searchSha1) {
+            $hints      = FileMgt106::Database->new( $hintsFile, 1 );
+            $searchSha1 = $hints->{searchSha1};
+        }
+        if ( ref $what eq 'HASH' ) {
+            my %h2;
+            while ( my ( $k, $v ) = each %$what ) {
+                $v = $processScal->($v);
+                $h2{$k} = $v if $v;
+            }
+            return keys %h2 ? \%h2 : undef;
+        }
+        if ( $what =~ /([0-9a-fA-F]{40})/ ) {
+            my $sha1hex = lc $1;
+            return if exists $done{$sha1hex};
+            undef $done{$sha1hex};
+            my $iterator = $searchSha1->( pack( 'H*', $sha1hex ), $devNo );
+            my ( @trusted, @untrusted );
+            while ( my ( $path, $statref, $locid ) = $iterator->() ) {
+                next unless -f _;
+                if (
+                    !$locid
+                    || ( $statref->[STAT_UID]
+                        && ( $statref->[STAT_MODE] & 0200 ) )
+                    || ( $statref->[STAT_MODE] & 022 )
+                  )
+                {
+                    push @untrusted, $path;
+                }
+                else {
+                    push @trusted, $path;
+                }
+            }
+            my ( $master, @trustedSlaves ) = sort @trusted;
+            if ( -f $master ) {
+                my $masterEscaped = $master;
+                $masterEscaped =~ s/'/'"'"'/g;
+                foreach (@trustedSlaves) {
+                    s/'/'"'"'/g;
+                    print "ln -sf '$masterEscaped' '$_'\n";
+                }
+                foreach (@untrusted) {
+                    s/'/'"'"'/g;
+                    print "# ln -sf '$masterEscaped' '$_'\n";
+                }
+            }
+        }
+    };
 }
 
 1;

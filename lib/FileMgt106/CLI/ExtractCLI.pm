@@ -284,6 +284,13 @@ sub process {
             next;
         }
 
+        if (/^-+dedup/i) {
+            require FileMgt106::Extraction::Extractor;
+            ( $catalogueProcessor, $queryProcessor ) =
+              FileMgt106::Extraction::Extractor::makeDedupExtractor($hintsFile);
+            next;
+        }
+
         if (/^-+(csv|xlsx?)(metadata(single)?)?=?(.*)/i) {
             require FileMgt106::Extraction::Extractor;
             require FileMgt106::Extraction::Spreadsheets;
