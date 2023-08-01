@@ -301,6 +301,7 @@ sub makeDedupExtractor {
     my ( $hintsFile, $acceptor, $devNo ) = @_;
     my ( $hints, $searchSha1 );
     $devNo ||= ( stat $hintsFile )[STAT_DEV];
+    binmode STDOUT, ':utf8';
     my %done = ( 'da39a3ee5e6b4b0d3255bfef95601890afd80709' => undef );
     my $processScal;
     $processScal = sub {
