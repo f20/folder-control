@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::TagFilter;
 
-# Copyright 2021-2022 Franck Latrmolire.
+# Copyright 2021-2023 Franck Latrmolire.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -39,7 +39,7 @@ sub new {
 sub result {
     my ($self) = @_;
     my ( $tags, $bitmap, $counter, $firstSeen ) = @$self;
-    my $folder = join ' ', 'tag', @$tags, $$;
+    my $folder = join ' ', 'tag', ( @$tags > 5 ? () : @$tags ), $$;
     mkdir $folder;
     print "$folder\n";
     my ( $mask, $filter );
