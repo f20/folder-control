@@ -81,7 +81,7 @@ sub explodeByStorageCategory {
                   $key =~ /\.nef$/si                      ? 'compressed-nikon'
                 : $key =~ /\.arw$/si                      ? 'compressible-sony'
                 : $key =~ /\.(?:m4a|mp3|aac)$/si          ? 'compressed-audio'
-                : $key =~ /\.(?:m4v|mp4|mov|webm|avi)$/si ? 'compressed-video'
+                : $key =~ /\.(?:m4v|mp4|mov|mkv|webm|avi)$/si ? 'compressed-video'
                 : $key =~ /\.(?:heic|jpe?g|gif|png)$/si   ? 'compressed-images'
                 : $key =~ /\.(?:[a-z][bx]z|bz2|gz|xz|ipa|ipsw|m?pkg)$/si
                 ? 'compressed-other'
@@ -199,6 +199,7 @@ sub explodeByType {
               if $ext eq 'mov'
               || $ext eq 'mp4'
               || $ext eq 'm4v'
+              || $ext eq 'mkv'
               || $ext eq 'webm'
               || $ext eq 'avi';
             $cat = 'Volume'
