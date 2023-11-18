@@ -1,6 +1,6 @@
 package FileMgt106::FileSystem;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -57,16 +57,34 @@ use constant {
     STAT_CHMODDED => 13,    # this is our own addition
 };
 
-my %aclStyleDevMapSingleton;       # undef = POSIX, 1 = NFSv4, 2 = none
-my %macOSGroupFromGidSingleton;    # name from gid
+my %aclStyleDevMapSingleton;    # undef = POSIX, 1 = NFSv4, 2 = none
+
+my %macOSGroupFromGidSingleton; # name from gid
+
 my @cmpToolSingleton =
-    -e '/usr/bin/cmp' ? ( '/usr/bin/cmp', '--' )
+    -e '/usr/bin/cmp'  ? ( '/usr/bin/cmp', '--' )
   : -e '/usr/bin/diff' ? ( '/usr/bin/diff', '--brief', '--' )
   : -e '/opt/bin/diff' ? ( '/opt/bin/diff', '--brief', '--' )
   :                      die 'No cmp found';
 
 sub filesDiffer($$) {
     system( @cmpToolSingleton, @_ ) >> 8;
+}
+
+sub new {
+    my ( $class, %gidInfo ) = @_;
+    return $class unless %gidInfo;
+    bless \%gidInfo, $class;
+}
+
+sub gidInfo {
+    my ($self) = @_;
+    return $self if ref $self;
+    {
+        1037 => [qw()],
+        1066 => [qw(1028 1037)],
+        1028 => [qw(1037)],
+    };
 }
 
 sub justLookingStat {
@@ -113,129 +131,24 @@ sub managementStat {
     };
 }
 
-sub imapStat {
-    sub {
-        my ( $name, $forceReadOnlyTimeLimit ) = @_;
-        my @stat = lstat $name or return;
-        $stat[STAT_CHMODDED] = 0;
-        return @stat unless $forceReadOnlyTimeLimit and -f _ && -s _ || -d _;
-        if ( !$> and $stat[STAT_UID] != 60 || $stat[STAT_GID] != 6 ) {
-            chown( 60, 6, $name ) or return @stat;
-            $stat[STAT_UID]      = 60;
-            $stat[STAT_GID]      = 6;
-            $stat[STAT_CHMODDED] = 1;
-        }
-        my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 =
-          0040 | ( $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ? 0550 : 0770 ) &
-          $stat[STAT_MODE];
-        if ( $rwx2 != $rwx1 ) {
-            chmod $rwx2, $name or return @stat;
-            $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
-        }
-        @stat;
-    };
-}
-
-sub publishedStat {
-    my ($rgid) = @_;
-    sub {
-        my ( $name, $forceReadOnlyTimeLimit ) = @_;
-        my @stat = lstat $name or return;
-        $stat[STAT_CHMODDED] = 0;
-        return @stat unless -d _ || -f _ && -s _;
-        my $readOnlyFile =
-             -f _
-          && !( $stat[STAT_MODE] & 022 )
-          && !( $stat[STAT_UID] && ( $stat[STAT_MODE] & 0200 ) );
-        if ( $stat[STAT_GID] != $rgid && !$> ) {
-            chown( -1, $rgid, $name ) or return @stat;
-            $stat[STAT_GID]      = $rgid;
-            $stat[STAT_CHMODDED] = 1;
-        }
-        if ( defined $forceReadOnlyTimeLimit ) {
-            if ( -f _ && -s _ && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] ) {
-                $readOnlyFile = 1;
-                if ( !$> && $stat[STAT_UID] ) {
-                    chown( 0, -1, $name ) or return @stat;
-                    $stat[STAT_UID]      = 0;
-                    $stat[STAT_CHMODDED] = 1;
-                }
-            }
-            my $rwx1 = 0777 & $stat[STAT_MODE];
-            my $rwx2 = 0;
-            if ( -d _ ) {
-                $rwx2 = 0775;
-            }
-            elsif ( -f _ ) {
-                $rwx2 = $readOnlyFile && $stat[STAT_UID] ? 0400 : 0600;
-                $rwx2 += $readOnlyFile ? 044 : 064;
-                $rwx2 += 0111 if $rwx1 & 010;
-            }
-            if ( $rwx2 && $rwx2 != $rwx1 ) {
-                chmod $rwx2, $name or return @stat;
-                $stat[STAT_MODE] +=
-                  ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
-            }
-        }
-        @stat;
-    };
-}
-
-sub new {
-    my ( $class, %gidInfo ) = @_;
-    return $class unless %gidInfo;
-    bless \%gidInfo, $class;
-}
-
-sub gidInfo {
-    my ($self) = @_;
-    return $self if ref $self;
-    {
-        6    => 'imap',
-        20   => 'justlooking',
-        1030 => 'world',
-        1025 => [qw(1026 1028 1029 1032 1034 1037)],
-        1026 => [qw(1028 1029 1032 1034)],
-        1037 => 'mgt',
-        1066 => [qw(1028)],
-        1069 => [qw(1028 1066)],
-    };
-}
-
 sub statFromGid {
 
     my ( $self, $rgid ) = @_;
     return unless $rgid;
     my $gidInfo = $self->gidInfo;
-    my $myInfo = $gidInfo->{$rgid} || '';
+    my $myInfo  = $gidInfo->{$rgid} || '';
     return FileMgt106::FileSystem::managementStat($rgid)
-      if $myInfo eq 'mgt';
-    return FileMgt106::FileSystem::justLookingStat($rgid)
-      if $myInfo eq 'justlooking';
-    return FileMgt106::FileSystem::imapStat($rgid) if $myInfo eq 'imap';
-    return FileMgt106::FileSystem::publishedStat($rgid)
-      if $myInfo eq 'world';
+      if $myInfo && !@$myInfo;
 
-    # Categorisation system for gids:
-    # 775 = files with this gid are world readable.
-    # 431 = we can read files with this gid.
-    # 279 = we may take over files with this gid.
-    # otherwise we know nothing about this gid.
+    # Categorisation system for gids we know something about:
+    # 431: we can read files with this gid.
+    # 279: we may convert files with this gid to our gid.
     my %map = ( $rgid => 431 );
     if ( ref $myInfo eq 'ARRAY' ) {
         $map{$_} = 279 foreach @$myInfo;
     }
     while ( my ( $gid, $info ) = each %$gidInfo ) {
-        if ( ref $info eq 'ARRAY' ) {
-            $map{$gid} = 431 if grep { $rgid == $_ } @$info;
-        }
-        elsif ( $info eq 'mgt' ) {
-            $map{$gid} = 279;
-        }
-        elsif ( $info eq 'world' ) {
-            $map{$gid} = 775;
-        }
+        $map{$gid} = 431 if grep { $rgid == $_; } @$info;
     }
 
     my $allowGroupReadACL = sub { undef; };
@@ -318,7 +231,7 @@ sub statFromGid {
         my $rwx2 = 0;
         if ( -d _ ) {
             $rwx2 = 0700;
-            $rwx2 += 070 if $groupStatus && ( $rwx1 & 070 );
+            $rwx2 += 070        if $groupStatus && ( $rwx1 & 070 );
             $rwx2 += $rwx1 & 05 if $groupStatus == 775;
         }
         elsif ( -f _ ) {
@@ -334,7 +247,7 @@ sub statFromGid {
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
         }
         @stat;
-      }
+    }
 }
 
 1;
