@@ -93,6 +93,7 @@ sub makeMetadataExtractor {
             DateCreated
             DateTimeCreated
             DateTimeOriginal
+            GPSPosition
             ImageCount
             ImageHeight
             ImageWidth
