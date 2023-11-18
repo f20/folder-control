@@ -76,7 +76,7 @@ foreach (
 {
     m#^(.*?([^/]+))/\.git$# or next;
     chdir $1;
-    warn "* Not clean: $1\n" if `git status -s`;
+    warn "* Not clean: $1\n" if `git status --porcelain`;
     $localRepos{"Work/$2"} = $1
       unless lc($2) eq 'monorepo'
       || lc($2) eq 'catalogues';
