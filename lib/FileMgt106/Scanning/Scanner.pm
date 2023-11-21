@@ -76,8 +76,8 @@ sub new {
 
     my $regexNeverWatchFolder    = qr/^Y_|\.sparsebundle$/is;
     my $regexWatchFolderForADay  = qr/^[@#]/is;
-    my $regexAlwaysWatchFolder   = qr/^[OWXZ🗄️📎📨📬]_/is;
-    my $regexQuicklyMakeReadOnly = qr/^(?:🗄️|📎|📨|📬|X_|Y_)/is;
+    my $regexAlwaysWatchFolder   = qr/^[OWXZ🗄️📎✉️📨📬]_/is;
+    my $regexQuicklyMakeReadOnly = qr/^(?:🗄️|📎|✉️|📨|📬|X_|Y_)/is;
     my $regexNeverMakeReadOnly   = qr/\.sparsebundle$/is;
 
     my ( $dev, $rootLocid, $makeChildStasher, $makeChildBackuper, $repoDev );
