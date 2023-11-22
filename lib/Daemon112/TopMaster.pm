@@ -1,6 +1,6 @@
 package Daemon112::TopMaster;
 
-# Copyright 2012-2021 Franck Latrémolière and others.
+# Copyright 2012-2023 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -185,7 +185,7 @@ sub _chdir_and_filterd_list {
     opendir $handle, '.' or return;
     my @list =
       map { decode_utf8 $_; }
-      grep { !/^(?:\.\.?|\.DS_Store|Icon\r)$/s && !-l; } readdir $handle;
+      grep { !/^(?:\.\.?|\._,DS_Store|\.DS_Store|Icon\r)$/s && !-l; } readdir $handle;
     @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
     @list;
 }
