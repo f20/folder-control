@@ -185,7 +185,7 @@ sub _chdir_and_filterd_list {
     opendir $handle, '.' or return;
     my @list =
       map { decode_utf8 $_; }
-      grep { !/^(?:\.\.?|\._,DS_Store|\.DS_Store|Icon\r)$/s && !-l; } readdir $handle;
+      grep { !/^(?:\.\.?|\._\.DS_Store|\.DS_Store|Icon\r)$/s && !-l; } readdir $handle;
     @list = $topMaster->{'/filter'}->(@list) if $topMaster->{'/filter'};
     @list;
 }
