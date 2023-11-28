@@ -111,15 +111,23 @@ sub managementStat {
         my ( $name, $forceReadOnlyTimeLimit ) = @_;
         my @stat = lstat $name or return;
         $stat[STAT_CHMODDED] = 0;
-        return @stat
-          unless $forceReadOnlyTimeLimit
-          && -f _
-          && -s _
-          && $forceReadOnlyTimeLimit > $stat[STAT_MTIME];
-        if ( !$> && $stat[STAT_UID] ) {
-            chown( 0, -1, $name ) or return @stat;
-            $stat[STAT_UID]      = 0;
-            $stat[STAT_CHMODDED] = 1;
+        return @stat unless -d _ || -f _ && -s _;
+        my $readOnlyFile =
+             -f _
+          && !( $stat[STAT_MODE] & 022 )
+          && !( $stat[STAT_UID] && ( $stat[STAT_MODE] & 0200 ) );
+        if (   -f _
+            && -s _
+            && !$readOnlyFile
+            && defined $forceReadOnlyTimeLimit
+            && $forceReadOnlyTimeLimit > $stat[STAT_MTIME] )
+        {
+            $readOnlyFile = 1;
+            if ( !$> && $stat[STAT_UID] ) {
+                chown( 0, -1, $name ) or return @stat;
+                $stat[STAT_UID]      = 0;
+                $stat[STAT_CHMODDED] = 1;
+            }
         }
         my $rwx1 = 0777 & $stat[STAT_MODE];
         my $rwx2 = 0;
