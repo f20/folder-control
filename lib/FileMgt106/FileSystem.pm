@@ -122,8 +122,15 @@ sub managementStat {
             $stat[STAT_CHMODDED] = 1;
         }
         my $rwx1 = 0777 & $stat[STAT_MODE];
-        my $rwx2 = ( $stat[STAT_UID] ? 0555 : 0755 ) & $stat[STAT_MODE];
-        if ( $rwx2 != $rwx1 ) {
+        my $rwx2 = 0;
+        if ( -d _ ) {
+            $rwx2 = 0770;
+        }
+        elsif ( -f _ ) {
+            $rwx2 = $readOnlyFile && $stat[STAT_UID] ? 0440 : 0660;
+            $rwx2 += $rwx1 & 0110;
+        }
+        if ( $rwx2 && $rwx2 != $rwx1 ) {
             chmod $rwx2, $name or return @stat;
             $stat[STAT_MODE] += ( $stat[STAT_CHMODDED] = $rwx2 - $rwx1 );
         }
