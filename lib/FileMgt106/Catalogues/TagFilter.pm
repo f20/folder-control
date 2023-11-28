@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::TagFilter;
 
-# Copyright 2021-2023 Franck Latrémolière.
+# Copyright 2011-2021 Franck Latr√©moli√®re and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -86,8 +86,7 @@ sub result {
 
 sub getMask {
     my ( $self, $tag ) = @_;
-    $tag =~ s#.*/##s;
-    $tag =~ s#\..*##s;
+    $tag =~ s#.*[\./]##s;
     $tag =~ s#\s+#-#sg;
     my ($tags) = @$self;
     my $tagid = 0;
