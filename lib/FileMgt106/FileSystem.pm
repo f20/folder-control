@@ -127,7 +127,7 @@ sub managementStat {
             $rwx2 = 0770;
         }
         elsif ( -f _ ) {
-            $rwx2 = $readOnlyFile && $stat[STAT_UID] ? 0440 : 0660;
+            $rwx2 = !$readOnlyFile ? 0660 : $stat[STAT_UID] ? 0440 : 0640;
             $rwx2 += $rwx1 & 0110;
         }
         if ( $rwx2 && $rwx2 != $rwx1 ) {
