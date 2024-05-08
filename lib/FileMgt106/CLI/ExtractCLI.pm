@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ExtractCLI;
 
-# Copyright 2011-2023 Franck Latrémolière and others.
+# Copyright 2011-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,8 +26,8 @@ package FileMgt106::CLI::ExtractCLI;
 use warnings;
 use strict;
 
-use Encode qw(decode_utf8);
-use File::Basename qw(dirname basename);
+use Encode                qw(decode_utf8);
+use File::Basename        qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Catalogues::LoadSaveNormalize;
 
@@ -201,10 +201,11 @@ sub process {
             next;
         }
 
-        if (/^-+find=?(.+)/i) {
+        if (/^-+(i)?find=?(.+)/i) {
             require FileMgt106::Catalogues::FindFilter;
             $catalogueProcessor =
-              FileMgt106::Catalogues::FindFilter->processor($1);
+              FileMgt106::Catalogues::FindFilter->processor(
+                $1 ? qr/$2/i : qr/$2/ );
             $outputStream = \*STDOUT;
             next;
         }
