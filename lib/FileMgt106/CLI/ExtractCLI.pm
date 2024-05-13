@@ -174,14 +174,20 @@ sub process {
             next;
         }
 
-        if (/-+metadata(basic|simple)?/i) {
+        if (/-+metadata(basic|wide)?/i) {
             require FileMgt106::Extraction::MetadataReports;
+            my $shape = $1 ? lc($1) : 'tall';
             $catalogueProcessor =
-              $1
-              ? FileMgt106::Extraction::MetadataReports->makeFiledataExtractor(
-                $hintsFile)
-              : FileMgt106::Extraction::MetadataReports->makeMetadataExtractor(
-                $hintsFile, catfile( dirname($hintsFile), '~$metadata' ) );
+              FileMgt106::Extraction::MetadataReports->makeMetadataExtractor(
+                $hintsFile,
+                $shape eq 'basic'
+                ? undef
+                : catfile( dirname($hintsFile), '~$metadata' ),
+                ,
+                undef,
+                undef,
+                $shape
+              );
             next;
         }
 

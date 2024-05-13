@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::MetadataReports;
 
-# Copyright 2017-2021 Franck Latrémolière and others.
+# Copyright 2017-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -77,41 +77,56 @@ sub makeFiledataExtractor {
 
 sub makeMetadataExtractor {
 
-    ( undef, my $hintsFile, my $mdbFile, my $tsvStream, my $nWorkers ) = @_;
+    my ( $self_discard, $hintsFile, $mdbFile, $tsvStream, $nWorkers, $shape, )
+      = @_;
     $tsvStream ||= \*STDOUT;
     binmode $tsvStream, ':utf8';
     $nWorkers ||= 12;
+    my @properties = $shape eq 'tall'
+      ? qw(
+      CreateDate
+      DateCreated
+      DateTimeCreated
+      DateTimeOriginal
+      GPSPosition
+      ImageCount
+      ImageHeight
+      ImageWidth
+      LensID
+      LensSpec
+      MemoryCardNumber
+      ModifyDate
+      PageCount
+      PDFVersion
+      SerialNumber
+      ShutterCount
+      )
+      : $shape eq 'wide' ? qw(
+      DateTimeOriginal
+      GPSPosition
+      ImageHeight
+      ImageWidth
+      SerialNumber
+      ShutterCount
+      )
+      : qw();
 
-    my $outputWriter = sub {
+    my $outputWriter = @properties > 7
+      ? sub {
         my ( $part1, $part2 ) = @_ or return;
         my $sha1hex = $part1->{sha1hex};
         print {$tsvStream} join( "\t", $sha1hex, $_, $part1->{$_} ) . "\n"
           foreach qw(filename);
-        foreach (
-            qw(
-            CreateDate
-            DateCreated
-            DateTimeCreated
-            DateTimeOriginal
-            GPSPosition
-            ImageCount
-            ImageHeight
-            ImageWidth
-            LensID
-            LensSpec
-            MemoryCardNumber
-            ModifyDate
-            PageCount
-            PDFVersion
-            SerialNumber
-            ShutterCount
-            )
-          )
-        {
-            print {$tsvStream} join( "\t", $sha1hex, $_, $part2->{$_} ) . "\n"
-              if $part2->{$_};
-        }
-    };
+        print {$tsvStream} join( "\t", $sha1hex, $_, $part2->{$_} ) . "\n"
+          foreach grep { defined $part2->{$_}; } @properties;
+      }
+      : sub {
+        my ( $part1, $part2 ) = @_ or return;
+        print {$tsvStream} join( "\t",
+            $part1->{sha1hex}, $part1->{filename},
+            map { defined $_ ? $_ : ''; } @{$part2}{@properties} )
+          . "\n";
+      };
 
     require FileMgt106::Database;
 
