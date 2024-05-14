@@ -103,11 +103,11 @@ sub makeMetadataExtractor {
       )
       : $shape eq 'wide' ? qw(
       DateTimeOriginal
-      GPSPosition
       ImageHeight
       ImageWidth
       SerialNumber
       ShutterCount
+      GPSPosition
       )
       : qw();
 
