@@ -30,11 +30,10 @@ Daemon112::Daemon->run($module, $nickname, $logging, @args);
 Things to do are either:
 1. Scheduled in an ArrayQueue:
     closures, or objects capable of running the "dequeued" method.
-2. Watched in a Daemon112::KQueue (Darwin/BSD only):
+2. Watched in a Daemon112::KQueue or Daemon112::Inotify:
     closures, or objects capable of running the "kevented" method.
 
-Both closures and methods receive $runner initialised as $module->new( $qu, $pq, $kq, @args).
-For KQueue events, the kevent structure (array reference) is an extra parameter.
+The arguments supplied to the closure or method are $runner, initialised as $module->new( $qu, $pq, $kq, @args), and where applicable a kevent array reference or similar.
 
 =cut
 
@@ -66,7 +65,7 @@ sub run {
     my ( $class, $module, $nickName, $logging, @args ) = @_;
     my $self = bless \$module, $class;
 
-    # NB: "perl:" is needed to avoid confusing the rc.d script.
+    # NB: "perl: " in $0 is needed to avoid confusing the rc.d script.
     $0 = 'perl: Daemon112 ' . ( $nickName ||= $module );
 
     if ( !( $logging ||= '' ) ) {
