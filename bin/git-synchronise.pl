@@ -126,7 +126,7 @@ if ($monorepoUrl) {
               or next;
             chdir $worktreePath or next;
             warn "* Pulling $worktreeBranch from $repoKey\n";
-`git pull -q --no-tags '$monorepoUrl' refs/heads/$repoKey/$worktreeBranch`
+`git pull --allow-unrelated -q --no-tags '$monorepoUrl' refs/heads/$repoKey/$worktreeBranch`
               if delete $toPull{$repoKey}{$worktreeBranch};
         }
         if (
