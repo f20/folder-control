@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2021 Franck Latrémolière and others.
+# Copyright 2011-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -211,7 +211,7 @@ sub makeProcessor {
             }
             elsif (/^-+read-?only/) {
                 push @scanMasterCliConfigClosures, sub {
-                    $_[0]->setFrotl(604_800);
+                    $_[0]->setFrotl(-42);
                 };
                 next;
             }

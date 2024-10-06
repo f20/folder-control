@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::ScanMaster;
 
-# Copyright 2012-2023 Franck Latrémolière and others.
+# Copyright 2012-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -284,7 +284,7 @@ sub dequeued {
           ? ( $self->[SM_FROTL] ? $time + $self->[SM_FROTL] : 0 )
           : $rgid < 500 ? 0
           : $self->[SM_DIR] =~ m#/Y_#i ? $time + 604_800
-          : $self->[SM_DIR] =~ m#/X_#i ? $time - 13
+          : $self->[SM_DIR] =~ m#/X_#i ? $time - 42
           :                              $time - 4_233_600;
         $self->[SM_REPOPAIR][1] =
           POSIX::strftime( 'Y_Cellar %Y-%m-%d', @refLocaltime )
@@ -383,7 +383,7 @@ sub watchFolder {
         $frotl, $stasher, $backuper, $priority, $whatToWatch
     ) = @_;
     $whatToWatch ||= '.';
-    $frotl = -13 if $frotl && $frotl > time - 300;
+    $frotl = -42 if $frotl && $frotl > time - 300;
 
     # A controller rescans a single folder, but can be triggered
     # by changes to several files and folders.

@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::Scanner;
 
-# Copyright 2011-2023 Franck Latrémolière and others.
+# Copyright 2011-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -582,7 +582,7 @@ sub new {
                     my $forceReadOnlyTimeLimitForChild =
                       $forceReadOnlyTimeLimit;
                     if ( $allowActions && /$regexQuicklyMakeReadOnly/is ) {
-                        $forceReadOnlyTimeLimitForChild = $timeNow - 13
+                        $forceReadOnlyTimeLimitForChild = $timeNow - 42
                           unless $forceReadOnlyTimeLimit
                           && $forceReadOnlyTimeLimit > $timeNow;
                     }

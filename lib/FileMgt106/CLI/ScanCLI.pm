@@ -1,6 +1,6 @@
 package FileMgt106::CLI::ScanCLI;
 
-# Copyright 2011-2019 Franck Latrémolière, Reckon LLP and others.
+# Copyright 2011-2024 Franck Latrémolière, Reckon LLP and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -136,7 +136,7 @@ sub scan_command_top {
             $hints->beginInteractive;
             Daemon112::TopMaster->new(
                 '/scanMasterConfig' => sub {
-                    $_[0]->setFrotl(604_800) if $readOnlyFlag;
+                    $_[0]->setFrotl(-42) if $readOnlyFlag;
                     $_[0]->prohibitActions   if $noActionsFlag;
                 }
             )->attach( decode_utf8 getcwd() )->dequeued(
