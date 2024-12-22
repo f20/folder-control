@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright 2019-2023 Franck Latrémolière and others.
+# Copyright 2019-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -45,13 +45,11 @@ elsif ( $scriptPath =~ m#^(/(?:Users|Volumes)/([^/]+))#s ) {
       unless $codeRepo && substr( $codeRepo, 0, length $homePath ) eq $homePath;
 }
 
-my $monorepoUrl = $ARGV[0];
-if ($monorepoUrl) {
-    $monorepoUrl = rel2abs($monorepoUrl) unless $monorepoUrl =~ /^ssh:/;
-    warn "### Begun: $selfid to synchronise with $monorepoUrl\n";
-}
-else {
-    warn "### Begun: $selfid\n";
+warn "### Begun: $selfid\n";
+my @monorepoUrl = @ARGV;
+foreach (@monorepoUrl) {
+    $_ = rel2abs($_) unless /^ssh:/;
+    warn "### Begun: synchronise with $_\n";
 }
 
 my %localRepos;
@@ -81,11 +79,14 @@ foreach (
       unless lc($2) eq 'monorepo'
       || lc($2) eq 'catalogues';
 }
-if ($monorepoUrl) {
+
+if (@monorepoUrl) {
     my %refsFromMonorepoAndLocal;
-    foreach ( split /\n/, `git ls-remote '$monorepoUrl'` ) {
-        my ( $sha1, $ref ) = split /\s+/;
-        $refsFromMonorepoAndLocal{$ref}[0] = $sha1;
+    for ( my $i = 0 ; $i < @monorepoUrl ; ++$i ) {
+        foreach ( split /\n/, `git ls-remote '$monorepoUrl[$i]'` ) {
+            my ( $sha1, $ref ) = split /\s+/;
+            $refsFromMonorepoAndLocal{$ref}[$i] = $sha1;
+        }
     }
     while ( my ( $repoKey, $path ) = each %localRepos ) {
         next unless defined $path;
@@ -95,39 +96,40 @@ if ($monorepoUrl) {
             foreach (@showRef) {
                 my ( $sha1, $ref ) = split /\s+/;
                 $ref =~ s#^(refs/[^/]+)#$1/$repoKey#;
-                $refsFromMonorepoAndLocal{$ref}[1] = $sha1;
+                $refsFromMonorepoAndLocal{$ref}[ 0 + @monorepoUrl ] = $sha1;
             }
         }
         else {
-            $refsFromMonorepoAndLocal{"refs/heads/$repoKey/main"}[1] =
-              'not yet';
+            $refsFromMonorepoAndLocal{"refs/heads/$repoKey/main"}
+              [ 0 + @monorepoUrl ] = 'no main yet';
         }
     }
+
     my ( %toPull, %toPush );
     foreach ( sort keys %refsFromMonorepoAndLocal ) {
         my ( $repoKey, $branch ) = m#^refs/heads/([^/]+/[^/]+)/(.+)$# or next;
-        my ( $mono,    $local )  = @{ $refsFromMonorepoAndLocal{$_} };
+        my @mono  = @{ $refsFromMonorepoAndLocal{$_} }[ 0 .. $#monorepoUrl ];
+        my $local = $refsFromMonorepoAndLocal{$_}[ 0 + @monorepoUrl ];
         next unless defined $local;
-        if ( !defined $mono ) {
-            $toPush{$repoKey}{$branch} = 1;
-        }
-        elsif ( $local ne $mono ) {
-            $toPull{$repoKey}{$branch} = 1
-              unless $repoKey eq "Autocats/$selfid"
-              || $repoKey eq "Backup/$selfid";
-            $toPush{$repoKey}{$branch} = 1 unless $local eq 'not yet';
-        }
+        next unless grep { !defined $_ || $_ ne $local } @mono;
+        $toPull{$repoKey}{$branch} = 1
+          unless $repoKey eq "Autocats/$selfid";
+        $toPush{$repoKey}{$branch} = 1 unless $local eq 'no main yet';
+
     }
+
     foreach my $repoKey ( keys %toPull ) {
         chdir $localRepos{$repoKey} or die $repoKey;
         foreach ( split /\n\n/, `git worktree list --porcelain` ) {
             my ( $worktreePath, $worktreeBranch ) =
               m/worktree\s*(.+)\n.*\nbranch\s*refs\/heads\/(\S+)/s
               or next;
+            next unless delete $toPull{$repoKey}{$worktreeBranch};
             chdir $worktreePath or next;
             warn "* Pulling $worktreeBranch from $repoKey\n";
-`git pull --allow-unrelated -q --no-tags '$monorepoUrl' refs/heads/$repoKey/$worktreeBranch`
-              if delete $toPull{$repoKey}{$worktreeBranch};
+            for ( my $i = 0 ; $i < @monorepoUrl ; ++$i ) {
+`git pull --allow-unrelated -q --no-tags '$monorepoUrl[$i]' refs/heads/$repoKey/$worktreeBranch`;
+            }
         }
         if (
             my @mappings = map { "refs/heads/$repoKey/$_:refs/heads/$_"; }
@@ -137,9 +139,12 @@ if ($monorepoUrl) {
             warn '* Fetching '
               . ( @mappings > 1 ? ( @mappings . ' branches' ) : 'one branch' )
               . " from $repoKey\n";
-            `git fetch -q --no-tags '$monorepoUrl' @mappings`;
+            for ( my $i = 0 ; $i < @monorepoUrl ; ++$i ) {
+                `git fetch -q --no-tags '$monorepoUrl[$i]' @mappings`;
+            }
         }
     }
+
     foreach my $repoKey ( keys %toPush ) {
         chdir $localRepos{$repoKey} or die $repoKey;
         my @mappings = map { "refs/heads/$_:refs/heads/$repoKey/$_"; }
@@ -150,7 +155,9 @@ if ($monorepoUrl) {
             ? ( @mappings . ' branches' )
             : 'one branch'
           ) . " to $repoKey\n";
-        `git push -q --no-tags '$monorepoUrl' @mappings`;
+        for ( my $i = 0 ; $i < @monorepoUrl ; ++$i ) {
+            `git push -q --no-tags '$monorepoUrl[$i]' @mappings`;
+        }
     }
 }
 
@@ -161,7 +168,7 @@ if ( $codeRepo && chdir $codeRepo ) {
         system qw(git pull -q --no-edit --no-tags),
           defined $localRepos{$repoKey}
           ? ( $localRepos{$repoKey}, $branch )
-          : ( $monorepoUrl, $_ );
+          : ( $monorepoUrl[0], $_ );
     }
 }
 
