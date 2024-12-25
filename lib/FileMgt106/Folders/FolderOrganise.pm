@@ -1,6 +1,6 @@
 package FileMgt106::Folders::FolderOrganise;
 
-# Copyright 2011-2023 Franck Latrémolière and others.
+# Copyright 2011-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -26,10 +26,10 @@ package FileMgt106::Folders::FolderOrganise;
 use warnings;
 use strict;
 use utf8;
-use Encode qw(decode_utf8 encode_utf8);
-use File::Spec::Functions qw(catfile catdir);
+use Encode                 qw(decode_utf8 encode_utf8);
+use File::Spec::Functions  qw(catfile catdir);
 use FileMgt106::FileSystem qw(STAT_MTIME);
-use POSIX ();
+use POSIX                  ();
 
 sub flattenCwd {
     require Digest::SHA;
@@ -63,7 +63,7 @@ sub flattenCwd {
             my $name = ( /^$date/ ? '' : "$date " ) . $_ . $r_;
             $name =
               substr( $name, 0, 70 ) . ' #x' . Digest::SHA::sha1_hex($name)
-              if length( encode_utf8 $name) > 120;
+              if length( encode_utf8 $name ) > 120;
             link $p, join '', $fol, '/', $name, $e
               or warn $p;
         }
@@ -255,6 +255,37 @@ sub categoriseByDay {
         my $p3 = "$path/$date/$_";
         $p3 .= '_' while -e $p3;
         rename $p2, $p3;
+    }
+}
+
+sub categoriseByCluster {
+    my ($path) = @_;
+    my $maxt = 0;
+    my $dh;
+    opendir $dh, $path or return;
+    my @list =
+      sort { $a->[0] <=> $b->[0]; }
+      map {
+        decode_utf8 $_;
+        -f "$path/$_" ? [ ( stat _ )[STAT_MTIME], $_ ] : ();
+      }
+      grep { !/^\./s } readdir $dh;
+    my ( $clusterFolder, $clusterLast, $clusterCount );
+    foreach (@list) {
+        if ( !defined $clusterFolder
+            || $_->[0] > 7200 + $clusterLast - 4 * $clusterCount )
+        {
+            $clusterFolder = POSIX::strftime( '%Y%m%dT%H%M%S',
+                localtime( $clusterLast = $_->[0] ) );
+            $clusterCount = 0;
+            mkdir "$path/$clusterFolder-$clusterCount";
+        }
+        my $p2 = "$path/$_->[1]";
+        my $p3 = "$path/$clusterFolder-$clusterCount/$_->[1]";
+        $p3 .= '_' while -e $p3;
+        rename $p2, $p3;
+        rename "$path/$clusterFolder-$clusterCount",
+          "$path/$clusterFolder-" . ++$clusterCount;
     }
 }
 

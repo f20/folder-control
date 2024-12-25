@@ -28,9 +28,9 @@ use strict;
 use utf8;
 
 require POSIX;
-use Cwd qw(getcwd);
-use Encode qw(decode_utf8);
-use File::Basename qw(dirname basename);
+use Cwd                   qw(getcwd);
+use Encode                qw(decode_utf8);
+use File::Basename        qw(dirname basename);
 use File::Spec::Functions qw(catdir catfile rel2abs);
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_GID STAT_MTIME);
@@ -65,13 +65,13 @@ sub makeProcessor {
                 $scanners{$dir} = FileMgt106::Scanning::Scanner->new(
                     $dir, $hints, $self->fileSystemObj->statFromGid($rgid)
                 )
-              )->scan(
+            )->scan(
                 0,
                 $scalar,
                 $options->{stash}
                 ? [ $options->{stash}, 'Y_Stash ' . basename($dir) ]
                 : (),
-              );
+            );
         };
         warn "scan $dir: $@" if $@;
         $hints->commit;
@@ -100,6 +100,11 @@ sub makeProcessor {
                 warn "One folder per day for files in $dir";
                 require FileMgt106::Folders::FolderOrganise;
                 FileMgt106::Folders::FolderOrganise::categoriseByDay($dir);
+            }
+            if ( $cleaningFlag =~ /clusterfolder/i ) {
+                warn "Cluster folders for files in $dir";
+                require FileMgt106::Folders::FolderOrganise;
+                FileMgt106::Folders::FolderOrganise::categoriseByCluster($dir);
             }
             if ( $cleaningFlag =~ /datemark/i ) {
                 warn "Datemarking $dir";
@@ -178,7 +183,7 @@ sub makeProcessor {
                 $syncDestination = decode_utf8 getcwd();
                 next;
             }
-            elsif (/^-+((?:clean|flat|datemark|dayfolder|restamp).*)$/) {
+            elsif (/^-+((?:clean|flat|datemark|dayfolder|restamp|cluster).*)$/) {
                 $cleaningFlag = $1;
                 next;
             }
