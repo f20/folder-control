@@ -1,6 +1,6 @@
 package FileMgt106::Catalogues::ConsolidateFilter;
 
-# Copyright 2018-2021 Franck Latrémolière.
+# Copyright 2018-2024 Franck Latrémolière.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -31,20 +31,18 @@ sub new {
     bless {}, $class;
 }
 
-
-
 sub baseProcessor {
     my ($seen) = @_;
     my $preloader;
     $preloader = sub {
-        my ($hash)   = @_;
+        my ($hash)      = @_;
         my $countUnseen = 0;
-        my $countSeen = 0;
+        my $countSeen   = 0;
         foreach ( values %$hash ) {
             if ( ref $_ eq 'HASH' ) {
                 my ( $cUnseen, $cSeen ) = $preloader->($_);
                 $countUnseen += $cUnseen;
-                $countSeen += $cSeen;
+                $countSeen   += $cSeen;
             }
             elsif ( defined $_ && /([0-9a-fA-F]{40})/ ) {
                 my $sha1 = lc $1;
@@ -55,7 +53,7 @@ sub baseProcessor {
         $countUnseen, $countSeen;
     };
     sub {
-        my ( $scalar, $path ) = @_ or return;
+        my ( $scalar,      $path )      = @_ or return;
         my ( $countUnseen, $countSeen ) = $preloader->($scalar);
         warn "$path: $countUnseen new, $countSeen duplicated.\n";
         return;
@@ -69,14 +67,14 @@ sub unseenProcessor {
         my ($hash) = @_;
         my %newHash;
         my $countUnseen = 0;
-        my $countSeen = 0;
+        my $countSeen   = 0;
         foreach ( keys %$hash ) {
             my $w = $hash->{$_};
             if ( ref $w eq 'HASH' ) {
                 my ( $nh, $cUnseen, $cSeen ) = $filter->($w);
                 $newHash{$_} = $nh if $cUnseen;
                 $countUnseen += $cUnseen;
-                $countSeen += $cSeen;
+                $countSeen   += $cSeen;
             }
             elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
                 my $sha1 = lc $1;
@@ -114,14 +112,14 @@ sub seenProcessor {
         my ($hash) = @_;
         my %newHash;
         my $countUnseen = 0;
-        my $countSeen = 0;
+        my $countSeen   = 0;
         foreach ( keys %$hash ) {
             my $w = $hash->{$_};
             if ( ref $w eq 'HASH' ) {
                 my ( $nh, $cUnseen, $cSeen ) = $filter->($w);
                 $newHash{$_} = $nh if $cSeen;
                 $countUnseen += $cUnseen;
-                $countSeen += $cSeen;
+                $countSeen   += $cSeen;
             }
             elsif ( defined $w && $w =~ /([0-9a-fA-F]{40})/ ) {
                 my $sha1 = lc $1;
@@ -149,7 +147,6 @@ sub seenProcessor {
         return;
     };
 }
-
 
 sub duplicationsByPairProcessor {
     my %objectsToExamine;
@@ -188,7 +185,6 @@ sub duplicationsByPairProcessor {
     };
 }
 
-
 sub consolidateProcessor {
     my $runner;
     $runner = sub {
@@ -203,7 +199,16 @@ sub consolidateProcessor {
                 next;
             }
             next if lc $accumulator->{$k} eq lc $v;
-            warn "Conflict for $k: base $accumulator->{$k}, new $v\n";
+            if ( $v =~ /\// ) {
+                warn "Ignored for $k: $v, keeping $accumulator->{$k}\n";
+              next:
+            }
+            if ( $accumulator->{$k} =~ /\// ) {
+                warn "Repaired for $k: $v, replacing $accumulator->{$k}\n";
+                $accumulator->{$k} = $v;
+                next;
+            }
+            warn "Conflict for $k: $accumulator->{$k}, $v\n";
             my ( $base, $extension ) = ( $k =~ m#^(.*?)(\.[a-zA-Z]?\S*)$#s );
             ( $base, $extension ) = ( $k, '' ) unless defined $extension;
             $base .= '~';
@@ -227,6 +232,5 @@ sub consolidateProcessor {
         return;
     };
 }
-
 
 1;
