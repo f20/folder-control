@@ -31,11 +31,11 @@ use overload
   '0+'     => sub { $_[0] },
   fallback => 1;
 
-use Encode qw(decode_utf8);
-use Storable qw(freeze);
+use Encode      qw(decode_utf8);
+use Storable    qw(freeze);
 use Digest::SHA qw(sha1 sha1_base64);
 require POSIX;
-use File::Basename qw(basename dirname);
+use File::Basename        qw(basename dirname);
 use File::Spec::Functions qw(catdir catfile splitdir);
 use FileMgt106::Scanning::Scanner;
 use FileMgt106::FileSystem qw(STAT_GID STAT_MTIME);
@@ -58,6 +58,7 @@ use constant {
     SM_WATCHERS     => 14,
     SM_WATCHING     => 15,
     SM_RGID         => 16,
+    SM_NOCATINDB    => 17,
 };
 
 sub new {
@@ -95,6 +96,7 @@ sub setRepoloc {
 
     if ($resolveFlag) {
         require FileMgt106::Scanning::ResolveFilter;
+        $self->[SM_NOCATINDB] = 1;
         $self->addScalarFilter(
             sub {
                 my ( $runner, $scalar ) = @_;
@@ -126,11 +128,13 @@ sub setRepoloc {
             my $run = sub {
                 my ($hints) = @_;
                 return unless $scalar;
-                my $result =
-                  $hints->{updateSha1if}
-                  ->( $self->[SM_SHA1], $self->[SM_ROOTLOCID] );
-                $hints->commit;
-                return if defined $result && $result == 0;
+                unless ( $self->[SM_NOCATINDB] ) {
+                    my $result =
+                      $hints->{updateSha1if}
+                      ->( $self->[SM_SHA1], $self->[SM_ROOTLOCID] );
+                    $hints->commit;
+                    return if defined $result && $result == 0;
+                }
                 unless ( chdir $gitFolder ) {
                     warn "Cannot chdir to $gitFolder: $!";
                     return;
@@ -138,7 +142,7 @@ sub setRepoloc {
                 warn "Catalogue update for $self";
                 my %fileActionMap;
                 undef $fileActionMap{"$name.json"} if -e "$name.json";
-                undef $fileActionMap{ decode_utf8 $_}
+                undef $fileActionMap{ decode_utf8 $_ }
                   foreach <"$name \$*.json">;
                 while ( my ( $k, $v ) = each %$scalar ) {
                     if ( ref $v eq 'HASH' && defined $v->{'.caseid'} ) {
