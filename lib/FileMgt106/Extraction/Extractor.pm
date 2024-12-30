@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2023 Franck Latrémolière and others.
+# Copyright 2011-2024 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@ package FileMgt106::Extraction::Extractor;
 
 use strict;
 use warnings;
-use Encode qw(decode_utf8);
+use Encode                qw(decode_utf8);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem
@@ -92,10 +92,10 @@ sub makeSimpleExtractor {
 
 sub makeHintsExtractor {
 
-    my ( $hintsFile, $acceptor, $devNo ) = @_;
+    my ( $hintsFile, $acceptor, $prefDevNo ) = @_;
     my ( $hints, $searchSha1 );
 
-    $devNo ||= ( stat $hintsFile )[STAT_DEV];
+    $prefDevNo ||= ( stat $hintsFile )[STAT_DEV];
     require Digest::SHA;
     my $sha1Machine = new Digest::SHA;
 
@@ -127,7 +127,7 @@ sub makeHintsExtractor {
                 return $done{$key} ? () : $what;
             }
             my $sha1     = pack( 'H*', $key );
-            my $iterator = $searchSha1->( $sha1, $devNo );
+            my $iterator = $searchSha1->( $sha1, $prefDevNo );
             my @candidates;
             while ( my ( $path, $statref, $locid ) = $iterator->() ) {
                 next unless -f _ && -r _;
@@ -298,9 +298,9 @@ sub makeInfoExtractor {
 }
 
 sub makeDedupExtractor {
-    my ( $hintsFile, $acceptor, $devNo ) = @_;
+    my ( $hintsFile, $prefDevNo ) = @_;
     my ( $hints, $searchSha1 );
-    $devNo ||= ( stat $hintsFile )[STAT_DEV];
+    $prefDevNo ||= ( stat $hintsFile )[STAT_DEV];
     binmode STDOUT, ':utf8';
     my %done = ( 'da39a3ee5e6b4b0d3255bfef95601890afd80709' => undef );
     my $processScal;
@@ -328,7 +328,7 @@ sub makeDedupExtractor {
             my $sha1hex = lc $1;
             return if exists $done{$sha1hex};
             undef $done{$sha1hex};
-            my $iterator = $searchSha1->( pack( 'H*', $sha1hex ), $devNo );
+            my $iterator = $searchSha1->( pack( 'H*', $sha1hex ), $prefDevNo );
             my ( @trusted, @untrusted );
             while ( my ( $path, $statref, $locid ) = $iterator->() ) {
                 next unless -f _;
@@ -346,7 +346,7 @@ sub makeDedupExtractor {
                 }
             }
             my ( $master, @trustedSlaves ) = sort @trusted;
-            if ( -f $master ) {
+            if ( defined $master && -f $master ) {
                 my $masterEscaped = $master;
                 $masterEscaped =~ s/'/'"'"'/g;
                 foreach (@trustedSlaves) {

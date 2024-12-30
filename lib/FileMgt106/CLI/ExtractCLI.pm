@@ -294,7 +294,8 @@ sub process {
         if (/^-+dedup/i) {
             require FileMgt106::Extraction::Extractor;
             ( $catalogueProcessor, $queryProcessor ) =
-              FileMgt106::Extraction::Extractor::makeDedupExtractor($hintsFile);
+              FileMgt106::Extraction::Extractor::makeDedupExtractor( $hintsFile,
+                $favDevNo );
             next;
         }
 
