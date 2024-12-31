@@ -25,6 +25,7 @@ package FileMgt106::Extraction::Extractor;
 
 use strict;
 use warnings;
+use utf8;
 use Encode                qw(decode_utf8);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
@@ -303,15 +304,19 @@ sub makeDedupExtractor {
     $prefDevNo ||= ( stat $hintsFile )[STAT_DEV];
     binmode STDOUT, ':utf8';
     my %done = ( 'da39a3ee5e6b4b0d3255bfef95601890afd80709' => undef );
+    my %countPrefix;
     my $processScal;
     $processScal = sub {
         my ($what) = @_;
         if ( !defined $what ) {
+            foreach ( sort { $a->[0] <=> $b->[0]; } values %countPrefix ) {
+                print "# $_->[0] files replaced in $_->[1]…\n";
+            }
             undef $searchSha1;
             $hints->disconnect if $hints;
             undef $hints;
+            return;
         }
-        return unless defined $what;
         unless ($searchSha1) {
             $hints      = FileMgt106::Database->new( $hintsFile, 1 );
             $searchSha1 = $hints->{searchSha1};
@@ -343,9 +348,14 @@ sub makeDedupExtractor {
                 }
                 else {
                     push @trusted, $path;
+                    next if @trusted == 1;
+                    my $cp = $countPrefix{ $statref->[STAT_DEV] } //=
+                      [ 0, $path ];
+                    ++$cp->[0];
+                    while ( $path !~ /^\Q$cp->[1]\E/ ) { chop $cp->[1]; }
                 }
             }
-            my ( $master, @trustedSlaves ) = sort @trusted;
+            my ( $master, @trustedSlaves ) = @trusted;
             if ( defined $master && -f $master ) {
                 my $masterEscaped = $master;
                 $masterEscaped =~ s/'/'"'"'/g;
