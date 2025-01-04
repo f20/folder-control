@@ -626,7 +626,7 @@ create table if not exists locations (
 );
 create unique index if not exists locationsparidname on locations (parid, name);
 create index if not exists locationssha1 on locations (sha1);
-create index if not exists locationsnamerootidino on locations (name, rootid, ino);
+create index if not exists locationsrootidino on locations (rootid, ino);
 commit;
 EOSQL
 
