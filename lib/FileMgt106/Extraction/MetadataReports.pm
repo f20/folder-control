@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::MetadataReports;
 
-# Copyright 2017-2024 Franck Latrémolière and others.
+# Copyright 2017-2025 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -77,7 +77,7 @@ sub makeFiledataExtractor {
 
 sub makeMetadataExtractor {
 
-    my ( $self_discard, $hintsFile, $mdbFile, $tsvStream, $nWorkers, $shape, )
+    my ( $self_discard, $hintsFile, $mdbFile, $shape, $tsvStream, $nWorkers, )
       = @_;
     $tsvStream ||= \*STDOUT;
     binmode $tsvStream, ':utf8';
@@ -108,6 +108,7 @@ sub makeMetadataExtractor {
       SerialNumber
       ShutterCount
       GPSPosition
+      MemoryCardNumber
       )
       : qw();
 
