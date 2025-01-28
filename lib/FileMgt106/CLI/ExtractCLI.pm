@@ -119,8 +119,24 @@ sub process {
             next;
         }
 
-        if (/^-+split/) {
-            $catalogueProcessor = sub {
+        if (/^-+split(alpha([0-9]*))?/) {
+            my $acount = $2 || 1;
+            $catalogueProcessor = $1
+              ? sub {
+                my ( $scalar, $path ) = @_ or return;
+                my %frag;
+                while ( my ( $k, $v ) = each %$scalar ) {
+                    my $section = uc( substr( $k, 0, $acount ) );
+                    $section =~ s/[^0-9A-Z_]/+/sg;
+                    $frag{$section}{$k} = $v;
+                }
+                $path = '_' unless defined $path;
+                FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
+                    "${path}=$_.jbz", $frag{$_} )
+                  foreach keys %frag;
+                return;
+              }
+              : sub {
                 my ( $scalar, $path ) = @_ or return;
                 $path = '_' unless defined $path;
                 while ( my ( $k, $v ) = each %$scalar ) {
@@ -131,7 +147,7 @@ sub process {
                         ref $v ? $v : { $k => $v } );
                 }
                 return;
-            };
+              };
             next;
         }
 
