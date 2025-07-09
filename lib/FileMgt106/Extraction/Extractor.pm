@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2024 Franck Latrémolière and others.
+# Copyright 2011-2025 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,24 +27,23 @@ use strict;
 use warnings;
 use utf8;
 use Encode                qw(decode_utf8);
+use File::Basename        qw(dirname);
 use File::Spec::Functions qw(catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem
   qw(STAT_DEV STAT_INO STAT_MODE STAT_UID STAT_SIZE STAT_MTIME);
 
 sub makeExtractAcceptor {
-    my ($sort)     = grep { /^-+sort/i } @_;
-    my ($tarpipe)  = grep { /^-+(?:tar|tbz|tgz)/i } @_;
-    my $fileHandle = \*STDOUT;
-    binmode $fileHandle, ':utf8';
-    if ( $sort || $tarpipe ) {
+    if ( grep { /^-+(?:sort|tar|tbz|tgz)/i } @_ ) {
         my @list;
-        if ($tarpipe) {
+        my $fileHandle = \*STDOUT;
+        my ($tarFormat) = grep { /^-+(?:tar|tbz|tgz)/i } @_;
+        if ($tarFormat) {
             my $options = '';
-            if ( $tarpipe =~ /bz/i ) {
+            if ( $tarFormat =~ /bz/i ) {
                 $options = '--bzip2';
             }
-            elsif ( $tarpipe =~ /z/i ) {
+            elsif ( $tarFormat =~ /z/i ) {
                 $options = '-z';
             }
             if ( my ($cutOffDate) = map { /newer=(.+)/i ? $1 : (); } @_ ) {
@@ -53,17 +52,27 @@ sub makeExtractAcceptor {
             $ENV{COPY_EXTENDED_ATTRIBUTES_DISABLE} = 1;
             $ENV{COPYFILE_DISABLE}                 = 1;
             open $fileHandle, "| tar $options -c -f - -T -";
-            binmode $fileHandle, ':utf8';
         }
         return sub {
-            unless ( defined $_[0] ) {
-                print {$fileHandle} map { "$_->[0]\n" }
-                  sort { $a->[1] <=> $b->[1] } @list;
-                close $fileHandle;
+            if ( defined $_[0] ) {
+                my $size = -s $_[0];
+                push @list, [ $_[0], $size ];
                 return;
             }
-            my $size = -s $_[0];
-            push @list, [ $_[0], $size ];
+            binmode $fileHandle, ':utf8';
+            print {$fileHandle} map { "$_->[0]\n" }
+              sort { $a->[1] <=> $b->[1] } @list;
+            close $fileHandle;
+            return;
+        };
+    }
+    if ( grep { /^-+open/i } @_ ) {
+        my $dirFlag = grep { /^-+opend/i } @_;
+        return sub {
+            my ($path) = @_;
+            return unless defined $path;
+            $path = dirname($path) if $dirFlag;
+            system 'open', $path;
             return;
         };
     }
