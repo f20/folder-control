@@ -83,7 +83,7 @@ sub explodeByStorageCategory {
                 : $key =~ /\.(?:m4a|mp3|aac)$/si          ? 'compressed-audio'
                 : $key =~ /\.(?:m4v|mp4|mov|mkv|webm|avi)$/si ? 'compressed-video'
                 : $key =~ /\.(?:heic|jpe?g|gif|png)$/si   ? 'compressed-images'
-                : $key =~ /\.(?:[a-z][bx]z|bz2|gz|xz|ipa|ipsw|m?pkg)$/si
+                : $key =~ /\.(?:[a-z]?[bgx]z|bz2|ipa|ipsw|m?pkg|zip)$/si
                 ? 'compressed-other'
                 : $key =~ /\.(?:tiff?|psd|psb)$/si ? 'compressible-images'
                 : 'compressible-other' # NB: PDFs and Office files are often compressible
