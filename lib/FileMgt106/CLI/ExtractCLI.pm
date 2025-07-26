@@ -86,39 +86,6 @@ sub process {
             next;
         }
 
-        if (/^-+denest/) {
-            $catalogueProcessor = sub {
-                my ( $scalar, $path ) = @_ or return;
-                my $denest;
-                $denest = sub {
-                    my ($s) = @_;
-                    my %d;
-                    while ( my ( $k, $v ) = each %$s ) {
-                      TRYAGAIN: if ( ref $v eq 'HASH' ) {
-                            if ( keys %$v == 1 ) {
-                                my ( $k2, $v2 ) = %$v;
-                                if ( ref $v2 eq 'HASH' ) {
-                                    my $kk = "$k, $k2";
-                                    $kk .= ',' while exists $d{$kk};
-                                    $k = $kk;
-                                    $v = $v2;
-                                    goto TRYAGAIN;
-                                }
-                            }
-                            $d{$k} = $denest->($v);
-                            next;
-                        }
-                        $d{$k} = $v;
-                    }
-                    \%d;
-                };
-                FileMgt106::Catalogues::LoadSaveNormalize::saveJbz(
-                    "$path+denested.jbz", $denest->($scalar) );
-                return;
-            };
-            next;
-        }
-
         if (/^-+split(alpha([0-9]*))?/) {
             my $acount = $2 || 1;
             $catalogueProcessor = $1
