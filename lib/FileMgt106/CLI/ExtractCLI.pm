@@ -271,11 +271,11 @@ sub process {
             next;
         }
 
-        if (/^-+dedup/i) {
+        if (/^-+dedup(r)?/i) {
             require FileMgt106::Extraction::Extractor;
             ( $catalogueProcessor, $queryProcessor ) =
               FileMgt106::Extraction::Extractor::makeDedupExtractor( $hintsFile,
-                $favDevNo );
+                $favDevNo, $1 );
             next;
         }
 
