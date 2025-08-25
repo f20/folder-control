@@ -115,6 +115,8 @@ sub makeMetadataExtractor {
     my $outputWriter = @properties > 7
       ? sub {
         my ( $part1, $part2 ) = @_ or return;
+        s/([[:cntrl:]])/q"\x" . unpack("H*",$1)/ge
+          foreach values %$part1, values %$part2;
         my $sha1hex = $part1->{sha1hex};
         print {$tsvStream} join( "\t", $sha1hex, $_, $part1->{$_} ) . "\n"
           foreach qw(filename);
@@ -123,10 +125,11 @@ sub makeMetadataExtractor {
       }
       : sub {
         my ( $part1, $part2 ) = @_ or return;
+        s/([[:cntrl:]])/q"\x" . unpack("H*",$1)/ge
+          foreach values %$part1, values %$part2;
         print {$tsvStream} join( "\t",
             $part1->{sha1hex}, $part1->{filename},
-            map { defined $_ ? $_ : ''; } @{$part2}{@properties} )
-          . "\n";
+            map { defined $_ ? $_ : ''; } @{$part2}{@properties} ) . "\n";
       };
 
     require FileMgt106::Database;
