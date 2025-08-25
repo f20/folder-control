@@ -308,7 +308,7 @@ sub makeInfoExtractor {
 }
 
 sub makeDedupExtractor {
-    my ( $hintsFile, $prefDevNo ) = @_;
+    my ( $hintsFile, $prefDevNo, $reverseFlag ) = @_;
     my ( $hints, $searchSha1 );
     $prefDevNo ||= ( stat $hintsFile )[STAT_DEV];
     binmode STDOUT, ':utf8';
@@ -343,7 +343,7 @@ sub makeDedupExtractor {
             return if exists $done{$sha1hex};
             undef $done{$sha1hex};
             my $iterator = $searchSha1->( pack( 'H*', $sha1hex ), $prefDevNo );
-            my ( @trusted, @untrusted );
+            my ( @trusted, @trustedDev, @untrusted );
             while ( my ( $path, $statref, $locid ) = $iterator->() ) {
                 next unless -f _;
                 if (
@@ -356,19 +356,29 @@ sub makeDedupExtractor {
                     push @untrusted, $path;
                 }
                 else {
-                    push @trusted, $path;
-                    next if @trusted == 1;
-                    my $cp = $countPrefix{ $statref->[STAT_DEV] } //=
-                      [ 0, $path ];
-                    ++$cp->[0];
-                    while ( $path !~ /^\Q$cp->[1]\E/ ) { chop $cp->[1]; }
+                    push @trusted,    $path;
+                    push @trustedDev, $statref->[STAT_DEV];
                 }
             }
-            my ( $master, @trustedSlaves ) = @trusted;
+            my $master;
+            if ($reverseFlag) {
+                $master = pop @trusted;
+                pop @trustedDev;
+            }
+            else {
+                $master = shift @trusted;
+                shift @trustedDev;
+            }
             if ( defined $master && -f $master ) {
                 my $masterEscaped = $master;
                 $masterEscaped =~ s/'/'"'"'/g;
-                foreach (@trustedSlaves) {
+                for ( my $i = 0 ; $i < @trusted ; ++$i ) {
+                    my $cp = $countPrefix{ $trustedDev[$i] } //=
+                      [ 0, $trusted[$i] ];
+                    ++$cp->[0];
+                    while ( $trusted[$i] !~ /^\Q$cp->[1]\E/ ) { chop $cp->[1]; }
+                }
+                foreach (@trusted) {
                     s/'/'"'"'/g;
                     print "ln -sf '$masterEscaped' '$_'\n";
                 }
