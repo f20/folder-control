@@ -82,10 +82,10 @@ sub explodeByStorageCategory {
                 : $key =~ /\.arw$/si                      ? 'compressible-sony'
                 : $key =~ /\.(?:m4a|mp3|aac)$/si          ? 'compressed-audio'
                 : $key =~ /\.(?:m4v|mp4|mov|mkv|webm|avi)$/si ? 'compressed-video'
-                : $key =~ /\.(?:heic|jpe?g|gif|png)$/si   ? 'compressed-images'
+                : $key =~ /\.(?:heic|jpe?g|gif|png|dng)$/si   ? 'compressed-images'
                 : $key =~ /\.(?:[a-z]?[bgx]z|bz2|ipa|ipsw|m?pkg|zip)$/si
                 ? 'compressed-other'
-                : $key =~ /\.(?:tiff?|psd|psb)$/si ? 'compressible-images'
+                : $key =~ /\.(?:tiff?|psd|psb|ico|svg)$/si ? 'compressible-images'
                 : 'compressible-other' # NB: PDFs and Office files are often compressible
             }{$key} = $val;
         }
