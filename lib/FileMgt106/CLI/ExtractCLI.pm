@@ -256,7 +256,7 @@ sub process {
             next;
         }
 
-        if (/^-+(?:sort|tar|tgz|tbz|opend?)$/) {
+        if (/^-+(?:sort|tar|tgz|tbz|less|opend?)$/) {
             require FileMgt106::Extraction::Extractor;
             $catalogueProcessor =
               FileMgt106::Extraction::Extractor::makeHintsExtractor( $hintsFile,

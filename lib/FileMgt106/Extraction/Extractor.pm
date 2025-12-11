@@ -66,6 +66,14 @@ sub makeExtractAcceptor {
             return;
         };
     }
+    if ( grep { /^-+less/i } @_ ) {
+        return sub {
+            my ($path) = @_;
+            return unless defined $path;
+            system 'less', $path;
+            return;
+        };
+    }
     if ( grep { /^-+open/i } @_ ) {
         my $dirFlag = grep { /^-+opend/i } @_;
         return sub {
