@@ -26,9 +26,9 @@ package FileMgt106::Scanning::Scanner;
 use strict;
 use warnings;
 use utf8;
-use Encode qw(decode_utf8);
-use POSIX       ();
-use Digest::SHA ();
+use Encode                 qw(decode_utf8);
+use POSIX                  ();
+use Digest::SHA            ();
 use FileMgt106::FileSystem qw(
   STAT_DEV
   STAT_INO
@@ -902,7 +902,7 @@ sub _isReadOnly {
 
 sub _isMergeable {
     return unless $_[0][STAT_INO] && $_[0][STAT_SIZE];
-    $_[0][STAT_UID] < 500
+    $_[0][STAT_UID] < 500 && $_[0][STAT_UID] != 20
       ? 0040 == ( $_[0][STAT_MODE] & 0060 )
       : 0000 == ( $_[0][STAT_MODE] & 0220 );
 }
