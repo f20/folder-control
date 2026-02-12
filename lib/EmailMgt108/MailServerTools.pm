@@ -73,18 +73,6 @@ sub remove_or_append_messages {
     }
 }
 
-# This is to work around the fact that running successive
-# connections in the same process seems to go wrong.
-sub email_downloader_forked {
-    if ( my $pid = fork ) {
-        waitpid $pid, 0;
-    }
-    else {
-        email_downloader(@_);
-        exit 0;
-    }
-}
-
 sub email_downloader {
 
     my ( $server, $account, $password, $cataloguePath, $mailboxesPath,
