@@ -1,6 +1,6 @@
 package FileMgt106::Extraction::Extractor;
 
-# Copyright 2011-2025 Franck Latrémolière and others.
+# Copyright 2011-2026 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -84,6 +84,7 @@ sub makeExtractAcceptor {
             return;
         };
     }
+    binmode STDOUT, ':utf8';
     sub {
         print "@_\n" if @_;
         return;
