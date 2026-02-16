@@ -1,6 +1,6 @@
 package FileMgt106::Scanning::ScanMaster;
 
-# Copyright 2012-2024 Franck Latrémolière and others.
+# Copyright 2012-2026 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -169,7 +169,7 @@ sub setRepoloc {
                     binmode $f;
                     print {$f} ref $v eq 'HASH'
                       ? FileMgt106::Catalogues::LoadSaveNormalize::jsonMachineMaker(
-                    )->encode($v)
+                      )->encode($v)
                       : $$v;
                     close $f;
                     rename "$k.$$", $k;
@@ -286,7 +286,7 @@ sub dequeued {
         my $frotl =
           defined $self->[SM_FROTL]
           ? ( $self->[SM_FROTL] ? $time + $self->[SM_FROTL] : 0 )
-          : $rgid < 500 ? 0
+          : $rgid < 500 && $rgid != 20 ? 0
           : $self->[SM_DIR] =~ m#/Y_#i ? $time + 604_800
           : $self->[SM_DIR] =~ m#/X_#i ? $time - 42
           :                              $time - 4_233_600;

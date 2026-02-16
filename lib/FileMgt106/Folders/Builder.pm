@@ -1,6 +1,6 @@
 package FileMgt106::Folders::Builder;
 
-# Copyright 2011-2020 Franck Latrémolière and others.
+# Copyright 2011-2026 Franck Latrémolière and others.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@ package FileMgt106::Folders::Builder;
 
 use strict;
 use warnings;
-use Encode qw(decode_utf8);
+use Encode                qw(decode_utf8);
 use File::Spec::Functions qw(catdir catfile);
 use FileMgt106::Database;
 use FileMgt106::FileSystem qw(STAT_DEV STAT_INO STAT_MODE STAT_UID);
@@ -44,7 +44,7 @@ sub _makeStash {
 sub makeHintsBuilder {
 
     my ( $hintsFile, $useSymlinksNotCopies, $infillFlag ) = @_;
-    my $hints = FileMgt106::Database->new( $hintsFile, 1 );
+    my $hints      = FileMgt106::Database->new( $hintsFile, 1 );
     my $searchSha1 = $hints->{searchSha1};
 
     my $createTree;
@@ -75,7 +75,7 @@ sub makeHintsBuilder {
             next unless defined $what;
             next if $name =~ m#/#;
             delete $toDelete{$name};
-            my $fileName = catfile( $whereYouWantIt, $name );
+            my $fileName     = catfile( $whereYouWantIt, $name );
             my @existingStat = lstat $fileName;
             if ( -l _ ) {
                 unlink $fileName or die "unlink $fileName: $!";
@@ -102,7 +102,7 @@ sub makeHintsBuilder {
                 symlink $what, $fileName or $returnValue->{$name} = $what;
                 next;
             }
-            my $sha1 = pack( 'H*', $1 );
+            my $sha1     = pack( 'H*', $1 );
             my $iterator = $searchSha1->( $sha1, $devNo );
             my ( @stat, @candidates, @reservelist );
             while ( !@stat
@@ -120,7 +120,9 @@ sub makeHintsBuilder {
                     next;
                 }
                 if (   $statref->[STAT_DEV] != $devNo
-                    || $statref->[STAT_UID] && $statref->[STAT_UID] < 500 )
+                    || $statref->[STAT_UID]
+                    && $statref->[STAT_UID] < 500
+                    && $statref->[STAT_UID] != 20 )
                 {
                     push @candidates, $path;
                     next;
@@ -139,7 +141,8 @@ sub makeHintsBuilder {
             }
             foreach ( @candidates, @reservelist ) {
                 next ENTRY
-                  if $useSymlinksNotCopies && ( $fileName !~ m^\.aplibrary/^
+                  if $useSymlinksNotCopies
+                  && ( $fileName !~ m^\.aplibrary/^
                     || $fileName =~ m^\.aplibrary/Masters/^ )
                   ? symlink( $_, $fileName )
                   : _copyFile( $_, $fileName );
